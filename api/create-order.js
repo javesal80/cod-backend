@@ -1,4 +1,4 @@
-// Este es el archivo: /api/create-order.js (v1.4 - La versión más robusta)
+// Este es el archivo: /api/create-order.js (v1.5 - La versión correcta)
 
 export default async function handler(request, response) {
   // 1. Configuración de Seguridad (CORS)
@@ -23,17 +23,20 @@ export default async function handler(request, response) {
 
   // 3. Preparar la llamada a la API
   const adminApiUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`;
-  const orderData = request.body;
+  const orderData = request.body; // Esto viene del front-end v2.2
 
   // Formatear el payload final
   const shopifyPayload = {
     draft_order: {
       line_items: orderData.line_items,
       
-      // ESTA ES LA LÓGICA MÁS ROBUSTA (v1.4)
-      // Shopify creará el cliente usando SÓLO la dirección de envío.
+      // --- ESTA ES LA CORRECCIÓN v1.5 ---
+      // El front-end v2.2 ya envía 'customer' y 'shipping_address' 
+      // con first_name y last_name. Ahora el backend los pasará ambos.
+      customer: orderData.customer,
       shipping_address: orderData.shipping_address,
       billing_address: orderData.shipping_address, 
+      // --- FIN DE LA CORRECCIÓN ---
 
       note: orderData.note,
       use_customer_default_address: false
