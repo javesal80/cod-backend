@@ -1,6 +1,5 @@
-// Este es el archivo: /api/create-order.js
+// Este es el archivo: /api/create-order.js (Corregido)
 
-// Esta función se encarga de todo.
 export default async function handler(request, response) {
   // 1. Configuración de Seguridad (CORS)
   // Permite que tu tienda Shopify hable con esta función
@@ -18,7 +17,7 @@ export default async function handler(request, response) {
     return response.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
-  // 2. Leer las Claves Secretas (las configuraremos en Vercel)
+  // 2. Leer las Claves Secretas (las configuramos en Vercel)
   const { SHOPIFY_STORE_DOMAIN, SHOPIFY_ADMIN_API_TOKEN } = process.env;
 
   if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ADMIN_API_TOKEN) {
@@ -32,19 +31,19 @@ export default async function handler(request, response) {
   const orderData = request.body;
 
   // Formatear el payload final para la API de Draft Orders
-  // El 'request.body' que enviamos desde el front-end ya casi tiene este formato.
   const shopifyPayload = {
     draft_order: {
       line_items: orderData.line_items,
-      customer: {
-        first_name: orderData.shipping_address.name, // Shopify prefiere el nombre aquí
-        phone: orderData.shipping_address.phone
-      },
+      
+      // --- ESTA ES LA CORRECCIÓN ---
+      // Simplemente pasamos los objetos que ya 
+      // construimos en el front-end.
+      customer: orderData.customer,
       shipping_address: orderData.shipping_address,
+      billing_address: orderData.shipping_address, // Usar la misma para facturación
+      // --- FIN DE LA CORRECCIÓN ---
+
       note: orderData.note,
-      // Importante: Usar un 'custom_sale' si no quieres que el precio se calcule
-      // basado en los productos, sino en el total que ya calculamos.
-      // Para este caso, dejaremos que Shopify lo calcule basado en las variantes.
       use_customer_default_address: false
     }
   };
