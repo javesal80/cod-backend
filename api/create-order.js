@@ -1,4 +1,4 @@
-// Este es el archivo: /api/create-order.js (Corregido)
+// Este es el archivo: /api/create-order.js (v1.4 - Corrección final de Cliente)
 
 export default async function handler(request, response) {
   // 1. Configuración de Seguridad (CORS)
@@ -35,10 +35,10 @@ export default async function handler(request, response) {
     draft_order: {
       line_items: orderData.line_items,
       
-      // --- ESTA ES LA CORRECCIÓN v1.3 ---
-      // Simplemente pasamos los objetos que ya 
-      // construimos en el front-end.
-      customer: orderData.customer,
+      // --- ESTA ES LA CORRECCIÓN v1.4 ---
+      // Eliminamos el objeto 'customer' para evitar conflictos.
+      // Shopify creará el cliente usando SÓLO la dirección de envío.
+      // customer: orderData.customer, // <-- LÍNEA ELIMINADA
       shipping_address: orderData.shipping_address,
       billing_address: orderData.shipping_address, // Usar la misma para facturación
       // --- FIN DE LA CORRECCIÓN ---
