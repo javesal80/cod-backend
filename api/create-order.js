@@ -1,47 +1,39 @@
-// Este es el archivo: /api/create-order.js (v1.4 - Corrección final de Cliente)
+// Este es el archivo: /api/create-order.js (v1.4 - La versión más robusta)
 
 export default async function handler(request, response) {
   // 1. Configuración de Seguridad (CORS)
-  // Permite que tu tienda Shopify hable con esta función
   response.setHeader('Access-Control-Allow-Origin', `https://${request.headers.origin.split('//')[1]}`);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  // Manejar solicitudes 'pre-flight' de CORS
   if (request.method === 'OPTIONS') {
     return response.status(200).end();
   }
 
-  // Solo permitir solicitudes POST
   if (request.method !== 'POST') {
     return response.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
-  // 2. Leer las Claves Secretas (las configuramos en Vercel)
+  // 2. Leer las Claves Secretas
   const { SHOPIFY_STORE_DOMAIN, SHOPIFY_ADMIN_API_TOKEN } = process.env;
 
   if (!SHOPIFY_STORE_DOMAIN || !SHOPIFY_ADMIN_API_TOKEN) {
     return response.status(500).json({ success: false, message: 'Server configuration error.' });
   }
 
-  // 3. Preparar la llamada a la API de Shopify
+  // 3. Preparar la llamada a la API
   const adminApiUrl = `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`;
-  
-  // Recibir los datos del formulario (line_items, customer, etc.)
   const orderData = request.body;
 
-  // Formatear el payload final para la API de Draft Orders
+  // Formatear el payload final
   const shopifyPayload = {
     draft_order: {
       line_items: orderData.line_items,
       
-      // --- ESTA ES LA CORRECCIÓN v1.4 ---
-      // Eliminamos el objeto 'customer' para evitar conflictos.
+      // ESTA ES LA LÓGICA MÁS ROBUSTA (v1.4)
       // Shopify creará el cliente usando SÓLO la dirección de envío.
-      // customer: orderData.customer, // <-- LÍNEA ELIMINADA
       shipping_address: orderData.shipping_address,
-      billing_address: orderData.shipping_address, // Usar la misma para facturación
-      // --- FIN DE LA CORRECCIÓN ---
+      billing_address: orderData.shipping_address, 
 
       note: orderData.note,
       use_customer_default_address: false
@@ -49,7 +41,7 @@ export default async function handler(request, response) {
   };
 
   try {
-    // 4. Llamar a la API de Admin de Shopify de forma segura
+    // 4. Llamar a la API de Admin de Shopify
     const shopifyResponse = await fetch(adminApiUrl, {
       method: 'POST',
       headers: {
