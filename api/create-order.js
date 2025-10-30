@@ -35,7 +35,7 @@ export default async function handler(request, response) {
     draft_order: {
       line_items: orderData.line_items,
       
-      // --- ESTA ES LA CORRECCIÓN ---
+      // --- ESTA ES LA CORRECCIÓN v1.3 ---
       // Simplemente pasamos los objetos que ya 
       // construimos en el front-end.
       customer: orderData.customer,
