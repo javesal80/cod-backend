@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   const remoteJid = data.key?.remoteJid;
 
   try {
+    // 1. BUSCAR ARCHIVO DE PRODUCTO
     const productoMatch = catalogo.PRODUCTOS.find(p => 
       p.keywords.some(k => clienteMsg.includes(k))
     ) || catalogo.PRODUCTOS[0];
@@ -20,16 +21,23 @@ export default async function handler(req, res) {
     const filePath = path.join(process.cwd(), 'data', productoMatch.archivo);
     const fichaTecnica = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : "";
 
-    // PROMPT MAESTRO CON ENFOQUE EN SEGUIMIENTO
-    const promptMaestro = `
-    Eres Fiorella de JRJMarket. 
-    REGLA DE ORO: Si el cliente dejó de hablar, tu objetivo es reactivarlo con curiosidad o escasez.
+    // 2. EL MASTER PROMPT (NEUROVENTAS + COMPORTAMIENTO)
+    const masterPrompt = `
+    Eres Fiorella, asesora experta en salud natural de JRJMarket. NO eres un bot, eres una amiga cercana y experta vendedora ecuatoriana.
     
-    ESTRATEGIA DE RE-ENGANCHE (Follow-up):
-    - Usa frases como: "¿Sigues ahí? No quisiera que te quedes fuera de la promo de hoy, ¡solo me quedan 2 combos!" 
-    - O: "Oye, me quedé pensando en lo que me dijiste... en serio el aceite de orégano te va a cambiar la vida. ¿Te animas a probarlo hoy?"
+    COMPORTAMIENTO HUMANO:
+    - Saluda siempre con calidez: "¡Hola! Qué gusto saludarte, soy Fiorella de JRJMarket 🌿".
+    - Genera urgencia: "Dame un momentito porfa, que estamos a full por el lanzamiento, pero ya estoy contigo".
+    - Usa técnica espejo: valida el dolor del cliente con empatía ("Chuta, te entiendo perfectamente...").
     
-    BIBLIOTECA: ${fichaTecnica}
+    LOGICA DE VENTA (AIDA + NEUROVENTAS):
+    - Presenta el producto como la SOLUCIÓN al dolor que el cliente expresó.
+    - Si el cliente deja de contestar o duda: "Oye, ¿sigues ahí? No quisiera que te quedes fuera porque me quedan poquísimos con envío gratis. ¿Te reservo uno?".
+    - FLEXIBILIDAD: Si el combo es caro, ofrece el producto individual de inmediato.
+    - REGLA DE ORO: Máximo 3 oraciones por mensaje. Usa negritas. Siempre termina con una PREGUNTA de cierre (¿A qué ciudad enviamos?, ¿Te anoto el combo?).
+    
+    INFORMACIÓN DEL PRODUCTO PARA ESTA VENTA:
+    ${fichaTecnica}
     `;
 
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
@@ -37,22 +45,28 @@ export default async function handler(req, res) {
       headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: "grok-beta",
-        messages: [{ role: "system", content: promptMaestro }, { role: "user", content: clienteMsg }]
+        messages: [{ role: "system", content: masterPrompt }, { role: "user", content: clienteMsg }]
       })
     });
 
-    const textoIA = respIA.choices?.[0]?.message?.content;
+    const resJson = await respIA.json();
+    const textoIA = resJson.choices?.[0]?.message?.content || "¡Hola! Soy Fiorella. Dame un segundito que estoy con muchos clientes, ¿en qué ciudad estás?";
 
-    // Enviar respuesta inmediata
+    // 3. ENVÍO A WHATSAPP
     const cleanUrl = EVOLUTION_URL.replace(/\/$/, "");
     await fetch(`${cleanUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: remoteJid, text: textoIA })
+      body: JSON.stringify({ 
+        number: remoteJid, 
+        text: textoIA,
+        delay: 2000 
+      })
     });
 
     return res.status(200).send('OK');
   } catch (error) {
+    console.error('Error:', error.message);
     return res.status(200).send('OK');
   }
 }
