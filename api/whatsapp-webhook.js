@@ -1,30 +1,39 @@
+let memoriaTemporal = {};
+
 export default async function handler(req, res) {
+  console.log("\n========== NUEVO MENSAJE RECIBIDO ==========");
+  
   const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY } = process.env;
 
-  // 1. Filtros de seguridad para no responder mensajes vacíos o del propio bot
-  if (!req.body?.data?.message) return res.status(200).send('OK');
+  // 1. Filtrar si no hay mensaje
+  if (!req.body?.data?.message) {
+    console.log("-> Ignorado: No hay mensaje válido en el webhook.");
+    return res.status(200).send('OK');
+  }
+  
   const data = req.body.data;
-  if (data.key?.fromMe) return res.status(200).send('OK');
+  
+  // 2. Filtrar si el mensaje es del propio bot
+  if (data.key?.fromMe) {
+    console.log("-> Ignorado: Mensaje enviado por el bot (fromMe).");
+    return res.status(200).send('OK');
+  }
 
   const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
   const remoteJid = data.key?.remoteJid;
 
+  console.log(`[Paso 1] Mensaje extraído. De: ${remoteJid} | Texto: "${clienteMsg}"`);
+
+  // 3. Memoria
+  if (!memoriaTemporal[remoteJid]) memoriaTemporal[remoteJid] = [];
+  memoriaTemporal[remoteJid].push({ role: "user", content: clienteMsg });
+  if (memoriaTemporal[remoteJid].length > 4) memoriaTemporal[remoteJid].shift();
+
+  console.log(`[Paso 2] Memoria lista. Historial: ${memoriaTemporal[remoteJid].length} mensajes.`);
+
   try {
-    // 2. EL CEREBRO DE FIORELLA (Prompt Anti-Robot sin depender de archivos)
-    const masterPrompt = `Eres Fiorella, asesora experta de JRJMarket en Ecuador. Vendes un Combo Regeneración (Aceite de Orégano + Multicolágeno) a $37.99. Individuales: Colágeno $25, Orégano $18.50. Envío gratis, pago contra entrega. Beneficios: El orégano limpia bacterias (Helicobacter/Candida) para que el colágeno regenere piel, huesos y energía.
-
-    REGLA ANTI-ROBOT ESTRICTA (DE VIDA O MUERTE):
-    Como no tienes el historial de chat, debes ADIVINAR el contexto según lo que diga el cliente:
-    - Si el cliente dice "Hola", "Buenas": Preséntate cálidamente ("¡Hola! Soy Fiorella...").
-    - Si el cliente responde SOLO una ciudad (ej. "Quito", "Guayaquil"): ASUME que ya te presentaste y le preguntaste dónde vive. NO digas "Hola soy Fiorella". Responde: "¡Qué chévere [Ciudad]! Para allá enviamos full combos. Cuéntame, ¿qué dolores te molestan para asesorarte bien?".
-    - Si el cliente dice SOLO un producto (ej. "Orégano"): ASUME que ya están conversando. Dile: "¡Excelente elección! El orégano es buenísimo para... ¿Te lo envío solo o con el combo?".
-    - Si el cliente dice "Nada gracias": Despídete amablemente y déjale la puerta abierta.
-
-    ESTILO: Sé empática, humana, usa "chuta", "chévere", "te cuento". 
-    MÉTODO AIDA: Valida el dolor y da la solución. 
-    CIERRE: Termina SIEMPRE con una pregunta corta para mantener el control. NO envíes párrafos largos (máximo 3 líneas).`;
-
-    // 3. Conexión con la IA de Grok
+    // 4. Llamada a Grok
+    console.log("[Paso 3] Enviando petición a Grok (IA)...");
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -34,36 +43,51 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: "grok-beta",
         messages: [
-          { role: "system", content: masterPrompt },
-          { role: "user", content: clienteMsg }
+          { role: "system", content: "Eres un asistente conversacional básico. Responde corto." },
+          ...memoriaTemporal[remoteJid]
         ]
       })
     });
 
     const resJson = await respIA.json();
-    const textoIA = resJson.choices?.[0]?.message?.content;
 
-    // 4. Envío de respuesta a WhatsApp
+    if (resJson.error) {
+      console.error("[ERROR GROK API]:", resJson.error);
+      return res.status(200).send('OK');
+    }
+
+    const textoIA = resJson.choices?.[0]?.message?.content;
+    console.log(`[Paso 4] Grok contestó con éxito: "${textoIA}"`);
+
+    // 5. Envío a Evolution API
     if (textoIA) {
+      memoriaTemporal[remoteJid].push({ role: "assistant", content: textoIA });
+      
+      console.log("[Paso 5] Enviando mensaje a WhatsApp...");
       const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
-      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+      
+      const evolResp = await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
           'apikey': EVOLUTION_TOKEN 
         },
-        body: JSON.stringify({ 
-          number: remoteJid, 
-          text: textoIA, 
-          delay: 1500 // Pequeña pausa para que se vea más humano
-        })
+        body: JSON.stringify({ number: remoteJid, text: textoIA })
       });
+
+      if (evolResp.ok) {
+        console.log("[Paso 6] ✅ Mensaje enviado exitosamente a WhatsApp.");
+      } else {
+        const errorEvol = await evolResp.text();
+        console.error("[ERROR EVOLUTION API]:", errorEvol);
+      }
     }
 
+    console.log("========== FIN DEL PROCESO ==========\n");
     return res.status(200).send('OK');
+
   } catch (error) {
-    console.error("Error en Webhook:", error);
-    // Retornamos 200 OK siempre para que Evolution API no se trabe
+    console.error("[ERROR CRÍTICO DEL SERVIDOR]:", error.message);
     return res.status(200).send('OK');
   }
 }
