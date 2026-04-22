@@ -1,4 +1,4 @@
-// /api/whatsapp-webhook.js (v2.4 - Corrección de Ruta 404)
+// /api/whatsapp-webhook.js (v2.5 - Corrección Final de Ruta)
 export default async function handler(req, res) {
   const { 
     EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY 
@@ -13,41 +13,44 @@ export default async function handler(req, res) {
   if (!clienteMsg || !remoteJid) return res.status(200).send('OK');
 
   try {
-    // IA - Grok
+    // 1. Pensamiento de la IA
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: "grok-beta",
-        messages: [{ role: "system", content: "Eres el asistente de JRJMarket." }, { role: "user", content: clienteMsg }]
+        messages: [{ role: "system", content: "Eres el asistente de JRJMarket en Ecuador. Sé amable y breve." }, { role: "user", content: clienteMsg }]
       })
     });
     const resJson = await respIA.json();
     const textoIA = resJson.choices?.[0]?.message?.content || "¡Hola!";
 
-    // --- CORRECCIÓN AQUÍ ---
-    // En v2.3.7 la ruta correcta es /message/sendText/{instance}
-    const urlEnvio = `${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`;
+    // 2. ENVÍO A WHATSAPP (Ruta corregida para v2.3.7)
+    // Eliminamos barras dobles por si acaso
+    const baseUrl = EVOLUTION_URL.replace(/\/$/, ""); 
+    const urlFinal = `${baseUrl}/message/sendText/${INSTANCE_NAME}`;
     
-    const responseWA = await fetch(urlEnvio, {
+    console.log("Intentando enviar a:", urlFinal);
+
+    const responseWA = await fetch(urlFinal, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
         'apikey': EVOLUTION_TOKEN 
       },
       body: JSON.stringify({
-        number: remoteJid, // El JID ya trae el formato correcto
+        number: remoteJid, // Usamos el ID completo
         text: textoIA,
         delay: 1200
       })
     });
 
-    const debugMsg = await responseWA.text();
-    console.log("Respuesta Final Evolution:", debugMsg);
+    const respuestaTexto = await responseWA.text();
+    console.log("Respuesta Final Evolution:", respuestaTexto);
 
     return res.status(200).send('OK');
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error Crítico:', error.message);
     return res.status(200).send('OK');
   }
 }
