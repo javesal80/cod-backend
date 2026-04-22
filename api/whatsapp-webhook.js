@@ -1,17 +1,4 @@
-export default async function handler(req, res) {
-  const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN } = process.env;
 
-  if (!req.body?.data?.message) return res.status(200).send('OK');
-  const data = req.body.data;
-  if (data.key?.fromMe) return res.status(200).send('OK');
-
-  const clienteMsg = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
-  const remoteJid = data.key?.remoteJid;
-  if (!clienteMsg || !remoteJid) return res.status(200).send('OK');
-
-  // ANTI-DUPLICADOS
-  const msgId = data.key?.id;
-  const dedupKey = `dedup:${msgId}`;
   try {
     const dedupCheck = await fetch(`${KV_REST_API_URL}/get/${dedupKey}`, {
       headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` }
