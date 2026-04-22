@@ -10,7 +10,6 @@ export default async function handler(req, res) {
   const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
 
   try {
-    // LLAMADA SEGÚN TU CAPTURA: /v1/responses
     const respIA = await fetch('https://api.x.ai/v1/responses', {
       method: 'POST',
       headers: { 
@@ -19,22 +18,30 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "grok-4.20-reasoning",
-        input: clienteMsg // En este modelo se usa 'input', no 'messages'
+        input: clienteMsg
       })
     });
 
     const resJson = await respIA.json();
 
-    // Según este nuevo formato, la respuesta suele venir en resJson.output o resJson.message
-    let textoIA = resJson.output || (resJson.choices && resJson.choices[0]?.message?.content) || JSON.stringify(resJson);
+    // EXTRACCIÓN DEL TEXTO LIMPIO (Navegando por el JSON que recibiste)
+    let textoLimpio = "";
+    
+    if (Array.isArray(resJson) && resJson[1] && resJson[1].content) {
+      // Formato de lista: El mensaje suele estar en la segunda posición (index 1)
+      textoLimpio = resJson[1].content[0].text;
+    } else if (resJson.output) {
+      textoLimpio = resJson.output;
+    } else {
+      // Respaldo por si el formato varía ligeramente
+      textoLimpio = "¡Hola! Soy Fiorella, ¿en qué ciudad estás?"; 
+    }
 
-    // Si el texto es un objeto (JSON), lo limpiamos para WhatsApp
-    if (typeof textoIA === 'object') textoIA = JSON.stringify(textoIA);
-
+    // ENVIAR SOLO EL TEXTO AL CLIENTE
     await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: remoteJid, text: textoIA })
+      body: JSON.stringify({ number: remoteJid, text: textoLimpio })
     });
 
     return res.status(200).send('OK');
