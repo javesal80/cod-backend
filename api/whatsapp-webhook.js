@@ -9,6 +9,9 @@ export default async function handler(req, res) {
   const remoteJid = data.key?.remoteJid;
   const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
 
+  // Mantenemos la esencia: Solo cambiamos lo que se le envía a la IA
+  const promptVenta = `Actúa como Fiorella, asesora de JRJMarket en Ecuador. Sé breve, amable y usa un tono ecuatoriano. Responde a esto: ${clienteMsg}`;
+
   try {
     const respIA = await fetch('https://api.x.ai/v1/responses', {
       method: 'POST',
@@ -18,24 +21,21 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "grok-4.20-reasoning",
-        input: clienteMsg
+        input: promptVenta // Usamos la variable con la instrucción
       })
     });
 
     const resJson = await respIA.json();
 
-    // EXTRACCIÓN ULTRA-SEGURA: Buscamos el texto donde sea que esté
+    // --- AQUÍ ESTÁ LA ESENCIA QUE NO VAMOS A TOCAR ---
     let textoFinal = "";
-
     try {
-      // Intentamos la ruta que vimos en tu mensaje anterior
       if (Array.isArray(resJson)) {
         const mensajeObj = resJson.find(item => item.type === "message");
         if (mensajeObj && mensajeObj.content) {
           textoFinal = mensajeObj.content[0].text;
         }
       } 
-      // Si no aparece ahí, intentamos convertirlo a texto y buscar el campo "text"
       if (!textoFinal) {
         const stringJson = JSON.stringify(resJson);
         const match = stringJson.match(/"output_text","text":"([^"]+)"/);
@@ -47,7 +47,6 @@ export default async function handler(req, res) {
       console.log("Error extrayendo texto");
     }
 
-    // Si encontramos algo, lo mandamos. Si no, mandamos el error para no estar ciegos.
     const mensajeAEnviar = textoFinal || "Error: No se pudo procesar la respuesta de la IA.";
 
     await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
