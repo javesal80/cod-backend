@@ -10,7 +10,6 @@ export default async function handler(req, res) {
   const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
 
   try {
-    // 1. LLAMADA AL ENDPOINT CORRECTO DE XAI
     const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -18,9 +17,9 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        model: "grok-beta", // USA ESTE MODELO, EL OTRO NO EXISTE
+        model: "grok-2", // CAMBIADO: grok-2 es el modelo estándar actual
         messages: [
-          { role: "system", content: "Eres Fiorella, una asistente amable de JRJMarket." },
+          { role: "system", content: "Eres Fiorella, una asistente amable." },
           { role: "user", content: clienteMsg }
         ],
         stream: false
@@ -29,26 +28,24 @@ export default async function handler(req, res) {
 
     const resJson = await respIA.json();
 
-    // 2. CAPTURAR EL TEXTO O EL ERROR REAL
-    let textoFinal = "";
     if (resJson.choices && resJson.choices[0]) {
-      textoFinal = resJson.choices[0].message.content;
+      const textoFinal = resJson.choices[0].message.content;
+      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: textoFinal })
+      });
     } else {
-      // Esto te dirá el error real si vuelve a fallar
-      textoFinal = "Error de xAI: " + (resJson.error?.message || JSON.stringify(resJson));
+      // Si grok-2 también falla, este mensaje nos dirá exactamente cuáles modelos TIENES disponibles
+      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: "Error de xAI: " + (resJson.error?.message || JSON.stringify(resJson)) })
+      });
     }
 
-    // 3. ENVÍO A WHATSAPP
-    await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: remoteJid, text: textoFinal })
-    });
-
     return res.status(200).send('OK');
-
   } catch (error) {
-    console.error("Fallo total:", error.message);
     return res.status(200).send('OK');
   }
 }
