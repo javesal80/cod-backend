@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
   const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY } = process.env;
 
+  // 1. Validar que el mensaje sea válido y no sea nuestro
   if (!req.body?.data?.message) return res.status(200).send('OK');
   const data = req.body.data;
   if (data.key?.fromMe) return res.status(200).send('OK');
@@ -8,35 +9,35 @@ export default async function handler(req, res) {
   const clienteMsg = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
   const remoteJid = data.key?.remoteJid;
 
-  // --- BIBLIOTECA INTEGRADA (Para que nunca falle por falta de archivos) ---
-  const bibliotecaVentas = `
-    PRODUCTO: Combo Regeneración Total (Multicolágeno + Aceite de Orégano).
+  // 2. BIBLIOTECA INTEGRADA (Toda la info aquí mismo)
+  const infoVenta = `
+    PRODUCTO: Combo Regeneración (Aceite de Orégano + Multicolágeno).
     PRECIOS: Combo $37.99 / Solo Colágeno $25 / Solo Orégano $18.50.
-    CIENCIA: El orégano limpia parásitos, hongos (Candida) y bacterias para que el colágeno se absorba al 100% y regenere piel, huesos y energía.
-    LOGÍSTICA: Envío GRATIS a todo Ecuador. Pago contra entrega (pagas al recibir).
+    BENEFICIOS: El orégano limpia bacterias y parásitos para que el colágeno regenere piel y huesos.
+    PAGO: Contra entrega. ENVÍO: Gratis a todo Ecuador.
   `;
 
   try {
-    // EL MASTER PROMPT: Aquí reside la inteligencia, neuroventas y la personalidad humana.
-    const masterPrompt = `Eres Fiorella, asesora experta en salud natural de JRJMarket. 
-    ¡IMPORTANTE!: NO eres un bot. Eres una amiga cercana. Si el cliente te saluda o te da un dato (como su ciudad), NO te vuelvas a presentar. ¡Sigue la plática como una persona real!
+    // 3. EL MASTER PROMPT (Psicología y comportamiento)
+    const masterPrompt = `Eres Fiorella, asesora experta de JRJMarket. 
+    ¡REGLA DE ORO!: No parezcas un robot. Habla como una amiga cercana. 
+    Si el cliente te da un dato (como su ciudad), NO te vuelvas a presentar. ¡Sigue la plática!
+    
+    ESTRATEGIA:
+    - Valida el dolor del cliente (gastritis, manchas, dolor de huesos).
+    - Usa el modelo AIDA para llevarlo al cierre.
+    - Si no quiere el combo, ofrece el producto individual.
+    - Siempre termina con una pregunta de cierre (ej: "¿En qué parte de Quito estás para el envío?").
+    
+    INFO PRODUCTO: ${infoVenta}`;
 
-    ESTRATEGIA DE NEUROVENTAS:
-    1. EMPATÍA: Si el cliente tiene un dolor, dile "Chuta, te entiendo, qué feo sentirse así".
-    2. MODELO AIDA: Capta atención, genera interés con la ciencia del orégano, despierta deseo de verse bien al espejo y CIERRA preguntando datos de envío.
-    3. FLEXIBILIDAD: Si el combo es mucho para el cliente, véndele uno solo. ¡Lo importante es ayudarlo hoy!
-    4. PERSUASIÓN: Usa frases como "En serio prueba esto, te va a cambiar la vida" o "Aprovecha que hoy tengo envío gratis".
-
-    REGLAS DE FORMATO:
-    - Máximo 2 o 3 oraciones por mensaje.
-    - Usa negritas en beneficios y precios.
-    - SIEMPRE termina con una pregunta para mantener el control de la venta.
-
-    INFORMACIÓN TÉCNICA: ${bibliotecaVentas}`;
-
+    // 4. LLAMADA A GROK
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
+      headers: { 
+        'Authorization': `Bearer ${GROK_API_KEY}`, 
+        'Content-Type': 'application/json' 
+      },
       body: JSON.stringify({
         model: "grok-beta",
         messages: [
@@ -49,24 +50,26 @@ export default async function handler(req, res) {
     const resJson = await respIA.json();
     const textoIA = resJson.choices?.[0]?.message?.content;
 
-    // Si la IA generó una respuesta, la enviamos
+    // 5. ENVÍO A EVOLUTION API
     if (textoIA) {
-      const cleanUrl = EVOLUTION_URL.replace(/\/$/, "");
-      await fetch(`${cleanUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+      const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
+      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-        body: JSON.stringify({ 
-          number: remoteJid, 
+        headers: { 
+          'Content-Type': 'application/json', 
+          'apikey': EVOLUTION_TOKEN 
+        },
+        body: JSON.stringify({
+          number: remoteJid,
           text: textoIA,
-          delay: 1000 // Simula que Fiorella está escribiendo
+          delay: 1000
         })
       });
     }
 
     return res.status(200).send('OK');
   } catch (error) {
-    // Si la IA falla, mandamos un mensaje de rescate humano para no perder el cliente
-    console.error("Error:", error.message);
+    console.error("ERROR CRÍTICO:", error.message);
     return res.status(200).send('OK');
   }
 }
