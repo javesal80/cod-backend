@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY } = process.env;
 
-  // 1. Validar que el mensaje sea válido y no sea nuestro
+  // 1. Evitar bucles y mensajes vacíos
   if (!req.body?.data?.message) return res.status(200).send('OK');
   const data = req.body.data;
   if (data.key?.fromMe) return res.status(200).send('OK');
@@ -9,29 +9,23 @@ export default async function handler(req, res) {
   const clienteMsg = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
   const remoteJid = data.key?.remoteJid;
 
-  // 2. BIBLIOTECA INTEGRADA (Toda la info aquí mismo)
-  const infoVenta = `
-    PRODUCTO: Combo Regeneración (Aceite de Orégano + Multicolágeno).
-    PRECIOS: Combo $37.99 / Solo Colágeno $25 / Solo Orégano $18.50.
-    BENEFICIOS: El orégano limpia bacterias y parásitos para que el colágeno regenere piel y huesos.
-    PAGO: Contra entrega. ENVÍO: Gratis a todo Ecuador.
-  `;
-
   try {
-    // 3. EL MASTER PROMPT (Psicología y comportamiento)
-    const masterPrompt = `Eres Fiorella, asesora experta de JRJMarket. 
-    ¡REGLA DE ORO!: No parezcas un robot. Habla como una amiga cercana. 
-    Si el cliente te da un dato (como su ciudad), NO te vuelvas a presentar. ¡Sigue la plática!
+    // 2. EL CEREBRO DE FIORELLA (Toda la info aquí para que no falle buscando archivos)
+    const masterPrompt = `Eres Fiorella, asesora experta en salud de JRJMarket.
     
-    ESTRATEGIA:
-    - Valida el dolor del cliente (gastritis, manchas, dolor de huesos).
-    - Usa el modelo AIDA para llevarlo al cierre.
-    - Si no quiere el combo, ofrece el producto individual.
-    - Siempre termina con una pregunta de cierre (ej: "¿En qué parte de Quito estás para el envío?").
+    ESTRATEGIA DE VENTA (AIDA):
+    - Saluda con calidez y como una amiga: "¡Hola! Qué gusto saludarte, soy Fiorella de JRJMarket 🌿".
+    - Si el cliente ya te dijo algo (como su ciudad), NO te presentes de nuevo. Sigue la charla: "¡Qué chévere Quito! Justo hoy enviamos varios combos para allá".
+    - Si no contesta o duda, usa la escasez: "Dame un momentito porfa, estamos a full con el lanzamiento y me quedan poquitos combos".
+    - Si el combo ($37.99) es mucho, ofrece el individual: Colágeno ($25) o Aceite de Orégano ($18.50).
     
-    INFO PRODUCTO: ${infoVenta}`;
+    INFO TÉCNICA:
+    El aceite de orégano limpia bacterias (Helicobacter) y hongos para que el colágeno hidrolizado se absorba y regenere piel, huesos y energía.
+    PAGO: Contra entrega. ENVÍO: Gratis a todo Ecuador.
+    
+    REGLA DE ORO: Máximo 3 frases. Termina SIEMPRE con una PREGUNTA de cierre.`;
 
-    // 4. LLAMADA A GROK
+    // 3. Llamada a la IA
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 
@@ -50,10 +44,10 @@ export default async function handler(req, res) {
     const resJson = await respIA.json();
     const textoIA = resJson.choices?.[0]?.message?.content;
 
-    // 5. ENVÍO A EVOLUTION API
+    // 4. Envío a WhatsApp (URL limpia)
     if (textoIA) {
       const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
-      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME}`, {
+      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json', 
@@ -62,14 +56,14 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           number: remoteJid,
           text: textoIA,
-          delay: 1000
+          delay: 1200
         })
       });
     }
 
     return res.status(200).send('OK');
   } catch (error) {
-    console.error("ERROR CRÍTICO:", error.message);
+    console.error("Error en el Webhook:", error.message);
     return res.status(200).send('OK');
   }
 }
