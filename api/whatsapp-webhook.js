@@ -10,33 +10,32 @@ export default async function handler(req, res) {
   const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
 
   try {
-    // 1. LLAMADA DIRECTA Y SIMPLE
-    const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
+    // 1. LLAMADA AL ENDPOINT CORRECTO DE XAI
+    const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
       method: 'POST',
       headers: { 
         'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
         'Content-Type': 'application/json' 
       },
       body: JSON.stringify({
-        model: "grok-beta",
+        model: "grok-beta", // USA ESTE MODELO, EL OTRO NO EXISTE
         messages: [
-          { role: "system", content: "Eres Fiorella, una vendedora amable. Responde siempre en menos de 20 palabras." },
+          { role: "system", content: "Eres Fiorella, una asistente amable de JRJMarket." },
           { role: "user", content: clienteMsg }
         ],
-        stream: false // Forzamos a que no use streaming para evitar el "vacío"
+        stream: false
       })
     });
 
     const resJson = await respIA.json();
 
-    // 2. EXTRACCIÓN MANUAL (Para ver qué hay dentro si falla)
+    // 2. CAPTURAR EL TEXTO O EL ERROR REAL
     let textoFinal = "";
-    
-    if (resJson.choices && resJson.choices.length > 0 && resJson.choices[0].message) {
+    if (resJson.choices && resJson.choices[0]) {
       textoFinal = resJson.choices[0].message.content;
     } else {
-      // Si sigue saliendo vacío, te enviamos el código de error técnico
-      textoFinal = "Error técnico: " + JSON.stringify(resJson);
+      // Esto te dirá el error real si vuelve a fallar
+      textoFinal = "Error de xAI: " + (resJson.error?.message || JSON.stringify(resJson));
     }
 
     // 3. ENVÍO A WHATSAPP
@@ -49,12 +48,7 @@ export default async function handler(req, res) {
     return res.status(200).send('OK');
 
   } catch (error) {
-    // Si el fetch falla por red o DNS
-    await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: remoteJid, text: "🚨 Error de red: " + error.message })
-    });
+    console.error("Fallo total:", error.message);
     return res.status(200).send('OK');
   }
 }
