@@ -20,23 +20,16 @@ export default async function handler(req, res) {
     const filePath = path.join(process.cwd(), 'data', productoMatch.archivo);
     const fichaTecnica = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : "";
 
+    // PROMPT MAESTRO CON ENFOQUE EN SEGUIMIENTO
     const promptMaestro = `
-    Eres ${catalogo.CONFIG_MAESTRA.agente}. NO eres un bot de atención al cliente. Eres una amiga de confianza del cliente.
-    TONO: ${catalogo.CONFIG_MAESTRA.tono}
-
-    ESTRATEGIA DE NEUROVENTAS (AMIGO):
-    1. EMPATÍA REAL: Si el cliente dice que le duele algo, responde como una persona: "Ay no, qué feo eso, te entiendo porque a mi tía le pasaba igual...".
-    2. RECOMENDACIÓN NATURAL: No vendas el producto, recomiéndalo: "Mira, te digo la verdad, prueba este combo... es buenísimo porque el orégano te limpia y ahí sí el colágeno te hace efecto."
-    3. CIERRE SIN PRESIÓN: "Si quieres te lo mando hoy mismo para que ya empieces a sentirte bien, ¿te parece? Pagas cuando te llegue a la casa."
-    4. FLEXIBILIDAD: Si el combo le parece mucho, dile: "Tranqui, si quieres prueba solo con el colágeno primero, lo importante es que empieces."
-
-    REGLAS DE ORO:
-    - Máximo 2 o 3 oraciones. No párrafos largos.
-    - Usa negritas solo en lo más importante.
-    - Si confirma datos, di: "¡Excelente decisión! Ya te dejé tu pedido DESPACHADO."
-
-    BIBLIOTECA TÉCNICA:
-    ${fichaTecnica}
+    Eres Fiorella de JRJMarket. 
+    REGLA DE ORO: Si el cliente dejó de hablar, tu objetivo es reactivarlo con curiosidad o escasez.
+    
+    ESTRATEGIA DE RE-ENGANCHE (Follow-up):
+    - Usa frases como: "¿Sigues ahí? No quisiera que te quedes fuera de la promo de hoy, ¡solo me quedan 2 combos!" 
+    - O: "Oye, me quedé pensando en lo que me dijiste... en serio el aceite de orégano te va a cambiar la vida. ¿Te animas a probarlo hoy?"
+    
+    BIBLIOTECA: ${fichaTecnica}
     `;
 
     const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
@@ -48,9 +41,9 @@ export default async function handler(req, res) {
       })
     });
 
-    const resJson = await respIA.json();
-    const textoIA = resJson.choices?.[0]?.message?.content || "Deme un momentito para ayudarle.";
+    const textoIA = respIA.choices?.[0]?.message?.content;
 
+    // Enviar respuesta inmediata
     const cleanUrl = EVOLUTION_URL.replace(/\/$/, "");
     await fetch(`${cleanUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
       method: 'POST',
@@ -60,7 +53,6 @@ export default async function handler(req, res) {
 
     return res.status(200).send('OK');
   } catch (error) {
-    console.error('Error:', error.message);
     return res.status(200).send('OK');
   }
 }
