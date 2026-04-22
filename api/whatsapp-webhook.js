@@ -1,8 +1,7 @@
-// /api/whatsapp-webhook.js (El Cerebro que decide qué archivos enviar)
+// /api/whatsapp-webhook.js (Versión Persuasiva JRJMarket)
 export default async function handler(req, res) {
   const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GEMINI_API_KEY } = process.env;
 
-  // 1. Validar que sea un mensaje real del cliente
   if (!req.body.data || !req.body.data.message) return res.status(200).send('OK');
   const incoming = req.body.data;
   if (incoming.key.fromMe) return res.status(200).send('OK');
@@ -12,73 +11,76 @@ export default async function handler(req, res) {
   const customerPhone = remoteJid.split('@')[0];
 
   try {
-    // 2. IA: Google Gemini analiza la respuesta
     const promptIA = `
-      Eres el asistente de JRJMarket en Ecuador. El cliente acaba de recibir un mensaje de confirmación de pedido.
-      REGLAS:
-      - Si el cliente da una referencia o confirma (ej: "claro", "frente a la tienda"), agradécele y dile que su pedido ha sido despachado.
-      - Si el cliente tiene dudas sobre el precio o cantidad, respóndele amablemente.
-      - Tu objetivo es ser amable y cerrar la confirmación.
+      Eres el asistente experto de JRJMarket en Ecuador. Tu misión es CONFIRMAR el pedido y obtener la referencia de entrega.
+      
+      ESCENARIOS:
+      1. SI EL CLIENTE CONFIRMA O DA REFERENCIA: Dile que el producto ha sido despachado, que esté atento y que le envías el ebook.
+      2. SI EL CLIENTE DICE QUE "NO" O QUIERE CANCELAR: No aceptes el no de inmediato. Pregunta amablemente el motivo. Si es por el precio, recuérdale los beneficios de salud/crecimiento. Intenta ofrecerle una cantidad menor (ej: 1 en lugar de 2) para no perder el cliente.
+      3. SI EL CLIENTE TIENE DUDAS: Responde con autoridad y amabilidad.
+      
+      REGLAS DE ORO:
+      - Usa un tono ecuatoriano, amable y profesional.
+      - Sé breve. No uses párrafos largos.
+      - Si logras que cambie de opinión y confirme, usa la palabra "DESPACHADO" en tu respuesta.
     `;
 
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${promptIA}\n\nCliente: "${clienteMsg}"` }] }]
+        contents: [{ parts: [{ text: `${promptIA}\n\nCliente dice: "${clienteMsg}"\nRespuesta persuasiva:` }] }]
       })
     });
 
     const dataIA = await geminiRes.json();
     const textoIA = dataIA.candidates[0].content.parts[0].text;
 
-    // 3. ENVIAR RESPUESTA DE TEXTO
     const headers = { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN };
+    
+    // 1. Enviar la respuesta inteligente de la IA
     await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
       method: 'POST',
       headers,
       body: JSON.stringify({ number: customerPhone, text: textoIA, delay: 1500 })
     });
 
-    // 4. LÓGICA MULTIMEDIA: ¿Qué enviamos al confirmar?
-    const esConfirmacion = textoIA.toLowerCase().includes("despachado") || 
-                           textoIA.toLowerCase().includes("atento") || 
-                           textoIA.toLowerCase().includes("camino");
+    // 2. ENVIAR MULTIMEDIA SOLO SI CONFIRMÓ (Contiene la palabra clave)
+    const confirmo = textoIA.toLowerCase().includes("despachado") || 
+                     textoIA.toLowerCase().includes("camino");
 
-    if (esConfirmacion) {
+    if (confirmo) {
+      // Enviar Ebook (PDF)
+      await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          number: customerPhone,
+          media: "https://tu-dominio.com/guia.pdf", // PON TU LINK REAL
+          mediatype: "document",
+          fileName: "Ebook_KidGrow_JRJMarket.pdf",
+          caption: "Aquí tiene el ebook prometido. ¡Disfrútelo!"
+        })
+      });
       
-      // OPCIÓN A: ENVIAR IMAGEN DEL PRODUCTO (Descomenta si la quieres enviar)
+      // OPCIONAL: Enviar Foto del producto también
       /*
       await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           number: customerPhone,
-          media: "https://tu-dominio.com/foto-producto.jpg", 
+          media: "https://tu-dominio.com/foto.jpg", // PON TU LINK REAL
           mediatype: "image",
-          caption: "Aquí tienes una foto de tu producto que va en camino."
+          caption: "Su paquete se ve así y ya va en camino."
         })
       });
       */
-
-      // OPCIÓN B: ENVIAR EL EBOOK (PDF)
-      // Este es el que sueles enviar según tu ejemplo
-      await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          number: customerPhone,
-          media: "https://tu-dominio.com/ebook-regalo.pdf", 
-          mediatype: "document",
-          fileName: "Ebook_JRJMarket.pdf",
-          caption: "Le adjunto el ebook del producto prometido."
-        })
-      });
     }
 
     res.status(200).send('SUCCESS');
   } catch (error) {
-    console.error('Error en Webhook:', error);
+    console.error('Error:', error);
     res.status(200).send('OK');
   }
 }
