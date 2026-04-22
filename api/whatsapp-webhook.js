@@ -1,6 +1,13 @@
-// /api/whatsapp-webhook.js (Versión Persuasiva JRJMarket)
+// /api/whatsapp-webhook.js (v2.0 - JRJMarket Multimodelo)
 export default async function handler(req, res) {
-  const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GEMINI_API_KEY } = process.env;
+  const { 
+    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, 
+    OPENAI_API_KEY, GROK_API_KEY, GEMINI_API_KEY 
+  } = process.env;
+
+  // --- ELIGE TU MOTOR AQUÍ ---
+  const MOTOR_ACTIVO = "grok"; // Opciones: "grok", "openai", "gemini"
+  // ---------------------------
 
   if (!req.body.data || !req.body.data.message) return res.status(200).send('OK');
   const incoming = req.body.data;
@@ -11,71 +18,77 @@ export default async function handler(req, res) {
   const customerPhone = remoteJid.split('@')[0];
 
   try {
-    const promptIA = `
-      Eres el asistente experto de JRJMarket en Ecuador. Tu misión es CONFIRMAR el pedido y obtener la referencia de entrega.
-      
-      ESCENARIOS:
-      1. SI EL CLIENTE CONFIRMA O DA REFERENCIA: Dile que el producto ha sido despachado, que esté atento y que le envías el ebook.
-      2. SI EL CLIENTE DICE QUE "NO" O QUIERE CANCELAR: No aceptes el no de inmediato. Pregunta amablemente el motivo. Si es por el precio, recuérdale los beneficios de salud/crecimiento. Intenta ofrecerle una cantidad menor (ej: 1 en lugar de 2) para no perder el cliente.
-      3. SI EL CLIENTE TIENE DUDAS: Responde con autoridad y amabilidad.
-      
-      REGLAS DE ORO:
-      - Usa un tono ecuatoriano, amable y profesional.
-      - Sé breve. No uses párrafos largos.
-      - Si logras que cambie de opinión y confirme, usa la palabra "DESPACHADO" en tu respuesta.
-    `;
+    const promptIA = `Eres el asistente experto de JRJMarket en Ecuador. Tu misión es CONFIRMAR el pedido y obtener la referencia.
+    REGLAS:
+    1. Si el cliente confirma o da referencia, responde que el pedido está DESPACHADO y agradece.
+    2. Si el cliente dice que NO o quiere cancelar, sé persuasivo, recuerda los beneficios y ofrece ayuda.
+    3. Si quiere cambiar cantidades (ej: de 2 a 1), acepta amablemente.
+    Sé breve, usa emojis y mantén el estilo amable de JRJMarket.`;
 
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: `${promptIA}\n\nCliente dice: "${clienteMsg}"\nRespuesta persuasiva:` }] }]
-      })
-    });
+    let textoIA = "";
 
-    const dataIA = await geminiRes.json();
-    const textoIA = dataIA.candidates[0].content.parts[0].text;
+    // LÓGICA DE MOTORES DE IA
+    if (MOTOR_ACTIVO === "grok") {
+      const resp = await fetch('https://api.xai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "grok-beta",
+          messages: [{role: "system", content: promptIA}, {role: "user", content: clienteMsg}]
+        })
+      });
+      const data = await resp.json();
+      textoIA = data.choices[0].message.content;
 
-    const headers = { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN };
-    
-    // 1. Enviar la respuesta inteligente de la IA
+    } else if (MOTOR_ACTIVO === "openai") {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{role: "system", content: promptIA}, {role: "user", content: clienteMsg}]
+        })
+      });
+      const data = await resp.json();
+      textoIA = data.choices[0].message.content;
+    }
+
+    // 1. ENVIAR RESPUESTA DE TEXTO A WHATSAPP
+    const headersWA = { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN };
     await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
       method: 'POST',
-      headers,
+      headers: headersWA,
       body: JSON.stringify({ number: customerPhone, text: textoIA, delay: 1500 })
     });
 
-    // 2. ENVIAR MULTIMEDIA SOLO SI CONFIRMÓ (Contiene la palabra clave)
-    const confirmo = textoIA.toLowerCase().includes("despachado") || 
-                     textoIA.toLowerCase().includes("camino");
+    // 2. LÓGICA DE ENVÍO DE ARCHIVOS (IMAGEN Y EBOOK)
+    const confirmo = textoIA.toLowerCase().includes("despachado") || textoIA.toLowerCase().includes("camino");
 
     if (confirmo) {
-      // Enviar Ebook (PDF)
+      // ENVIAR IMAGEN DEL PRODUCTO
       await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
         method: 'POST',
-        headers,
+        headers: headersWA,
         body: JSON.stringify({
           number: customerPhone,
-          media: "https://tu-dominio.com/guia.pdf", // PON TU LINK REAL
+          media: "https://cod-backend-xi.vercel.app/producto.jpg", // LINK REAL
+          mediatype: "image",
+          caption: "Este es el producto que va en camino."
+        })
+      });
+
+      // ENVIAR EBOOK PDF
+      await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
+        method: 'POST',
+        headers: headersWA,
+        body: JSON.stringify({
+          number: customerPhone,
+          media: "https://cod-backend-xi.vercel.app/guia-vital.pdf", // LINK REAL
           mediatype: "document",
           fileName: "Ebook_KidGrow_JRJMarket.pdf",
-          caption: "Aquí tiene el ebook prometido. ¡Disfrútelo!"
+          caption: "Aquí le adjunto el ebook prometido."
         })
       });
-      
-      // OPCIONAL: Enviar Foto del producto también
-      /*
-      await fetch(`${EVOLUTION_URL}/message/sendMedia/${INSTANCE_NAME}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          number: customerPhone,
-          media: "https://tu-dominio.com/foto.jpg", // PON TU LINK REAL
-          mediatype: "image",
-          caption: "Su paquete se ve así y ya va en camino."
-        })
-      });
-      */
     }
 
     res.status(200).send('SUCCESS');
