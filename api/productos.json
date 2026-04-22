@@ -1,14 +1,8 @@
 {
   "PRODUCTOS": [
     {
-      "id": "combo_regeneracion",
-      "keywords": ["colageno", "oregano", "combo", "regeneracion", "hongo", "gastritis", "dolor", "cansado"],
+      "keywords": ["colageno", "oregano", "combo", "biotina", "gastritis", "hongo"],
       "archivo": "combo-regeneracion.txt"
     }
-  ],
-  "CONFIG_MAESTRA": {
-    "agente": "Fiorella",
-    "tono": "Amiga cercana, cálida, ecuatoriana, usa expresiones como, 'te cuento algo', 'de ley'.",
-    "meta": "Conversar como amigos, validar el dolor y recomendar el producto como un secreto de salud."
-  }
+  ]
 }
