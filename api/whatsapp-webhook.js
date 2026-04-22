@@ -24,28 +24,43 @@ export default async function handler(req, res) {
 
     const resJson = await respIA.json();
 
-    // EXTRACCIÓN DEL TEXTO LIMPIO (Navegando por el JSON que recibiste)
-    let textoLimpio = "";
-    
-    if (Array.isArray(resJson) && resJson[1] && resJson[1].content) {
-      // Formato de lista: El mensaje suele estar en la segunda posición (index 1)
-      textoLimpio = resJson[1].content[0].text;
-    } else if (resJson.output) {
-      textoLimpio = resJson.output;
-    } else {
-      // Respaldo por si el formato varía ligeramente
-      textoLimpio = "¡Hola! Soy Fiorella, ¿en qué ciudad estás?"; 
+    // --- BUSCADOR AUTOMÁTICO DE TEXTO ---
+    let textoFinal = "";
+
+    if (Array.isArray(resJson)) {
+      // Buscamos en cada objeto del array el que tenga el contenido del assistant
+      for (const item of resJson) {
+        if (item.role === "assistant" && item.content) {
+          // Buscamos dentro de 'content' el 'output_text'
+          const contentObj = item.content.find(c => c.type === "output_text");
+          if (contentObj) {
+            textoFinal = contentObj.text;
+            break; 
+          }
+        }
+      }
     }
 
-    // ENVIAR SOLO EL TEXTO AL CLIENTE
-    await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: remoteJid, text: textoLimpio })
-    });
+    // Si por alguna razón el buscador falla, intentamos la ruta directa que vimos antes
+    if (!textoFinal && resJson[1]?.content?.[0]?.text) {
+      textoFinal = resJson[1].content[0].text;
+    }
+
+    // --- ENVÍO A WHATSAPP ---
+    if (textoFinal) {
+      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: textoFinal.trim() })
+      });
+    } else {
+      // Si todo falla, al menos te avisa para saber que la ruta cambió
+      console.log("No se pudo extraer texto del JSON:", JSON.stringify(resJson));
+    }
 
     return res.status(200).send('OK');
   } catch (error) {
+    console.error("Error:", error);
     return res.status(200).send('OK');
   }
 }
