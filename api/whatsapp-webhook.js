@@ -24,43 +24,40 @@ export default async function handler(req, res) {
 
     const resJson = await respIA.json();
 
-    // --- BUSCADOR AUTOMÁTICO DE TEXTO ---
+    // EXTRACCIÓN ULTRA-SEGURA: Buscamos el texto donde sea que esté
     let textoFinal = "";
 
-    if (Array.isArray(resJson)) {
-      // Buscamos en cada objeto del array el que tenga el contenido del assistant
-      for (const item of resJson) {
-        if (item.role === "assistant" && item.content) {
-          // Buscamos dentro de 'content' el 'output_text'
-          const contentObj = item.content.find(c => c.type === "output_text");
-          if (contentObj) {
-            textoFinal = contentObj.text;
-            break; 
-          }
+    try {
+      // Intentamos la ruta que vimos en tu mensaje anterior
+      if (Array.isArray(resJson)) {
+        const mensajeObj = resJson.find(item => item.type === "message");
+        if (mensajeObj && mensajeObj.content) {
+          textoFinal = mensajeObj.content[0].text;
+        }
+      } 
+      // Si no aparece ahí, intentamos convertirlo a texto y buscar el campo "text"
+      if (!textoFinal) {
+        const stringJson = JSON.stringify(resJson);
+        const match = stringJson.match(/"output_text","text":"([^"]+)"/);
+        if (match) {
+          textoFinal = match[1].replace(/\\n/g, '\n').replace(/\\u[0-9a-fA-F]{4}/g, (m) => String.fromCharCode(parseInt(m.substr(2), 16)));
         }
       }
+    } catch (e) {
+      console.log("Error extrayendo texto");
     }
 
-    // Si por alguna razón el buscador falla, intentamos la ruta directa que vimos antes
-    if (!textoFinal && resJson[1]?.content?.[0]?.text) {
-      textoFinal = resJson[1].content[0].text;
-    }
+    // Si encontramos algo, lo mandamos. Si no, mandamos el error para no estar ciegos.
+    const mensajeAEnviar = textoFinal || "Error: No se pudo procesar la respuesta de la IA.";
 
-    // --- ENVÍO A WHATSAPP ---
-    if (textoFinal) {
-      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-        body: JSON.stringify({ number: remoteJid, text: textoFinal.trim() })
-      });
-    } else {
-      // Si todo falla, al menos te avisa para saber que la ruta cambió
-      console.log("No se pudo extraer texto del JSON:", JSON.stringify(resJson));
-    }
+    await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+      body: JSON.stringify({ number: remoteJid, text: mensajeAEnviar })
+    });
 
     return res.status(200).send('OK');
   } catch (error) {
-    console.error("Error:", error);
     return res.status(200).send('OK');
   }
 }
