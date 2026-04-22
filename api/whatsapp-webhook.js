@@ -9,20 +9,6 @@ export default async function handler(req, res) {
   const remoteJid = data.key?.remoteJid;
   const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
 
-  // --- INSTRUCCIONES DE FIORELLA ---
-  const masterPrompt = `Eres Fiorella, asesora experta de JRJMarket en Ecuador. 
-  Vendes el Combo Regeneración (Aceite de Orégano + Multicolágeno) a $37.99. 
-  Precios individuales: Colágeno $25, Orégano $18.50. 
-  Puntos clave: Envío gratis y pago contra entrega en todo Ecuador.
-  
-  TU OBJETIVO: 
-  1. Sé muy humana y ecuatoriana (usa "qué chévere", "chuta", "claro que sí").
-  2. No des textos largos tipo Wikipedia. Responde en párrafos cortos.
-  3. Si mencionan una ciudad, alégrate. 
-  4. Siempre termina con una pregunta para cerrar la venta.
-  
-  CONTEXTO ACTUAL: El cliente te acaba de decir: "${clienteMsg}"`;
-
   try {
     const respIA = await fetch('https://api.x.ai/v1/responses', {
       method: 'POST',
@@ -32,28 +18,43 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "grok-4.20-reasoning",
-        input: masterPrompt // Le pasamos las instrucciones + el mensaje del cliente
+        input: clienteMsg
       })
     });
 
     const resJson = await respIA.json();
 
-    // EXTRACCIÓN DEL TEXTO (La lógica que ya funcionó)
+    // EXTRACCIÓN ULTRA-SEGURA: Buscamos el texto donde sea que esté
     let textoFinal = "";
-    if (Array.isArray(resJson)) {
-      const mensajeObj = resJson.find(item => item.type === "message");
-      if (mensajeObj && mensajeObj.content) {
-        textoFinal = mensajeObj.content[0].text;
+
+    try {
+      // Intentamos la ruta que vimos en tu mensaje anterior
+      if (Array.isArray(resJson)) {
+        const mensajeObj = resJson.find(item => item.type === "message");
+        if (mensajeObj && mensajeObj.content) {
+          textoFinal = mensajeObj.content[0].text;
+        }
+      } 
+      // Si no aparece ahí, intentamos convertirlo a texto y buscar el campo "text"
+      if (!textoFinal) {
+        const stringJson = JSON.stringify(resJson);
+        const match = stringJson.match(/"output_text","text":"([^"]+)"/);
+        if (match) {
+          textoFinal = match[1].replace(/\\n/g, '\n').replace(/\\u[0-9a-fA-F]{4}/g, (m) => String.fromCharCode(parseInt(m.substr(2), 16)));
+        }
       }
+    } catch (e) {
+      console.log("Error extrayendo texto");
     }
 
-    if (textoFinal) {
-      await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-        body: JSON.stringify({ number: remoteJid, text: textoFinal.trim() })
-      });
-    }
+    // Si encontramos algo, lo mandamos. Si no, mandamos el error para no estar ciegos.
+    const mensajeAEnviar = textoFinal || "Error: No se pudo procesar la respuesta de la IA.";
+
+    await fetch(`${baseUrl}/message/sendText/${INSTANCE_NAME.trim()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+      body: JSON.stringify({ number: remoteJid, text: mensajeAEnviar })
+    });
 
     return res.status(200).send('OK');
   } catch (error) {
