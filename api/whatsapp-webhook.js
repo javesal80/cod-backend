@@ -1,66 +1,52 @@
-// /api/whatsapp-webhook.js (v2.1 - Corrección de Errores)
+// /api/whatsapp-webhook.js (v2.3 - Depuración Total)
 export default async function handler(req, res) {
   const { 
-    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, 
-    OPENAI_API_KEY, GROK_API_KEY, GEMINI_API_KEY 
+    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY 
   } = process.env;
 
-  const MOTOR_ACTIVO = "grok"; // Asegúrate de tener la KEY en Vercel
-
-  // 1. Verificación de seguridad para evitar que el código se rompa
-  if (!req.body || !req.body.data) {
-    console.log("Cuerpo del mensaje vacío o mal formado");
-    return res.status(200).send('OK');
-  }
-
+  if (!req.body || !req.body.data) return res.status(200).send('OK');
   const data = req.body.data;
-  
-  // Extraemos el mensaje de forma segura
-  const clienteMsg = data.message?.conversation || 
-                     data.message?.extendedTextMessage?.text || 
-                     data.message?.imageMessage?.caption || "";
-                     
+  if (data.key?.fromMe) return res.status(200).send('OK');
+
+  const clienteMsg = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
   const remoteJid = data.key?.remoteJid;
-  const fromMe = data.key?.fromMe;
 
-  // Si no hay mensaje o es nuestro, ignoramos
-  if (!clienteMsg || fromMe) return res.status(200).send('OK');
-
-  const customerPhone = remoteJid.split('@')[0];
+  if (!clienteMsg || !remoteJid) return res.status(200).send('OK');
 
   try {
-    const promptIA = `Eres el asistente de JRJMarket en Ecuador. Confirma pedidos de salud. Si dan referencia, di: "Pedido DESPACHADO". Sé breve y amable.`;
-
-    let textoIA = "";
-
-    // Lógica Grok
-    const resp = await fetch('https://api.xai.com/v1/chat/completions', {
+    // Llamada a Grok
+    const respIA = await fetch('https://api.xai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: "grok-beta",
-        messages: [{role: "system", content: promptIA}, {role: "user", content: clienteMsg}]
+        messages: [{ role: "system", content: "Eres el asistente de JRJMarket." }, { role: "user", content: clienteMsg }]
       })
     });
-    
-    const resData = await resp.json();
-    textoIA = resData.choices?.[0]?.message?.content || "Lo siento, tuve un problema al pensar la respuesta.";
 
-    // ENVIAR A WHATSAPP
-    await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
+    const resJson = await respIA.json();
+    const textoIA = resJson.choices?.[0]?.message?.content || "Hola!";
+
+    // ENVÍO A EVOLUTION
+    const responseWA = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-      body: JSON.stringify({ number: customerPhone, text: textoIA, delay: 1000 })
+      headers: { 
+        'Content-Type': 'application/json', 
+        'apikey': EVOLUTION_TOKEN 
+      },
+      body: JSON.stringify({
+        number: remoteJid,
+        text: textoIA
+      })
     });
 
-    // Lógica de Archivos
-    if (textoIA.toLowerCase().includes("despachado")) {
-        // Aquí puedes añadir el fetch de sendMedia si ya tienes los links
-    }
+    // ESTO ES CLAVE: Ver que dice el servidor en los Logs de Vercel
+    const respuestaServidor = await responseWA.text();
+    console.log("Resultado Evolution:", respuestaServidor);
 
-    res.status(200).send('SUCCESS');
+    return res.status(200).send('OK');
   } catch (error) {
-    console.error('Error detallado:', error.message);
-    res.status(200).send('OK');
+    console.error('Error:', error);
+    return res.status(200).send('OK');
   }
 }
