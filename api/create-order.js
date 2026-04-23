@@ -1,30 +1,18 @@
-// /api/create-order.js (v1.9 - JRJMarket Split Instances Integration)
+// /api/create-order.js (v2.0 - Respuesta Inmediata + WhatsApp en Background)
 export default async function handler(request, response) {
-  // 1. CONFIGURACIÓN DE SEGURIDAD (CORS) - INTACTO
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  if (request.method === 'OPTIONS') {
-    return response.status(200).end();
-  }
-  if (request.method !== 'POST') {
-    return response.status(405).json({ success: false, message: 'Method Not Allowed' });
-  }
+  if (request.method === 'OPTIONS') return response.status(200).end();
+  if (request.method !== 'POST') return response.status(405).json({ success: false });
 
-  // 2. LEER VARIABLES DE ENTORNO - INTACTO
   const { 
-    SHOPIFY_STORE_DOMAIN, 
-    SHOPIFY_CLIENT_ID, 
-    SHOPIFY_CLIENT_SECRET, 
-    EVOLUTION_URL, 
-    EVOLUTION_TOKEN, 
-    INSTANCE_DESPACHO, 
-    TOKEN_DESPACHO 
+    SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET, 
+    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO, TOKEN_DESPACHO 
   } = process.env;
 
-  // 3. OBTENER TOKEN DE SHOPIFY - INTACTO
   let accessToken;
   try {
     const tokenResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
@@ -36,14 +24,12 @@ export default async function handler(request, response) {
         client_secret: SHOPIFY_CLIENT_SECRET,
       }),
     });
-    if (!tokenResponse.ok) throw new Error('Falló la autenticación con Shopify');
     const tokenData = await tokenResponse.json();
     accessToken = tokenData.access_token;
   } catch (error) {
-    return response.status(500).json({ success: false, message: 'Auth error: ' + error.message });
+    return response.status(500).json({ success: false, message: 'Auth Error' });
   }
 
-  // 4. PREPARAR DATOS PARA SHOPIFY - INTACTO
   const orderData = request.body;
   const shopifyPayload = {
     draft_order: {
@@ -57,30 +43,33 @@ export default async function handler(request, response) {
   };
 
   try {
-    // 5. CREAR PEDIDO EN SHOPIFY - INTACTO
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
       body: JSON.stringify(shopifyPayload),
     });
 
     if (!shopifyResponse.ok) {
       const errorBody = await shopifyResponse.json();
-      console.error('Shopify Error:', errorBody);
-      throw new Error('Error al crear el pedido en Shopify');
+      return response.status(500).json({ success: false, error: errorBody });
     }
 
     const data = await shopifyResponse.json();
 
-    // --- 6. LÓGICA DE WHATSAPP JRJMARKET (MODIFICADO PARA CEREBRO IA) ---
-    if (EVOLUTION_URL && INSTANCE_DESPACHO) {
+    // --- AQUÍ ESTÁ EL TRUCO: RESPONDEMOS A LA WEB PRIMERO ---
+    // Esto libera el botón de compra inmediatamente.
+    response.status(200).json({ success: true, orderId: data.draft_order.id });
+
+    // --- DESPUÉS ENVIAMOS EL WHATSAPP (Vercel permite unos segundos más) ---
+    if (INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
-        const cleanPhone = rawPhone.replace(/\D/g, '');
+        let cleanPhone = rawPhone.replace(/\D/g, '');
         
+        // Formateo de número indispensable (Lo que le faltaba al 1.9)
+        if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
+        if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
+
         const fechaEcuador = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil"}));
         const horaActual = fechaEcuador.getHours();
         let saludo = "Buenos días";
@@ -89,8 +78,7 @@ export default async function handler(request, response) {
 
         const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
 
-        // MENSAJE DE APERTURA: Semilla para el cerebro de IA
-        const msgDisparador = `¡${saludo}! 😊 Qué gusto saludarle de parte de *JRJMarket*. 
+        const msgDisparador = `${saludo}. 😊 Qué gusto saludarle de parte de *JRJMarket*. 
 
 He recibido su pedido de: *${productosStr}*. 
 
@@ -100,27 +88,25 @@ Para asegurar que todo llegue perfecto, ¿podría confirmarme si sus datos de en
 
 ¿Está todo bien o prefiere que ajustemos algún detalle?`;
 
-        // Función para enviar a Evolution API (Solo un envío con delay de 1 min para ser humano)
-        const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
-        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+        // El fetch se ejecuta pero ya no bloquea la respuesta de Shopify
+        fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
+          headers: { 'Content-Type': 'application/json', 'apikey': TOKEN_DESPACHO || EVOLUTION_TOKEN },
           body: JSON.stringify({ 
             number: cleanPhone, 
             text: msgDisparador, 
-            delay: 60000 // 1 minuto de espera gestionado por la API
+            delay: 60000 
           })
-        });
-        
-      } catch (waError) {
-        console.error('Error enviando WhatsApp:', waError);
+        }).catch(e => console.log("Error background WA"));
+
+      } catch (e) {
+        console.log("Error preparando datos WA");
       }
     }
 
-    return response.status(200).json({ success: true, orderId: data.draft_order.id });
-
   } catch (error) {
-    console.error('Error General:', error);
-    return response.status(500).json({ success: false, message: error.message });
+    if (!response.writableEnded) {
+        return response.status(500).json({ success: false, message: error.message });
+    }
   }
 }
