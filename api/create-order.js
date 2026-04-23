@@ -1,4 +1,4 @@
-// /api/create-order.js (v1.8 - JRJMarket Master Integration)
+// /api/create-order.js (v1.9 - JRJMarket Split Instances Integration)
 export default async function handler(request, response) {
   // 1. CONFIGURACIÓN DE SEGURIDAD (CORS)
   const origin = request.headers.origin || '';
@@ -19,8 +19,9 @@ export default async function handler(request, response) {
     SHOPIFY_CLIENT_ID, 
     SHOPIFY_CLIENT_SECRET, 
     EVOLUTION_URL, 
-    EVOLUTION_TOKEN, 
-    INSTANCE_DESPACHO  // <-- CAMBIADO DE INSTANCE_NAME A INSTANCE_DESPACHO
+    EVOLUTION_TOKEN, // Global o anterior
+    INSTANCE_DESPACHO, // Nombre de la nueva instancia
+    TOKEN_DESPACHO    // Key de la nueva instancia
   } = process.env;
 
   // 3. OBTENER TOKEN DE SHOPIFY
@@ -75,52 +76,45 @@ export default async function handler(request, response) {
     const data = await shopifyResponse.json();
 
     // --- 6. LÓGICA DE WHATSAPP JRJMARKET (Saludo y Fecha Dinámica) ---
-    // CAMBIADA LA VARIABLE A INSTANCE_DESPACHO EN LA CONDICIÓN
-    if (EVOLUTION_URL && EVOLUTION_TOKEN && INSTANCE_DESPACHO) {
+    // Usamos INSTANCE_DESPACHO para validar el envío
+    if (EVOLUTION_URL && INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
         const cleanPhone = rawPhone.replace(/\D/g, '');
         
-        // --- Lógica de Saludo (Hora Ecuador) ---
         const fechaEcuador = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil"}));
         const horaActual = fechaEcuador.getHours();
         let saludo = "Buenos días";
         if (horaActual >= 12 && horaActual < 18) saludo = "Buenas tardes";
         if (horaActual >= 18 || horaActual < 5) saludo = "Buenas noches";
 
-        // --- Lógica de Días de Entrega ---
         const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
         const hoyIdx = fechaEcuador.getDay();
         
-        // Calculamos pasado mañana
         const fechaPasado = new Date(fechaEcuador);
         fechaPasado.setDate(fechaEcuador.getDate() + 2);
         const nombrePasado = diasSemana[fechaPasado.getDay()];
 
         let textoEntrega = `mañana o el ${nombrePasado}`;
-        
-        // Ajuste para fin de semana
-        if (hoyIdx === 5) textoEntrega = "el Lunes o Martes"; // Es viernes
-        if (hoyIdx === 6) textoEntrega = "el Martes o Miércoles"; // Es sábado
+        if (hoyIdx === 5) textoEntrega = "el Lunes o Martes";
+        if (hoyIdx === 6) textoEntrega = "el Martes o Miércoles";
 
         const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
 
-        // MENSAJE 1: Confirmación de datos
         const msg1 = `${saludo}. Nos comunicamos por confirmar el siguiente pedido:\n\n*${productosStr}*\n\nPara:\n*${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}*\nCELULAR: ${rawPhone}\n${orderData.shipping_address.address1}\n${orderData.shipping_address.province}_${orderData.shipping_address.city}`;
 
-        // MENSAJE 2: Logística y Referencia
         const msg2 = `Listo, le estaría llegando entre ${textoEntrega}, en horario de 9am a 5pm. El pedido va por transportadoras conocidas por su seguridad (Servientrega, Gintracon o Laar).\n\nUn favor, disculpa, para una óptima entrega y disminuir los tiempos de entrega nos podría ayudar con una referencia del lugar, ejemplo en frente de farmacias económicas, casa de 1 piso color blanco portón negro.`;
 
-        // Función para enviar a Evolution API (USA INSTANCE_DESPACHO)
+        // Función para enviar a Evolution API (USA TOKEN_DESPACHO e INSTANCE_DESPACHO)
         const enviarWA = async (texto) => {
+          const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
           await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
             body: JSON.stringify({ number: cleanPhone, text: texto, delay: 2000 })
           });
         };
 
-        // Enviamos ambos mensajes
         await enviarWA(msg1);
         await enviarWA(msg2);
         
@@ -129,7 +123,6 @@ export default async function handler(request, response) {
       }
     }
 
-    // 7. RESPUESTA FINAL AL NAVEGADOR
     return response.status(200).json({ success: true, orderId: data.draft_order.id });
 
   } catch (error) {
