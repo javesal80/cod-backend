@@ -1,6 +1,5 @@
-// /api/create-order.js (v2.3 - Sincronización Final)
+// /api/create-order.js (v2.4 - Velocidad Rayo + WhatsApp en Segundo Plano)
 export default async function handler(request, response) {
-  // CORS y Seguridad (Intacto)
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -12,10 +11,8 @@ export default async function handler(request, response) {
     EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO, TOKEN_DESPACHO 
   } = process.env;
 
-  console.log("--- INICIO DE PROCESO ---");
-
   try {
-    // 1. AUTH SHOPIFY
+    // 1. AUTH SHOPIFY (Rápido)
     const tokenResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -25,7 +22,7 @@ export default async function handler(request, response) {
     });
     const { access_token } = await tokenResponse.json();
 
-    // 2. CREAR PEDIDO
+    // 2. CREAR PEDIDO (Lo que el cliente espera)
     const orderData = request.body;
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
@@ -43,10 +40,16 @@ export default async function handler(request, response) {
     });
 
     const data = await shopifyResponse.json();
-    console.log("✅ Pedido Shopify OK:", data.draft_order?.id);
+    const orderId = data.draft_order?.id;
 
-    // 3. WHATSAPP (AQUÍ ESTÁ EL AJUSTE)
-    if (INSTANCE_DESPACHO && data.draft_order) {
+    // --- EL TRUCO DE VELOCIDAD ---
+    // 3. RESPONDEMOS INMEDIATAMENTE AL CLIENTE
+    // Esto libera el botón de compra en la web al instante.
+    response.status(200).json({ success: true, orderId });
+
+    // 4. PROCESO POST-RESPUESTA (WhatsApp en "segundo plano")
+    // Al no usar 'return' antes de esto, el código sigue ejecutándose unos milisegundos más
+    if (INSTANCE_DESPACHO && orderId) {
       const rawPhone = orderData.shipping_address.phone || orderData.customer.phone || "";
       let cleanPhone = rawPhone.replace(/\D/g, '');
       if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
@@ -55,33 +58,19 @@ export default async function handler(request, response) {
       const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
       const msg = `¡Hola! 😊 Recibimos su pedido de: *${productosStr}*. ¿Son correctos sus datos?`;
 
-      const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
-      
-      console.log("📡 Intentando enviar a Evolution...");
-
-      // Usamos AWAIT aquí para obligar a Vercel a terminar el envío antes de cerrar
-      const waRes = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+      // Disparamos el fetch pero NO lo esperamos con await para no bloquear
+      // Usamos el .then solo para dejar constancia en logs si quieres
+      fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          'apikey': apikeyFinal 
-        },
-        body: JSON.stringify({ 
-          number: cleanPhone, 
-          text: msg, 
-          delay: 60000 
-        })
-      });
-
-      const waData = await waRes.json();
-      console.log("📡 Respuesta final Evolution:", JSON.stringify(waData));
+        headers: { 'Content-Type': 'application/json', 'apikey': TOKEN_DESPACHO || EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: cleanPhone, text: msg, delay: 100 })
+      }).catch(err => console.error("Error post-envío:", err.message));
     }
 
-    // 4. RESPUESTA A LA WEB
-    return response.status(200).json({ success: true, orderId: data.draft_order?.id });
-
   } catch (error) {
-    console.error("❌ Error:", error.message);
-    return response.status(500).json({ success: false });
+    // Si hay error antes de responder, mandamos el 500
+    if (!response.writableEnded) {
+      return response.status(500).json({ success: false });
+    }
   }
 }
