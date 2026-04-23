@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
+// Memoria persistente mientras la instancia de Vercel esté activa
 const historialConversacion = {};
 
 module.exports = async (req, res) => {
@@ -18,10 +19,19 @@ module.exports = async (req, res) => {
   const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
   const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
-  if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
-  historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
-  if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
+  // --- GESTIÓN ESTRICTA DE MEMORIA ---
+  if (!historialConversacion[remoteJid]) {
+    historialConversacion[remoteJid] = [];
+  }
+  
+  // Determinamos si es el primer mensaje para forzar el saludo solo al inicio
+  const esPrimerMensaje = historialConversacion[remoteJid].length === 0;
 
+  // Guardamos mensaje del cliente
+  historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
+  if (historialConversacion[remoteJid].length > 12) historialConversacion[remoteJid].shift();
+
+  // Fechas dinámicas
   const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const hoy = new Date();
   const mañana = dias[(hoy.getDay() + 1) % 7];
@@ -36,26 +46,21 @@ module.exports = async (req, res) => {
 
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket, asesora experta en bienestar. Trato de USTED siempre.
-  ESTILO: Humana, muy cálida, usa puntos suspensivos (...) y formato CASCADA.
+  ESTILO: Humana, cálida, usa puntos suspensivos (...) y formato CASCADA.
 
-  SALUDO INICIAL (REGLA DE ORO - USAR SIEMPRE ESTE BLOQUE AL EMPEZAR):
-  - "¡Hola! 😊 Es un placer atenderle."
-  - "Espero que se encuentre muy bien...
-     ¿En qué puedo ayudarle hoy?
-     ¿Está buscando algún producto para mejorar su bienestar? 🌿
-     Estoy aquí para ayudarle..."
+  REGLA DE ORO DE COHERENCIA (MEMORIA):
+  - REVISA EL HISTORIAL. Si ya saludaste, NO repitas el saludo.
+  - Si el cliente te hace una pregunta directa (ej: "Orégano"), responde directamente SIN saludar de nuevo.
+  - Usa el historial para saber qué productos ya mencionaste.
 
-  COMPORTAMIENTO CONSULTIVO:
-  1. Si el cliente pregunta por algo que NO vendes, sé honesta, ofrece avisarle si llega (pidiendo su nombre), pero AYUDA con tu base de datos de salud (remedios, ejercicios, beneficios reales).
-  2. Luego, redirige al Combo Regeneración como solución integral.
-  3. Precios y stock: Búscalos estrictamente en el CATÁLOGO adjunto. No los inventes.
+  PROTOCOLO SI EL PRODUCTO NO ESTÁ (ORÉGANO):
+  - Si pide algo que no vendes solo (como orégano seco): "No lo tenemos solito... pero lo tenemos como ingrediente principal en nuestro Combo Regeneración Total... es mucho más potente."
+  - USA TU BASE DE DATOS para dar consejos reales de salud, ejercicios o beneficios del producto pedido, pero SIEMPRE busca el PRECIO en el catálogo adjunto.
 
-  PROTOCOLO DE DATOS (Solo al vender):
-  ✅ Nombre y Apellido:
-  ✅ Dirección: (Dos calles y referencia).
-  📍 Agencia Servientrega (opcional).
+  SALUDO INICIAL (SOLO SI NO HAS HABLADO ANTES):
+  "¡Hola! 😊 Es un placer atenderle.\nEspero que se encuentre muy bien...\n¿En qué puedo ayudarle hoy?\n¿Está buscando algún producto para mejorar su bienestar? 🌿"
 
-  LOGÍSTICA: Entrega entre **${mañana}** o **${pasado}**. Pago contra entrega (Servientrega, Laar, Gintracon, Veloces).
+  LOGÍSTICA: Entrega entre **${mañana}** o **${pasado}**. Pago contra entrega. (Servientrega, Laar, Gintracon, Veloces).
 
   CATÁLOGO OFICIAL:
   ${baseConocimiento}`;
@@ -72,7 +77,7 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages: mensajesIA,
-        temperature: 0.8 // Subimos un poco para recuperar la calidez y fluidez natural
+        temperature: 0.7
       })
     });
     
@@ -80,8 +85,10 @@ module.exports = async (req, res) => {
     let textoFinal = json.choices?.[0]?.message?.content;
 
     if (textoFinal) {
+      // Guardar en memoria para que sepa que ya respondió
       historialConversacion[remoteJid].push({ role: "assistant", content: textoFinal });
 
+      // Formateo Cascada
       let cascada = textoFinal
         .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
         .replace(/\.\.\.\s*/g, "...\n")
@@ -89,6 +96,7 @@ module.exports = async (req, res) => {
 
       const partes = cascada.split('\n');
 
+      // Envío por globos
       if (partes.length > 2) {
         const mitad = Math.ceil(partes.length / 2);
         await fetch(`${baseUrl}/message/sendText/${instName}`, {
