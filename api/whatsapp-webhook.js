@@ -28,17 +28,17 @@ export default async function handler(req, res) {
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
 
-  ESTRUCTURA DE ESCRITURA (FUNDAMENTAL):
-  - Escriba en frases cortas.
-  - Cada vez que termine una idea con un punto (.), signo de interrogación (¿?) o exclamación (¡!), debe empezar una NUEVA LÍNEA.
-  - Ejemplo de formato:
+  ESTRUCTURA DE ESCRITURA (ESTRICTA):
+  - Use emoticons solo en lo esencial (saludo, bienestar, despedida). No exagere.
+  - Formato en CASCADA: Cada frase con signo de puntuación (. ! ? ...) debe ir en una línea nueva.
+  - Ejemplo:
+    ¡Hola! 😊 Es un placer atenderle.
     Espero que se encuentre muy bien...
     ¿En qué puedo ayudarle hoy?
-    ¿Hay algo específico que le preocupa de su salud?
+    ¿Quizás algo específico para su salud? 🌿
     Estoy aquí para ayudarle...
 
-  ESTRATEGIA: Indague el dolor. Ofrezca el combo solo si detecta necesidad.
-  LOGÍSTICA: Bodegas en Ambato/Quito (seguridad). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia.
+  ESTRATEGIA: Indague el dolor. Seguridad por bodegas cerradas (vacunas). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia.
 
   CONOCIMIENTO:
   ${baseConocimiento}
@@ -48,7 +48,6 @@ export default async function handler(req, res) {
   try {
     let textoFinal = "";
 
-    // --- OBTENCIÓN DE RESPUESTA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -68,7 +67,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, asesora amable y profesional." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -76,26 +75,27 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- LIMPIEZA Y FORMATEO EN CASCADA (Lógica Manual) ---
-      // Esta función busca puntos, interrogaciones y exclamaciones y pone un salto de línea después.
+      // --- LÓGICA DE FORMATEO EN CASCADA ---
       let cascada = textoFinal
-        .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") // Punto seguido de espacio y mayúscula -> Salto
-        .replace(/\.\.\.\s*/g, "...\n")           // Puntos suspensivos -> Salto
-        .replace(/([?|>|!])\s*/g, "$1\n")         // Signo de cierre -> Salto
-        .split('\n').map(line => line.trim()).filter(line => line !== "").join('\n');
+        .replace(/([.!?])\s+(?=[A-Z¿¡])|([.!?])$/gm, "$1\n") 
+        .replace(/\.\.\.\s*/g, "...\n")           
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== "")
+        .join('\n');
 
       const partes = cascada.split('\n');
-      const saludo = partes[0]; // La primera línea es el saludo
+      const saludo = partes[0]; 
       const resto = partes.slice(1).join('\n');
 
-      // Mensaje 1: Saludo
+      // Mensaje 1: Saludo con emoticon
       await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
         body: JSON.stringify({ number: remoteJid, text: saludo })
       });
 
-      // Mensaje 2: Cuerpo en cascada
+      // Mensaje 2: Cuerpo en cascada con saltos
       if (resto) {
         await new Promise(r => setTimeout(r, 1200));
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
