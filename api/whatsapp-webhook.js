@@ -22,35 +22,35 @@ export default async function handler(req, res) {
   try {
     const productosPath = path.join(process.cwd(), 'api', 'productos.json');
     const txtPath = path.join(process.cwd(), 'data', 'combo-regeneracion.txt');
-    baseConocimiento = `INFO PRODUCTOS:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
+    baseConocimiento = `INFO:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
   } catch (e) { baseConocimiento = "Error de carga."; }
 
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar, amable y formal (Trato de USTED).
 
-  REGLAS DE FORMATO (ESTRICTO):
-  - TODO EL TEXTO DEBE IR EN UN MÁXIMO DE 2 MENSAJES (Globos de texto).
-  - Use saltos de línea (Enter) para separar ideas dentro del mismo mensaje.
-  - Use puntos suspensivos (...) para crear una pausa natural.
-  - Ejemplo de estructura deseada:
-    "Espero que se encuentre muy bien... ¿En qué puedo ayudarle hoy?
-    ¿Hay algo específico que le preocupa de su salud?
-    Estoy aquí para ayudarle..."
+  REGLAS DE ESTRUCTURA (OBLIGATORIO):
+  - Responda siempre en DOS mensajes (dos globos de texto).
+  
+  MENSAJE 1: Un saludo corto y cálido. 
+  Ejemplo: "¡Hola! 😊 Es un placer atenderle."
 
-  ESTRATEGIA DE VENTA:
-  1. INDAGACIÓN: Si saludan, responda con calidez. No dé el precio sin preguntar por el dolor del cliente.
-  2. EMPATÍA: "Le comprendo perfectamente...". Use la información técnica para educar brevemente.
-  3. SEGURIDAD: Local físico solo bodegas en Ambato/Quito (seguridad). Pago contra entrega para su confianza.
-  4. OFERTA: Envío GRATIS primera compra. -$2 de descuento por transferencia/tarjeta.
+  MENSAJE 2: El cuerpo de la asesoría. NO amontone las frases. Use un salto de línea (Enter) para cada idea.
+  Debe verse exactamente así:
+  "Espero que se encuentre muy bien... ¿En qué puedo ayudarle hoy?
+  ¿Hay algo específico que le preocupa de su salud?
+  Estoy aquí para ayudarle..."
+
+  ESTRATEGIA: Indague el dolor antes de dar precios. Seguridad por bodegas en Ambato/Quito. Pago contra entrega.
 
   CONOCIMIENTO:
   ${baseConocimiento}
 
-  CLIENTE DICE: "${clienteMsg}"`;
+  CLIENTE: "${clienteMsg}"`;
 
   try {
     let textoFinal = "";
 
+    // --- OBTENCIÓN DE RESPUESTA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -60,8 +60,7 @@ export default async function handler(req, res) {
       const resJson = await resp.json();
       if (Array.isArray(resJson)) {
         textoFinal = resJson.find(i => i.type === "message")?.content?.[0]?.text;
-      }
-      if (!textoFinal) {
+      } else {
         const match = JSON.stringify(resJson).match(/"output_text","text":"([^"]+)"/);
         if (match) textoFinal = match[1].replace(/\\n/g, '\n');
       }
@@ -71,7 +70,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, asesora humana y estética." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, asesora experta en salud." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -79,30 +78,29 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- ENVÍO EN MÁXIMO 2 MENSAJES ---
-      // Separamos solo si la IA generó una división muy marcada, si no, enviamos todo junto.
-      const parrafos = textoFinal.split('\n\n').filter(p => p.trim() !== "");
+      // --- LÓGICA DE DIVISIÓN EN 2 GLOBOS ---
+      // Buscamos el primer salto de línea doble o el primer punto y aparte para separar el saludo del resto
+      const partes = textoFinal.split('\n\n').filter(p => p.trim() !== "");
       
-      if (parrafos.length > 1) {
-        // Mensaje 1 (Saludo/Introducción)
+      if (partes.length >= 2) {
+        // Enviar Saludo (Mensaje 1)
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: parrafos[0].trim() })
+          body: JSON.stringify({ number: remoteJid, text: partes[0].trim() })
         });
-        
-        // Mensaje 2 (Cuerpo/Preguntas con sus propios saltos internos)
-        const restoTexto = parrafos.slice(1).join('\n\n');
-        if (restoTexto) {
-          await new Promise(res => setTimeout(res, 1200));
-          await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ number: remoteJid, text: restoTexto.trim() })
-          });
-        }
+
+        await new Promise(r => setTimeout(r, 1000));
+
+        // Enviar Cuerpo (Mensaje 2 - Con todas las líneas internas)
+        const cuerpo = partes.slice(1).join('\n').trim();
+        await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+          body: JSON.stringify({ number: remoteJid, text: cuerpo })
+        });
       } else {
-        // Si es un solo bloque, se envía tal cual
+        // Si la IA mandó un solo bloque, lo mandamos tal cual
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
