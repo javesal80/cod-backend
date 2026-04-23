@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 
-// Memoria volátil para mantener el hilo de la conversación
+// Memoria para coherencia conversacional
 const historialConversacion = {};
 
 module.exports = async (req, res) => {
@@ -19,14 +19,14 @@ module.exports = async (req, res) => {
   const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
   const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
-  // --- GESTIÓN DE MEMORIA (Historial de los últimos 6 mensajes) ---
+  // --- GESTIÓN DE MEMORIA ---
   if (!historialConversacion[remoteJid]) {
     historialConversacion[remoteJid] = [];
   }
   historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
-  if (historialConversacion[remoteJid].length > 6) historialConversacion[remoteJid].shift();
+  if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
 
-  // Lógica de fechas dinámica
+  // Lógica de fechas dinámica para Ecuador
   const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const hoy = new Date();
   const mañana = dias[(hoy.getDay() + 1) % 7];
@@ -41,32 +41,35 @@ module.exports = async (req, res) => {
 
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar. Trato de USTED siempre.
-  
-  REGLA DE ORO (MEMORIA): Revisa el historial de mensajes adjunto. 
-  - Si el cliente ya saludó, NO repitas el saludo inicial. 
-  - Ten coherencia total: si el cliente menciona algo de un mensaje anterior, reconócelo.
+  ESTILO: Humana, cálida, usa puntos suspensivos (...) para pausas. 
+  FORMATO: CASCADA (salto de línea tras cada punto, exclamación o interrogación).
 
-  ESENCIA Y ESTILO (OBLIGATORIO):
-  - Humana, cálida, usa puntos suspensivos (...) para pausas naturales.
-  - Formato CASCADA: Salto de línea tras cada signo (. ! ? ...).
-  
-  BLOQUE DE BIENVENIDA (Solo si es el primer mensaje):
+  REGLAS DE MEMORIA Y COHERENCIA:
+  - Revisa el historial. Si el cliente ya saludó, NO repitas el saludo inicial. 
+  - Si el cliente menciona algo anterior, demuéstrale que lo recuerdas.
+
+  PROTOCOLO SI EL PRODUCTO NO ESTÁ EN EL CATÁLOGO:
+  - Si pide algo que no vendes: "Por el momento no lo tenemos... pero déjenos su nombre para verificar en bodegas o en el próximo pedido. Si lo hallamos, le avisamos por aquí."
+  - APORTE VALOR: Explique para qué sirve ese producto o dé consejos/ejercicios para el dolor del cliente.
+  - REDIRECCIÓN: Mencione cómo el Combo Regeneración (Aceite de Orégano + Colágeno) ayuda a su salud integral.
+
+  BLOQUE DE BIENVENIDA (Solo inicio):
   - "¡Hola! 😊 Es un placer atenderle."
   - "Espero que se encuentre muy bien...\n¿En qué puedo ayudarle hoy?\n¿Está buscando algún producto para mejorar su bienestar? 🌿"
 
-  PROTOCOLO DE CIERRE (Cuando hay interés o compra):
-  - "¡Listo! Por favor ayúdeme con lo siguiente:
+  TOMA DE DATOS (Al confirmar interés):
+  - "¡Listo! Por favor ayúdeme con:
     ✅ Nombre y Apellido:
     ✅ Dirección: (Dos calles y referencia detallada).
-    Ej: Calle Amazonas S21-45 y Almagro, casa de 1 piso color café, portón negro, frente a Fybeca.
-    📍 Agencia Servientrega (opcional si desea retirar ahí)."
+       Ej: Calle Amazonas S21-45 y Almagro, casa de 1 piso color café, portón negro, frente a Fybeca.
+    📍 Agencia Servientrega (opcional)."
 
   LOGÍSTICA Y SEGURIDAD:
-  - Llegada entre **${mañana}** o **${pasado}**.
-  - Transportadoras: Servientrega, Gintracon, Veloces o Laar (por seguridad nacional).
-  - Pago contra entrega. Envío GRATIS 1ra compra. -$2 transferencia.
+  - Llegada: Entre **${mañana}** o **${pasado}**.
+  - Transportadoras: Servientrega, Gintracon, Veloces o Laar.
+  - Beneficios: Envío GRATIS 1ra compra. Pago contra entrega.
 
-  INFO PRODUCTO: ${baseConocimiento}`;
+  CATÁLOGO: ${baseConocimiento}`;
 
   try {
     const mensajesIA = [
@@ -90,7 +93,6 @@ module.exports = async (req, res) => {
     if (textoFinal) {
       historialConversacion[remoteJid].push({ role: "assistant", content: textoFinal });
 
-      // Procesamiento Cascada
       let cascada = textoFinal
         .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
         .replace(/\.\.\.\s*/g, "...\n")
@@ -98,7 +100,6 @@ module.exports = async (req, res) => {
 
       const partes = cascada.split('\n');
 
-      // Envío en dos bloques para mayor naturalidad
       if (partes.length > 2) {
         const mitad = Math.ceil(partes.length / 2);
         await fetch(`${baseUrl}/message/sendText/${instName}`, {
