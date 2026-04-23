@@ -1,3 +1,4 @@
+// /api/create-order.js (v2.2 - Debug Mode Activo)
 export default async function handler(request, response) {
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
@@ -12,78 +13,89 @@ export default async function handler(request, response) {
     EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO, TOKEN_DESPACHO 
   } = process.env;
 
-  const orderData = request.body;
+  console.log("--- INICIO DE PROCESO ---");
 
+  let accessToken;
   try {
-    // 1. Obtener Token de Shopify
-    const tokenRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
+    const tokenResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: SHOPIFY_CLIENT_ID,
-        client_secret: SHOPIFY_CLIENT_SECRET,
+        grant_type: 'client_credentials', client_id: SHOPIFY_CLIENT_ID, client_secret: SHOPIFY_CLIENT_SECRET,
       }),
     });
-    const { access_token } = await tokenRes.json();
+    const tokenData = await tokenResponse.json();
+    accessToken = tokenData.access_token;
+    console.log("✅ Token de Shopify obtenido");
+  } catch (error) {
+    console.error("❌ Error en Auth Shopify:", error.message);
+    return response.status(500).json({ success: false });
+  }
 
-    // 2. Crear el Borrador en Shopify
+  const orderData = request.body;
+  const shopifyPayload = {
+    draft_order: {
+      line_items: orderData.line_items,
+      customer: orderData.customer,
+      shipping_address: orderData.shipping_address,
+      billing_address: orderData.shipping_address, 
+      note: orderData.note,
+      use_customer_default_address: false
+    }
+  };
+
+  try {
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': access_token },
-      body: JSON.stringify({
-        draft_order: {
-          line_items: orderData.line_items,
-          customer: orderData.customer,
-          shipping_address: orderData.shipping_address,
-          billing_address: orderData.shipping_address, 
-          note: orderData.note,
-          use_customer_default_address: false
-        }
-      }),
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
+      body: JSON.stringify(shopifyPayload),
     });
 
-    if (!shopifyResponse.ok) throw new Error('Error en Shopify');
     const data = await shopifyResponse.json();
+    console.log("✅ Pedido creado en Shopify:", data.draft_order?.id);
 
-    // 3. LOGICA DE WHATSAPP (Formateo Crítico)
-    const rawPhone = orderData.shipping_address?.phone || orderData.customer?.phone || "";
-    let cleanPhone = rawPhone.replace(/\D/g, '');
-    
-    // IMPORTANTE: Aseguramos el 593 para Ecuador
-    if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
-    if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
+    // --- SECCIÓN DE WHATSAPP CON LOGS ---
+    if (INSTANCE_DESPACHO && data.draft_order) {
+      const rawPhone = orderData.shipping_address.phone || orderData.customer.phone || "";
+      let cleanPhone = rawPhone.replace(/\D/g, '');
+      
+      // LOG DE NÚMERO
+      console.log("📱 Teléfono Original:", rawPhone);
+      
+      if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
+      if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
+      
+      console.log("📱 Teléfono Formateado:", cleanPhone);
 
-    const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
-    const msgDisparador = `¡Hola! 😊 Qué gusto saludarle de parte de *JRJMarket*. 
+      const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
+      const msg = `¡Hola! 😊 Recibimos su pedido de: *${productosStr}*. ¿Son correctos sus datos?`;
 
-He recibido su pedido de: *${productosStr}*. 
+      const targetURL = `${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`;
+      const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
 
-Para asegurar que todo llegue perfecto, ¿podría confirmarme si sus datos de envío son correctos?
-📍 *Dirección:* ${orderData.shipping_address.address1}
-🏘️ *Ciudad:* ${orderData.shipping_address.city}
-
-¿Está todo bien o prefiere que ajustemos algún detalle?`;
-
-    // 4. ENVÍO DE MENSAJE (Sin await para no bloquear la respuesta de la web)
-    // Pero lo ponemos antes de la respuesta para que Vercel alcance a enviarlo
-    const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
-    
-    fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
-      body: JSON.stringify({ 
-        number: cleanPhone, 
-        text: msgDisparador, 
-        delay: 60000 
+      console.log("🔗 Enviando a URL:", targetURL);
+      
+      // Enviamos el fetch sin el 'await' para que no bloquee el botón de compra, 
+      // pero capturamos el resultado en los logs.
+      fetch(targetURL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
+        body: JSON.stringify({ number: cleanPhone, text: msg, delay: 60000 })
       })
-    }).catch(e => console.log("WA Error:", e));
+      .then(async (res) => {
+        const resData = await res.json();
+        console.log("📡 Respuesta de Evolution API:", JSON.stringify(resData));
+      })
+      .catch((err) => {
+        console.error("❌ Error en el fetch de WhatsApp:", err.message);
+      });
+    }
 
-    // 5. RESPUESTA INMEDIATA A LA WEB
-    return response.status(200).json({ success: true, orderId: data.draft_order.id });
+    // RESPUESTA INMEDIATA PARA LIBERAR EL BOTÓN
+    return response.status(200).json({ success: true, orderId: data.draft_order?.id });
 
   } catch (error) {
-    console.error("Error General:", error);
-    return response.status(500).json({ success: false, message: error.message });
+    console.error("❌ Error General en el Handler:", error.message);
+    return response.status(500).json({ success: false });
   }
 }
