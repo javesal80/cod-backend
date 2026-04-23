@@ -22,24 +22,26 @@ export default async function handler(req, res) {
   try {
     const productosPath = path.join(process.cwd(), 'api', 'productos.json');
     const txtPath = path.join(process.cwd(), 'data', 'combo-regeneracion.txt');
-    baseConocimiento = `INFO:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
-  } catch (e) { baseConocimiento = "Error de base."; }
+    baseConocimiento = `INFO PRODUCTOS:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
+  } catch (e) { baseConocimiento = "Error de carga."; }
 
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar, amable y formal (Trato de USTED).
 
-  DISEÑO VISUAL DE MENSAJES (ESTRICTO):
-  - No amontone frases. Cada idea nueva debe ir en una línea diferente.
-  - Use puntos suspensivos (...) para denotar cercanía y pausas naturales.
-  - Deje una línea en blanco entre párrafos.
-  - Máximo 2 oraciones por cada bloque de texto.
-  - NUNCA envíe más de 30 palabras sin un salto de línea.
+  REGLAS DE FORMATO (ESTRICTO):
+  - TODO EL TEXTO DEBE IR EN UN MÁXIMO DE 2 MENSAJES (Globos de texto).
+  - Use saltos de línea (Enter) para separar ideas dentro del mismo mensaje.
+  - Use puntos suspensivos (...) para crear una pausa natural.
+  - Ejemplo de estructura deseada:
+    "Espero que se encuentre muy bien... ¿En qué puedo ayudarle hoy?
+    ¿Hay algo específico que le preocupa de su salud?
+    Estoy aquí para ayudarle..."
 
   ESTRATEGIA DE VENTA:
-  1. INDAGACIÓN: Si saludan, responda con calidez y haga UNA O DOS preguntas separadas para saber qué les duele.
-  2. EMPATÍA: Use frases como: "Le comprendo perfectamente..." o "Vea, le cuento que a muchos de nuestros clientes les pasaba lo mismo...".
-  3. SEGURIDAD: Local físico solo bodegas en Ambato/Quito por seguridad (vacunas). Pago contra entrega para su tranquilidad.
-  4. OFERTA: Envío GRATIS primera compra. -$2 de descuento en transferencia/tarjeta.
+  1. INDAGACIÓN: Si saludan, responda con calidez. No dé el precio sin preguntar por el dolor del cliente.
+  2. EMPATÍA: "Le comprendo perfectamente...". Use la información técnica para educar brevemente.
+  3. SEGURIDAD: Local físico solo bodegas en Ambato/Quito (seguridad). Pago contra entrega para su confianza.
+  4. OFERTA: Envío GRATIS primera compra. -$2 de descuento por transferencia/tarjeta.
 
   CONOCIMIENTO:
   ${baseConocimiento}
@@ -69,7 +71,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, asesora estética y persuasiva." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, asesora humana y estética." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -77,21 +79,35 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- DIVISIÓN INTELIGENTE DE MENSAJES ---
-      // Separamos por saltos de línea dobles o triples para enviar globos de texto distintos
-      const parrafos = textoFinal.split(/\n\n+/).filter(p => p.trim() !== "");
+      // --- ENVÍO EN MÁXIMO 2 MENSAJES ---
+      // Separamos solo si la IA generó una división muy marcada, si no, enviamos todo junto.
+      const parrafos = textoFinal.split('\n\n').filter(p => p.trim() !== "");
       
-      for (const p of parrafos.slice(0, 3)) { 
+      if (parrafos.length > 1) {
+        // Mensaje 1 (Saludo/Introducción)
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ 
-            number: remoteJid, 
-            text: p.trim().replace(/\n/g, '\n') // Mantenemos los saltos simples dentro del globo
-          })
+          body: JSON.stringify({ number: remoteJid, text: parrafos[0].trim() })
         });
-        // Pequeña pausa de 1 segundo entre mensajes para que parezca humano
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Mensaje 2 (Cuerpo/Preguntas con sus propios saltos internos)
+        const restoTexto = parrafos.slice(1).join('\n\n');
+        if (restoTexto) {
+          await new Promise(res => setTimeout(res, 1200));
+          await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            body: JSON.stringify({ number: remoteJid, text: restoTexto.trim() })
+          });
+        }
+      } else {
+        // Si es un solo bloque, se envía tal cual
+        await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+          body: JSON.stringify({ number: remoteJid, text: textoFinal.trim() })
+        });
       }
     }
     return res.status(200).send('OK');
