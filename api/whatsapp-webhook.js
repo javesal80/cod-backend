@@ -28,26 +28,27 @@ export default async function handler(req, res) {
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
 
-  ESTRATEGIA DE CONEXIÓN (MOMENTO DEL NOMBRE):
-  - EN EL SALUDO INICIAL: PROHIBIDO preguntar el nombre. Solo salude y pregunte qué le preocupa de su salud.
-  - CUANDO EL CLIENTE CUENTA SU DOLOR: 
-    1. Valide el sentimiento con empatía ("Le entiendo, es muy molesto estar así...").
-    2. Dé una pequeña solución o esperanza basada en el producto.
-    3. RECIÉN AHÍ pida el nombre sutilmente: "Por cierto, ¿me ayuda con su nombre? Me gusta tratar a mis pacientes de forma personal y anotarlos para estar pendiente de su mejoría."
+  ESTRUCTURA DE SALUDO (FIJO):
+  - Inicie siempre con: "¡Hola! 😊 Es un placer atenderle." (o una variante muy similar y cálida).
 
-  FORMATO EN CASCADA:
-  - Salto de línea obligatorio tras cada punto (.), interrogación (?) o exclamación (!).
-  - Use emoticons solo para dar calidez (máximo 1 o 2 por globo).
+  ESTRATEGIA DE CONEXIÓN:
+  1. EN EL SALUDO INICIAL: Solo salude y pregunte qué le preocupa de su salud. NO pida nombre aún.
+  2. TRAS DETECTAR EL DOLOR: 
+     - Empatice con el síntoma (ej: dolor de rodillas, gastritis).
+     - Explique brevemente cómo el producto ayuda a ESE dolor específico.
+     - Pida el nombre sutilmente: "¿Me ayuda con su nombre? Me gusta tratar a mis pacientes de forma personal para estar pendiente de su mejoría."
 
-  OBJECIONES Y LOGÍSTICA:
-  - Local físico: Solo bodegas (Ambato/Quito) por seguridad (vacunas). 
-  - Pago contra entrega (Servientrega, Laar, etc). 
-  - Envío gratis 1ra compra. -$2 transferencia.
+  REGLAS DE FORMATO (CASCADA):
+  - Salto de línea obligatorio tras cada signo de puntuación (. ! ? ...).
+  - Use emoticons solo para dar calidez (máximo 1 o 2 por mensaje).
+
+  DATOS LOGÍSTICOS:
+  - Bodegas: Ambato y Quito (por seguridad). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia/tarjeta.
 
   CONOCIMIENTO:
   ${baseConocimiento}
 
-  CLIENTE DICE: "${clienteMsg}"`;
+  CLIENTE: "${clienteMsg}"`;
 
   try {
     let textoFinal = "";
@@ -63,46 +64,4 @@ export default async function handler(req, res) {
         textoFinal = resJson.find(i => i.type === "message")?.content?.[0]?.text;
       } else {
         const match = JSON.stringify(resJson).match(/"output_text","text":"([^"]+)"/);
-        if (match) textoFinal = match[1].replace(/\\n/g, '\n');
-      }
-    } else {
-      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, experta en neuroventas." }, { role: "user", content: masterPrompt }]
-        })
-      });
-      const json = await resp.json();
-      textoFinal = json.choices?.[0]?.message?.content;
-    }
-
-    if (textoFinal) {
-      let cascada = textoFinal
-        .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
-        .replace(/\.\.\.\s*/g, "...\n")           
-        .split('\n').map(line => line.trim()).filter(line => line !== "").join('\n');
-
-      const partes = cascada.split('\n');
-      const saludo = partes[0]; 
-      const resto = partes.slice(1).join('\n');
-
-      await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-        body: JSON.stringify({ number: remoteJid, text: saludo })
-      });
-
-      if (resto) {
-        await new Promise(r => setTimeout(r, 1200));
-        await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: resto })
-        });
-      }
-    }
-    return res.status(200).send('OK');
-  } catch (error) { return res.status(200).send('OK'); }
-}
+        if (match) textoFinal = match[1].replace(/\\n/g,
