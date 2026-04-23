@@ -20,7 +20,7 @@ export default async function handler(request, response) {
     SHOPIFY_CLIENT_SECRET, 
     EVOLUTION_URL, 
     EVOLUTION_TOKEN, 
-    INSTANCE_NAME 
+    INSTANCE_DESPACHO  // <-- CAMBIADO DE INSTANCE_NAME A INSTANCE_DESPACHO
   } = process.env;
 
   // 3. OBTENER TOKEN DE SHOPIFY
@@ -75,7 +75,8 @@ export default async function handler(request, response) {
     const data = await shopifyResponse.json();
 
     // --- 6. LÓGICA DE WHATSAPP JRJMARKET (Saludo y Fecha Dinámica) ---
-    if (EVOLUTION_URL && EVOLUTION_TOKEN && INSTANCE_NAME) {
+    // CAMBIADA LA VARIABLE A INSTANCE_DESPACHO EN LA CONDICIÓN
+    if (EVOLUTION_URL && EVOLUTION_TOKEN && INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
         const cleanPhone = rawPhone.replace(/\D/g, '');
@@ -110,9 +111,9 @@ export default async function handler(request, response) {
         // MENSAJE 2: Logística y Referencia
         const msg2 = `Listo, le estaría llegando entre ${textoEntrega}, en horario de 9am a 5pm. El pedido va por transportadoras conocidas por su seguridad (Servientrega, Gintracon o Laar).\n\nUn favor, disculpa, para una óptima entrega y disminuir los tiempos de entrega nos podría ayudar con una referencia del lugar, ejemplo en frente de farmacias económicas, casa de 1 piso color blanco portón negro.`;
 
-        // Función para enviar a Evolution API
+        // Función para enviar a Evolution API (USA INSTANCE_DESPACHO)
         const enviarWA = async (texto) => {
-          await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_NAME}`, {
+          await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
             body: JSON.stringify({ number: cleanPhone, text: texto, delay: 2000 })
