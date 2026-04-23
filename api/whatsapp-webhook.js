@@ -2,50 +2,56 @@ import fs from 'fs';
 import path from 'path';
 
 export default async function handler(req, res) {
+  // Solo respondemos a mensajes POST
+  if (req.method !== 'POST') return res.status(200).send('OK');
+
   const { 
     EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, 
     GROK_API_KEY, OPENAI_API_KEY, GOOGLE_API_KEY,
     IA_PROVIDER 
   } = process.env;
 
-  if (!req.body?.data?.message) return res.status(200).send('OK');
-  const data = req.body.data;
-  if (data.key?.fromMe) return res.status(200).send('OK');
+  // Evitar bucles y mensajes vacíos
+  if (!req.body?.data?.message || req.body.data.key?.fromMe) {
+    return res.status(200).send('OK');
+  }
 
+  const data = req.body.data;
   const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "Hola").trim();
   const remoteJid = data.key?.remoteJid;
-  const baseUrl = EVOLUTION_URL.replace(/\/$/, "");
+  const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
   const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
-  const instanceActual = req.body.instance || INSTANCE_NAME || "VitaeLAB";
+  const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
+  // --- LECTURA DE ARCHIVOS CON RUTA ABSOLUTA ---
   let baseConocimiento = "";
   try {
-    const productosPath = path.join(process.cwd(), 'api', 'productos.json');
-    const txtPath = path.join(process.cwd(), 'data', 'combo-regeneracion.txt');
-    baseConocimiento = `INFO:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
-  } catch (e) { baseConocimiento = "Error."; }
+    const rootDir = process.cwd();
+    const productosPath = path.join(rootDir, 'api', 'productos.json');
+    // Probamos primero en 'data' y luego en 'api' según tu imagen
+    let txtPath = path.join(rootDir, 'data', 'combo-regeneracion.txt');
+    if (!fs.existsSync(txtPath)) {
+      txtPath = path.join(rootDir, 'api', 'combo-regeneracion.txt');
+    }
+    
+    const jsonProd = fs.existsSync(productosPath) ? fs.readFileSync(productosPath, 'utf8') : "";
+    const txtInfo = fs.existsSync(txtPath) ? fs.readFileSync(txtPath, 'utf8') : "";
+    baseConocimiento = `PRODUCTOS:\n${jsonProd}\n\nDETALLES:\n${txtInfo}`;
+  } catch (e) {
+    console.error("Error leyendo archivos:", e);
+  }
 
   const masterPrompt = `
-  IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
+  Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
+  
+  ESTILO:
+  1. Saludo fijo: "¡Hola! 😊 Es un placer atenderle."
+  2. Pregunte el dolor antes de pedir el nombre.
+  3. Tras el dolor, empatice y pida el nombre sutilmente para su "agenda de pacientes".
+  4. Use formato CASCADA: Nueva línea tras cada punto (.), interrogación (?) o exclamación (!).
 
-  ESTRUCTURA DE SALUDO (FIJO):
-  - Inicie siempre con: "¡Hola! 😊 Es un placer atenderle." (o una variante muy similar y cálida).
-
-  ESTRATEGIA DE CONEXIÓN:
-  1. EN EL SALUDO INICIAL: Solo salude y pregunte qué le preocupa de su salud. NO pida nombre aún.
-  2. TRAS DETECTAR EL DOLOR: 
-     - Empatice con el síntoma (ej: dolor de rodillas, gastritis).
-     - Explique brevemente cómo el producto ayuda a ESE dolor específico.
-     - Pida el nombre sutilmente: "¿Me ayuda con su nombre? Me gusta tratar a mis pacientes de forma personal para estar pendiente de su mejoría."
-
-  REGLAS DE FORMATO (CASCADA):
-  - Salto de línea obligatorio tras cada signo de puntuación (. ! ? ...).
-  - Use emoticons solo para dar calidez (máximo 1 o 2 por mensaje).
-
-  DATOS LOGÍSTICOS:
-  - Bodegas: Ambato y Quito (por seguridad). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia/tarjeta.
-
-  CONOCIMIENTO:
+  LOGÍSTICA: Bodegas Ambato/Quito. Pago contra entrega. Envío gratis 1ra compra.
+  INFO PRODUCTO:
   ${baseConocimiento}
 
   CLIENTE: "${clienteMsg}"`;
@@ -53,6 +59,7 @@ export default async function handler(req, res) {
   try {
     let textoFinal = "";
 
+    // --- LLAMADA A IA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -63,5 +70,51 @@ export default async function handler(req, res) {
       if (Array.isArray(resJson)) {
         textoFinal = resJson.find(i => i.type === "message")?.content?.[0]?.text;
       } else {
-        const match = JSON.stringify(resJson).match(/"output_text","text":"([^"]+)"/);
-        if (match) textoFinal = match[1].replace(/\\n/g,
+        textoFinal = resJson.choices?.[0]?.message?.content || "";
+      }
+    } else {
+      const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "system", content: "Eres Fiorella." }, { role: "user", content: masterPrompt }]
+        })
+      });
+      const json = await resp.json();
+      textoFinal = json.choices?.[0]?.message?.content;
+    }
+
+    if (textoFinal) {
+      // Formateo Cascada
+      let cascada = textoFinal
+        .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
+        .replace(/\.\.\.\s*/g, "...\n")
+        .split('\n').map(line => line.trim()).filter(l => l !== "").join('\n');
+
+      const partes = cascada.split('\n');
+      const saludo = partes[0];
+      const resto = partes.slice(1).join('\n');
+
+      // Envío Mensaje 1
+      await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: saludo })
+      });
+
+      if (resto) {
+        await new Promise(r => setTimeout(r, 1200));
+        await fetch(`${baseUrl}/message/sendText/${instName}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+          body: JSON.stringify({ number: remoteJid, text: resto })
+        });
+      }
+    }
+  } catch (error) {
+    console.error("Error en proceso:", error);
+  }
+
+  return res.status(200).send('OK');
+}
