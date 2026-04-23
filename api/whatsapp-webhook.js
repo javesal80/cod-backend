@@ -23,32 +23,35 @@ export default async function handler(req, res) {
     const productosPath = path.join(process.cwd(), 'api', 'productos.json');
     const txtPath = path.join(process.cwd(), 'data', 'combo-regeneracion.txt');
     baseConocimiento = `INFO:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
-  } catch (e) { baseConocimiento = "Error de carga."; }
+  } catch (e) { baseConocimiento = "Error."; }
 
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
 
-  ESTRATEGIA DE SUTILEZA:
-  1. EL NOMBRE: No lo pida como requisito. Primero salude y valide que va a ayudar. 
-     Ejemplo sutil: "...por cierto, ¿con quién tengo el gusto de hablar? Como para anotarlo en mi agenda de asesoría."
-  2. INDAGACIÓN: Su prioridad es que el cliente confiese su dolor (cansancio, gastritis, etc.).
-  3. CASCADA ESTÉTICA: Use saltos de línea tras cada signo de puntuación (. ! ? ...).
-  4. EMOTICONS: Solo en el saludo y para resaltar salud (🌿, ✨, 😊).
+  ESTRATEGIA DE CONEXIÓN (MOMENTO DEL NOMBRE):
+  - EN EL SALUDO INICIAL: PROHIBIDO preguntar el nombre. Solo salude y pregunte qué le preocupa de su salud.
+  - CUANDO EL CLIENTE CUENTA SU DOLOR: 
+    1. Valide el sentimiento con empatía ("Le entiendo, es muy molesto estar así...").
+    2. Dé una pequeña solución o esperanza basada en el producto.
+    3. RECIÉN AHÍ pida el nombre sutilmente: "Por cierto, ¿me ayuda con su nombre? Me gusta tratar a mis pacientes de forma personal y anotarlos para estar pendiente de su mejoría."
 
-  MANEJO DE OBJECIONES:
-  - Local físico: Solo bodegas (Ambato/Quito) por seguridad nacional. 
-  - Seguridad del cliente: Pago contra entrega (Servientrega, Laar, etc).
-  - Beneficios: Envío gratis 1ra compra. -$2 transferencia/tarjeta.
+  FORMATO EN CASCADA:
+  - Salto de línea obligatorio tras cada punto (.), interrogación (?) o exclamación (!).
+  - Use emoticons solo para dar calidez (máximo 1 o 2 por globo).
+
+  OBJECIONES Y LOGÍSTICA:
+  - Local físico: Solo bodegas (Ambato/Quito) por seguridad (vacunas). 
+  - Pago contra entrega (Servientrega, Laar, etc). 
+  - Envío gratis 1ra compra. -$2 transferencia.
 
   CONOCIMIENTO:
   ${baseConocimiento}
 
-  CLIENTE: "${clienteMsg}"`;
+  CLIENTE DICE: "${clienteMsg}"`;
 
   try {
     let textoFinal = "";
 
-    // --- OBTENCIÓN DE RESPUESTA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -68,7 +71,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, sutil y empática." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, experta en neuroventas." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -76,7 +79,6 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- FORMATEO EN CASCADA AUTOMÁTICO ---
       let cascada = textoFinal
         .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
         .replace(/\.\.\.\s*/g, "...\n")           
@@ -86,14 +88,12 @@ export default async function handler(req, res) {
       const saludo = partes[0]; 
       const resto = partes.slice(1).join('\n');
 
-      // Globo 1: Saludo
       await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
         body: JSON.stringify({ number: remoteJid, text: saludo })
       });
 
-      // Globo 2: Resto del mensaje sutil
       if (resto) {
         await new Promise(r => setTimeout(r, 1200));
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
