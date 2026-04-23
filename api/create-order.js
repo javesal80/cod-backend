@@ -6,22 +6,13 @@ export default async function handler(request, response) {
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
-  if (request.method === 'OPTIONS') {
-    return response.status(200).end();
-  }
-  if (request.method !== 'POST') {
-    return response.status(405).json({ success: false, message: 'Method Not Allowed' });
-  }
+  if (request.method === 'OPTIONS') return response.status(200).end();
+  if (request.method !== 'POST') return response.status(405).json({ success: false });
 
   // 2. LEER VARIABLES DE ENTORNO
   const { 
-    SHOPIFY_STORE_DOMAIN, 
-    SHOPIFY_CLIENT_ID, 
-    SHOPIFY_CLIENT_SECRET, 
-    EVOLUTION_URL, 
-    EVOLUTION_TOKEN, 
-    INSTANCE_DESPACHO, 
-    TOKEN_DESPACHO 
+    SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET, 
+    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO, TOKEN_DESPACHO 
   } = process.env;
 
   // 3. OBTENER TOKEN DE SHOPIFY
@@ -31,16 +22,13 @@ export default async function handler(request, response) {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        grant_type: 'client_credentials',
-        client_id: SHOPIFY_CLIENT_ID,
-        client_secret: SHOPIFY_CLIENT_SECRET,
+        grant_type: 'client_credentials', client_id: SHOPIFY_CLIENT_ID, client_secret: SHOPIFY_CLIENT_SECRET,
       }),
     });
-    if (!tokenResponse.ok) throw new Error('Falló la autenticación con Shopify');
     const tokenData = await tokenResponse.json();
     accessToken = tokenData.access_token;
   } catch (error) {
-    return response.status(500).json({ success: false, message: 'Auth error: ' + error.message });
+    return response.status(500).json({ success: false, message: 'Auth error' });
   }
 
   // 4. PREPARAR DATOS PARA SHOPIFY
@@ -51,7 +39,6 @@ export default async function handler(request, response) {
       customer: orderData.customer,
       shipping_address: orderData.shipping_address,
       billing_address: orderData.shipping_address, 
-      note: orderData.note,
       use_customer_default_address: false
     }
   };
@@ -60,38 +47,25 @@ export default async function handler(request, response) {
     // 5. CREAR PEDIDO EN SHOPIFY
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Shopify-Access-Token': accessToken,
-      },
+      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
       body: JSON.stringify(shopifyPayload),
     });
 
-    if (!shopifyResponse.ok) {
-      const errorBody = await shopifyResponse.json();
-      console.error('Shopify Error:', errorBody);
-      throw new Error('Error al crear el pedido en Shopify');
-    }
-
+    if (!shopifyResponse.ok) throw new Error('Error en Shopify');
     const data = await shopifyResponse.json();
 
-    // --- 6. ENVÍO DE WHATSAPP (Siembre de contexto para la IA) ---
+    // --- 6. ENVÍO DE WHATSAPP (AQUÍ ES DONDE PONES EL ENVÍO) ---
+    // Este mensaje actúa como la "semilla" para que el Prompt Maestro sepa qué se compró.
     if (EVOLUTION_URL && INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
         let cleanPhone = rawPhone.replace(/\D/g, '');
-        
-        // Corrección de prefijo Ecuador
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        const fechaEcuador = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil"}));
-        const horaActual = fechaEcuador.getHours();
-        let saludo = horaActual < 12 ? "Buenos días" : (horaActual < 18 ? "Buenas tardes" : "Buenas noches");
-
         const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title || 'Producto'}`).join(', ');
 
-        const msgApertura = `¡${saludo}! 😊 Qué gusto saludarle de parte de *JRJMarket*. 
+        const msgApertura = `¡Hola! 😊 Qué gusto saludarle de parte de *JRJMarket*. 
 
 He recibido su pedido de: *${productosStr}*. 
 
@@ -101,28 +75,27 @@ Para asegurar que todo llegue perfecto, ¿podría confirmarme si sus datos de en
 
 ¿Está todo bien o prefiere que ajustemos algún detalle?`;
 
-        // Esperar 1 minuto (60000 ms) antes de enviar para no saturar y dar espacio a Shopify
-        setTimeout(async () => {
-          await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json', 
-              'apikey': TOKEN_DESPACHO || EVOLUTION_TOKEN 
-            },
-            body: JSON.stringify({ number: cleanPhone, text: msgApertura })
-          });
-        }, 60000); 
-
+        // Enviamos a la Evolution API. 
+        // El 'delay' de 60000ms (1 min) lo gestiona la API, no Vercel.
+        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': TOKEN_DESPACHO || EVOLUTION_TOKEN },
+          body: JSON.stringify({ 
+            number: cleanPhone, 
+            text: msgApertura,
+            delay: 60000 // <--- Espera 1 minuto antes de aparecer en el cel del cliente
+          })
+        });
+        
       } catch (waError) {
-        console.error('Error en proceso de WhatsApp:', waError);
+        console.error('Error enviando WhatsApp:', waError);
       }
     }
 
-    // 7. RESPUESTA FINAL
+    // 7. RESPUESTA FINAL AL NAVEGADOR (Inmediata tras crear el borrador)
     return response.status(200).json({ success: true, orderId: data.draft_order.id });
 
   } catch (error) {
-    console.error('Error General:', error);
     return response.status(500).json({ success: false, message: error.message });
   }
 }
