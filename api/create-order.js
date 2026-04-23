@@ -1,25 +1,23 @@
-// /api/create-order.js
+// /api/create-order.js - v3.6 Debug Sheets
 export default async function handler(request, response) {
-  // 1. Manejo de CORS (Para que Shopify y tu Web puedan hablar con Vercel)
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   response.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (request.method === 'OPTIONS') return response.status(200).end();
-  if (request.method !== 'POST') return response.status(405).json({ success: false });
 
   const { 
     SHOPIFY_STORE_DOMAIN, 
     SHOPIFY_CLIENT_ID, 
     SHOPIFY_CLIENT_SECRET, 
-    GOOGLE_SHEET_URL // Esta es la URL que te dio Sheet.best
+    GOOGLE_SHEET_URL 
   } = process.env;
 
-  console.log("--- [INICIO] Procesando compra ---");
+  console.log("--- [DEBUG SHEETS] Inicio de Proceso ---");
 
   try {
-    // 1. Obtener Token de Shopify
+    // 1. Obtener Token
     const tokenRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -31,7 +29,7 @@ export default async function handler(request, response) {
     });
     const { access_token } = await tokenRes.json();
 
-    // 2. Crear el Borrador de Pedido en Shopify
+    // 2. Crear Pedido
     const orderData = request.body;
     const shopifyRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
@@ -50,34 +48,44 @@ export default async function handler(request, response) {
 
     const data = await shopifyRes.json();
     const orderId = data.draft_order?.id;
-    console.log("✅ Shopify OK. ID:", orderId);
+    console.log("✅ [DEBUG SHEETS] Shopify OK, ID:", orderId);
 
-    // 3. Guardar en Google Sheets (Disparar y Olvidar)
-    // No usamos 'await' aquí para que el botón de compra responda de inmediato
+    // 3. Preparar Datos para el Sheet
     const productos = orderData.line_items.map(i => `${i.quantity}x ${i.title}`).join(", ");
-    
-    fetch(GOOGLE_SHEET_URL, {
+    const sheetData = {
+      "ID Pedido": String(orderId), // Convertimos a string por seguridad
+      "Fecha": new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" }),
+      "Cliente": `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`,
+      "Teléfono": String(orderData.shipping_address.phone),
+      "Dirección": orderData.shipping_address.address1,
+      "Ciudad": orderData.shipping_address.city,
+      "Productos": productos,
+      "Estado": "Pendiente"
+    };
+
+    console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
+    console.log("📦 Payload enviado:", JSON.stringify(sheetData));
+
+    // Cambiamos a 'await' SOLO PARA LA PRUEBA, para ver la respuesta real
+    const sheetRes = await fetch(GOOGLE_SHEET_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        "ID Pedido": orderId,
-        "Fecha": new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" }),
-        "Cliente": `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`,
-        "Teléfono": orderData.shipping_address.phone,
-        "Dirección": orderData.shipping_address.address1,
-        "Ciudad": orderData.shipping_address.city,
-        "Productos": productos,
-        "Estado": "Pendiente"
-      })
-    })
-    .then(() => console.log("✅ Fila insertada en Google Sheets"))
-    .catch(e => console.error("❌ Error al insertar en Sheet:", e.message));
+      body: JSON.stringify(sheetData)
+    });
 
-    // 4. Respuesta instantánea para liberar el botón de compra
+    const sheetStatus = sheetRes.status;
+    const sheetBody = await sheetRes.json();
+
+    if (sheetRes.ok) {
+      console.log("✅ [DEBUG SHEETS] Sheet.best respondió éxito (200/201):", sheetBody);
+    } else {
+      console.error(`❌ [DEBUG SHEETS] Sheet.best error (${sheetStatus}):`, sheetBody);
+    }
+
     return response.status(200).json({ success: true, orderId: orderId });
 
   } catch (error) {
-    console.error("❌ Error General:", error.message);
+    console.error("❌ [DEBUG SHEETS] Error General:", error.message);
     return response.status(500).json({ success: false, error: error.message });
   }
 }
