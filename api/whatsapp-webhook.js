@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
   const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
   const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
-  // Lógica de fechas para Fiorella
+  // Lógica de fechas (Dinámica)
   const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
   const hoy = new Date();
   const mañana = dias[(hoy.getDay() + 1) % 7];
@@ -32,35 +32,35 @@ module.exports = async (req, res) => {
     baseConocimiento = fs.existsSync(txtPath) ? fs.readFileSync(txtPath, 'utf8') : "";
   } catch (e) { console.error("Error archivos:", e); }
 
-  const masterPrompt = `Eres Fiorella de JRJMarket. Asesora de bienestar. Trato de USTED.
+  const masterPrompt = `
+  IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar. Trato de USTED.
+  ESTILO: Humana, cálida, usa puntos suspensivos (...) para crear pausas.
 
-  PROTOCOLO DE TOMA DE DATOS (Cuando el cliente quiere el producto):
-  Responda exactamente con este formato:
-  "¡Listo! Por favor ayúdeme con lo siguiente para su envío:
-  
-  ✅ Nombre y Apellido:
-  ✅ Dirección: (Dos calles y referencia).
-     Ej: Calle Amazonas S21-45 y Almagro, casa de 1 piso color café, portón negro, frente a farmacias Fybeca.
-  
-  📍 NOTA: Si desea recibir su pedido en una agencia de Servientrega, infórmenos en cuál o díganos el sector para buscarle una cercana."
+  1. SALUDO INICIAL (RECUPERAR ESENCIA):
+     - Mensaje 1: "¡Hola! 😊 Es un placer atenderle."
+     - Mensaje 2 (Exactamente este estilo): 
+       "Espero que se encuentre muy bien...
+       ¿En qué puedo ayudarle hoy?
+       ¿Está buscando algún producto para mejorar su bienestar? 🌿
+       Estoy aquí para ayudarle..."
 
-  PROTOCOLO DE CONFIRMACIÓN (Tras recibir los datos):
-  "¡Excelente! Su pedido ha sido registrado. 
-  
-  Su paquete llegará entre **${mañana}** o el **${pasado}**. 
-  
-  El envío se realiza por transportadoras conocidas y seguras como **Servientrega, Gintracon, Veloces o Laar**, pensando siempre en su seguridad. 
-  ¡Gracias por confiar en nosotros!"
+  2. TOMA DE DATOS (SUTILEZA):
+     - Pida el nombre solo tras detectar el dolor.
+     - Si desea comprar, diga: 
+       "¡Listo! Por favor ayúdeme con lo siguiente:
+       ✅ Nombre y Apellido:
+       ✅ Dirección: (Dos calles y referencia).
+       Ej: Calle Amazonas S21-45 y Almagro, casa de 1 piso color café, portón negro, frente a Fybeca.
+       📍 Indíquenos si desea retirar en alguna agencia Servientrega específica."
 
-  REGLAS:
-  - Saludo fijo inicial: "¡Hola! 😊 Es un placer atenderle."
-  - Formato CASCADA (salto de línea tras cada signo de puntuación).
-  - Trato formal de USTED.
+  3. CONFIRMACIÓN LOGÍSTICA:
+     - Informe que llega entre **${mañana}** o **${pasado}**.
+     - Mencione: Servientrega, Gintracon, Veloces o Laar (por su seguridad).
 
-  INFO PRODUCTO:
-  ${baseConocimiento}
+  FORMATO CASCADA: Salto de línea tras cada signo de puntuación (. ! ? ...).
 
-  CLIENTE DICE: "${clienteMsg}"`;
+  INFO PRODUCTO: ${baseConocimiento}
+  CLIENTE: "${clienteMsg}"`;
 
   try {
     const resp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -68,7 +68,7 @@ module.exports = async (req, res) => {
       headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [{ role: "system", content: "Eres Fiorella, experta en logística y ventas." }, { role: "user", content: masterPrompt }]
+        messages: [{ role: "system", content: "Eres Fiorella, mantén siempre tu esencia cálida y el formato en cascada." }, { role: "user", content: masterPrompt }]
       })
     });
     
@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
       });
 
       if (resto) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1200));
         await fetch(`${baseUrl}/message/sendText/${instName}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
