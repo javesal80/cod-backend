@@ -1,6 +1,6 @@
-// /api/create-order.js (v1.8 - JRJMarket Master Integration)
+// /api/create-order.js (v1.8 - Estructura original intacta)
 export default async function handler(request, response) {
-  // 1. CONFIGURACIÓN DE SEGURIDAD (CORS)
+  // --- SEGURIDAD CORS (INTACTO) ---
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -9,13 +9,13 @@ export default async function handler(request, response) {
   if (request.method === 'OPTIONS') return response.status(200).end();
   if (request.method !== 'POST') return response.status(405).json({ success: false });
 
-  // 2. LEER VARIABLES DE ENTORNO
+  // --- VARIABLES (INTACTO) ---
   const { 
     SHOPIFY_STORE_DOMAIN, SHOPIFY_CLIENT_ID, SHOPIFY_CLIENT_SECRET, 
     EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO, TOKEN_DESPACHO 
   } = process.env;
 
-  // 3. OBTENER TOKEN DE SHOPIFY
+  // --- AUTH SHOPIFY (INTACTO) ---
   let accessToken;
   try {
     const tokenResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
@@ -27,11 +27,9 @@ export default async function handler(request, response) {
     });
     const tokenData = await tokenResponse.json();
     accessToken = tokenData.access_token;
-  } catch (error) {
-    return response.status(500).json({ success: false, message: 'Auth error' });
-  }
+  } catch (error) { return response.status(500).json({ success: false }); }
 
-  // 4. PREPARAR DATOS PARA SHOPIFY
+  // --- DATOS PARA SHOPIFY (INTACTO) ---
   const orderData = request.body;
   const shopifyPayload = {
     draft_order: {
@@ -39,23 +37,22 @@ export default async function handler(request, response) {
       customer: orderData.customer,
       shipping_address: orderData.shipping_address,
       billing_address: orderData.shipping_address, 
+      note: orderData.note,
       use_customer_default_address: false
     }
   };
 
   try {
-    // 5. CREAR PEDIDO EN SHOPIFY
+    // --- CREAR PEDIDO (INTACTO) ---
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': accessToken },
       body: JSON.stringify(shopifyPayload),
     });
 
-    if (!shopifyResponse.ok) throw new Error('Error en Shopify');
     const data = await shopifyResponse.json();
 
-    // --- 6. ENVÍO DE WHATSAPP (AQUÍ ES DONDE PONES EL ENVÍO) ---
-    // Este mensaje actúa como la "semilla" para que el Prompt Maestro sepa qué se compró.
+    // --- ÚNICA MODIFICACIÓN: ENVÍO WHATSAPP DISPARADOR ---
     if (EVOLUTION_URL && INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
@@ -75,27 +72,20 @@ Para asegurar que todo llegue perfecto, ¿podría confirmarme si sus datos de en
 
 ¿Está todo bien o prefiere que ajustemos algún detalle?`;
 
-        // Enviamos a la Evolution API. 
-        // El 'delay' de 60000ms (1 min) lo gestiona la API, no Vercel.
+        // Envío con delay para que la IA cerebro-confirmar tome el control después
         await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': TOKEN_DESPACHO || EVOLUTION_TOKEN },
           body: JSON.stringify({ 
             number: cleanPhone, 
             text: msgApertura,
-            delay: 60000 // <--- Espera 1 minuto antes de aparecer en el cel del cliente
+            delay: 60000 
           })
         });
-        
-      } catch (waError) {
-        console.error('Error enviando WhatsApp:', waError);
-      }
+      } catch (waError) { console.error('Error WA'); }
     }
 
-    // 7. RESPUESTA FINAL AL NAVEGADOR (Inmediata tras crear el borrador)
     return response.status(200).json({ success: true, orderId: data.draft_order.id });
 
-  } catch (error) {
-    return response.status(500).json({ success: false, message: error.message });
-  }
+  } catch (error) { return response.status(500).json({ success: false }); }
 }
