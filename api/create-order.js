@@ -1,6 +1,6 @@
 // /api/create-order.js (v1.9 - JRJMarket Split Instances Integration)
 export default async function handler(request, response) {
-  // 1. CONFIGURACIÓN DE SEGURIDAD (CORS)
+  // 1. CONFIGURACIÓN DE SEGURIDAD (CORS) - INTACTO
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -13,18 +13,18 @@ export default async function handler(request, response) {
     return response.status(405).json({ success: false, message: 'Method Not Allowed' });
   }
 
-  // 2. LEER VARIABLES DE ENTORNO
+  // 2. LEER VARIABLES DE ENTORNO - INTACTO
   const { 
     SHOPIFY_STORE_DOMAIN, 
     SHOPIFY_CLIENT_ID, 
     SHOPIFY_CLIENT_SECRET, 
     EVOLUTION_URL, 
-    EVOLUTION_TOKEN, // Global o anterior
-    INSTANCE_DESPACHO, // Nombre de la nueva instancia
-    TOKEN_DESPACHO    // Key de la nueva instancia
+    EVOLUTION_TOKEN, 
+    INSTANCE_DESPACHO, 
+    TOKEN_DESPACHO 
   } = process.env;
 
-  // 3. OBTENER TOKEN DE SHOPIFY
+  // 3. OBTENER TOKEN DE SHOPIFY - INTACTO
   let accessToken;
   try {
     const tokenResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
@@ -43,7 +43,7 @@ export default async function handler(request, response) {
     return response.status(500).json({ success: false, message: 'Auth error: ' + error.message });
   }
 
-  // 4. PREPARAR DATOS PARA SHOPIFY
+  // 4. PREPARAR DATOS PARA SHOPIFY - INTACTO
   const orderData = request.body;
   const shopifyPayload = {
     draft_order: {
@@ -57,7 +57,7 @@ export default async function handler(request, response) {
   };
 
   try {
-    // 5. CREAR PEDIDO EN SHOPIFY
+    // 5. CREAR PEDIDO EN SHOPIFY - INTACTO
     const shopifyResponse = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
       headers: {
@@ -75,8 +75,7 @@ export default async function handler(request, response) {
 
     const data = await shopifyResponse.json();
 
-    // --- 6. LÓGICA DE WHATSAPP JRJMARKET (Saludo y Fecha Dinámica) ---
-    // Usamos INSTANCE_DESPACHO para validar el envío
+    // --- 6. LÓGICA DE WHATSAPP JRJMARKET (MODIFICADO PARA CEREBRO IA) ---
     if (EVOLUTION_URL && INSTANCE_DESPACHO) {
       try {
         const rawPhone = orderData.shipping_address.phone || orderData.customer.phone;
@@ -88,35 +87,30 @@ export default async function handler(request, response) {
         if (horaActual >= 12 && horaActual < 18) saludo = "Buenas tardes";
         if (horaActual >= 18 || horaActual < 5) saludo = "Buenas noches";
 
-        const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-        const hoyIdx = fechaEcuador.getDay();
-        
-        const fechaPasado = new Date(fechaEcuador);
-        fechaPasado.setDate(fechaEcuador.getDate() + 2);
-        const nombrePasado = diasSemana[fechaPasado.getDay()];
-
-        let textoEntrega = `mañana o el ${nombrePasado}`;
-        if (hoyIdx === 5) textoEntrega = "el Lunes o Martes";
-        if (hoyIdx === 6) textoEntrega = "el Martes o Miércoles";
-
         const productosStr = orderData.line_items.map(item => `${item.quantity} ${item.title}`).join(', ');
 
-        const msg1 = `${saludo}. Nos comunicamos por confirmar el siguiente pedido:\n\n*${productosStr}*\n\nPara:\n*${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}*\nCELULAR: ${rawPhone}\n${orderData.shipping_address.address1}\n${orderData.shipping_address.province}_${orderData.shipping_address.city}`;
+        // MENSAJE DE APERTURA: Semilla para el cerebro de IA
+        const msgDisparador = `¡${saludo}! 😊 Qué gusto saludarle de parte de *JRJMarket*. 
 
-        const msg2 = `Listo, le estaría llegando entre ${textoEntrega}, en horario de 9am a 5pm. El pedido va por transportadoras conocidas por su seguridad (Servientrega, Gintracon o Laar).\n\nUn favor, disculpa, para una óptima entrega y disminuir los tiempos de entrega nos podría ayudar con una referencia del lugar, ejemplo en frente de farmacias económicas, casa de 1 piso color blanco portón negro.`;
+He recibido su pedido de: *${productosStr}*. 
 
-        // Función para enviar a Evolution API (USA TOKEN_DESPACHO e INSTANCE_DESPACHO)
-        const enviarWA = async (texto) => {
-          const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
-          await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
-            body: JSON.stringify({ number: cleanPhone, text: texto, delay: 2000 })
-          });
-        };
+Para asegurar que todo llegue perfecto, ¿podría confirmarme si sus datos de envío son correctos?
+📍 *Dirección:* ${orderData.shipping_address.address1}
+🏘️ *Ciudad:* ${orderData.shipping_address.city}
 
-        await enviarWA(msg1);
-        await enviarWA(msg2);
+¿Está todo bien o prefiere que ajustemos algún detalle?`;
+
+        // Función para enviar a Evolution API (Solo un envío con delay de 1 min para ser humano)
+        const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
+        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
+          body: JSON.stringify({ 
+            number: cleanPhone, 
+            text: msgDisparador, 
+            delay: 60000 // 1 minuto de espera gestionado por la API
+          })
+        });
         
       } catch (waError) {
         console.error('Error enviando WhatsApp:', waError);
