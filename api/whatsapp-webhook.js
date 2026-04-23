@@ -28,17 +28,17 @@ export default async function handler(req, res) {
   const masterPrompt = `
   IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
 
-  ESTRUCTURA DE ESCRITURA (ESTRICTA):
-  - Use emoticons solo en lo esencial (saludo, bienestar, despedida). No exagere.
-  - Formato en CASCADA: Cada frase con signo de puntuación (. ! ? ...) debe ir en una línea nueva.
-  - Ejemplo:
-    ¡Hola! 😊 Es un placer atenderle.
-    Espero que se encuentre muy bien...
-    ¿En qué puedo ayudarle hoy?
-    ¿Quizás algo específico para su salud? 🌿
-    Estoy aquí para ayudarle...
+  ESTRATEGIA DE SUTILEZA:
+  1. EL NOMBRE: No lo pida como requisito. Primero salude y valide que va a ayudar. 
+     Ejemplo sutil: "...por cierto, ¿con quién tengo el gusto de hablar? Como para anotarlo en mi agenda de asesoría."
+  2. INDAGACIÓN: Su prioridad es que el cliente confiese su dolor (cansancio, gastritis, etc.).
+  3. CASCADA ESTÉTICA: Use saltos de línea tras cada signo de puntuación (. ! ? ...).
+  4. EMOTICONS: Solo en el saludo y para resaltar salud (🌿, ✨, 😊).
 
-  ESTRATEGIA: Indague el dolor. Seguridad por bodegas cerradas (vacunas). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia.
+  MANEJO DE OBJECIONES:
+  - Local físico: Solo bodegas (Ambato/Quito) por seguridad nacional. 
+  - Seguridad del cliente: Pago contra entrega (Servientrega, Laar, etc).
+  - Beneficios: Envío gratis 1ra compra. -$2 transferencia/tarjeta.
 
   CONOCIMIENTO:
   ${baseConocimiento}
@@ -48,6 +48,7 @@ export default async function handler(req, res) {
   try {
     let textoFinal = "";
 
+    // --- OBTENCIÓN DE RESPUESTA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -67,7 +68,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, asesora amable y profesional." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, sutil y empática." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -75,27 +76,24 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- LÓGICA DE FORMATEO EN CASCADA ---
+      // --- FORMATEO EN CASCADA AUTOMÁTICO ---
       let cascada = textoFinal
-        .replace(/([.!?])\s+(?=[A-Z¿¡])|([.!?])$/gm, "$1\n") 
+        .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
         .replace(/\.\.\.\s*/g, "...\n")           
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== "")
-        .join('\n');
+        .split('\n').map(line => line.trim()).filter(line => line !== "").join('\n');
 
       const partes = cascada.split('\n');
       const saludo = partes[0]; 
       const resto = partes.slice(1).join('\n');
 
-      // Mensaje 1: Saludo con emoticon
+      // Globo 1: Saludo
       await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
         body: JSON.stringify({ number: remoteJid, text: saludo })
       });
 
-      // Mensaje 2: Cuerpo en cascada con saltos
+      // Globo 2: Resto del mensaje sutil
       if (resto) {
         await new Promise(r => setTimeout(r, 1200));
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
