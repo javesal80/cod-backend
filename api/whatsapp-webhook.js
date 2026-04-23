@@ -26,21 +26,19 @@ export default async function handler(req, res) {
   } catch (e) { baseConocimiento = "Error de carga."; }
 
   const masterPrompt = `
-  IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar, amable y formal (Trato de USTED).
+  IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar (Trato de USTED).
 
-  REGLAS DE ESTRUCTURA (OBLIGATORIO):
-  - Responda siempre en DOS mensajes (dos globos de texto).
-  
-  MENSAJE 1: Un saludo corto y cálido. 
-  Ejemplo: "¡Hola! 😊 Es un placer atenderle."
+  ESTRUCTURA DE ESCRITURA (FUNDAMENTAL):
+  - Escriba en frases cortas.
+  - Cada vez que termine una idea con un punto (.), signo de interrogación (¿?) o exclamación (¡!), debe empezar una NUEVA LÍNEA.
+  - Ejemplo de formato:
+    Espero que se encuentre muy bien...
+    ¿En qué puedo ayudarle hoy?
+    ¿Hay algo específico que le preocupa de su salud?
+    Estoy aquí para ayudarle...
 
-  MENSAJE 2: El cuerpo de la asesoría. NO amontone las frases. Use un salto de línea (Enter) para cada idea.
-  Debe verse exactamente así:
-  "Espero que se encuentre muy bien... ¿En qué puedo ayudarle hoy?
-  ¿Hay algo específico que le preocupa de su salud?
-  Estoy aquí para ayudarle..."
-
-  ESTRATEGIA: Indague el dolor antes de dar precios. Seguridad por bodegas en Ambato/Quito. Pago contra entrega.
+  ESTRATEGIA: Indague el dolor. Ofrezca el combo solo si detecta necesidad.
+  LOGÍSTICA: Bodegas en Ambato/Quito (seguridad). Pago contra entrega. Envío gratis 1ra compra. -$2 transferencia.
 
   CONOCIMIENTO:
   ${baseConocimiento}
@@ -70,7 +68,7 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Eres Fiorella, asesora experta en salud." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
@@ -78,33 +76,32 @@ export default async function handler(req, res) {
     }
 
     if (textoFinal) {
-      // --- LÓGICA DE DIVISIÓN EN 2 GLOBOS ---
-      // Buscamos el primer salto de línea doble o el primer punto y aparte para separar el saludo del resto
-      const partes = textoFinal.split('\n\n').filter(p => p.trim() !== "");
-      
-      if (partes.length >= 2) {
-        // Enviar Saludo (Mensaje 1)
-        await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: partes[0].trim() })
-        });
+      // --- LIMPIEZA Y FORMATEO EN CASCADA (Lógica Manual) ---
+      // Esta función busca puntos, interrogaciones y exclamaciones y pone un salto de línea después.
+      let cascada = textoFinal
+        .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") // Punto seguido de espacio y mayúscula -> Salto
+        .replace(/\.\.\.\s*/g, "...\n")           // Puntos suspensivos -> Salto
+        .replace(/([?|>|!])\s*/g, "$1\n")         // Signo de cierre -> Salto
+        .split('\n').map(line => line.trim()).filter(line => line !== "").join('\n');
 
-        await new Promise(r => setTimeout(r, 1000));
+      const partes = cascada.split('\n');
+      const saludo = partes[0]; // La primera línea es el saludo
+      const resto = partes.slice(1).join('\n');
 
-        // Enviar Cuerpo (Mensaje 2 - Con todas las líneas internas)
-        const cuerpo = partes.slice(1).join('\n').trim();
+      // Mensaje 1: Saludo
+      await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: saludo })
+      });
+
+      // Mensaje 2: Cuerpo en cascada
+      if (resto) {
+        await new Promise(r => setTimeout(r, 1200));
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: cuerpo })
-        });
-      } else {
-        // Si la IA mandó un solo bloque, lo mandamos tal cual
-        await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: textoFinal.trim() })
+          body: JSON.stringify({ number: remoteJid, text: resto })
         });
       }
     }
