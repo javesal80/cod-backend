@@ -18,46 +18,37 @@ export default async function handler(req, res) {
   const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
   const instanceActual = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
-  // --- CARGA DE CONOCIMIENTO (PRODUCTOS Y DETALLES) ---
   let baseConocimiento = "";
   try {
     const productosPath = path.join(process.cwd(), 'api', 'productos.json');
     const txtPath = path.join(process.cwd(), 'data', 'combo-regeneracion.txt');
-    baseConocimiento = `CATÁLOGO Y DATOS:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
-  } catch (e) { baseConocimiento = "Info no disponible."; }
+    baseConocimiento = `INFO:\n${fs.readFileSync(productosPath, 'utf8')}\n${fs.readFileSync(txtPath, 'utf8')}`;
+  } catch (e) { baseConocimiento = "Error de base."; }
 
-  // --- MASTER PROMPT: EL CEREBRO DE FIORELLA ---
   const masterPrompt = `
-  IDENTIDAD:
-  Eres Fiorella de JRJMarket. No eres una vendedora, eres una asesora de bienestar que ayuda a sus amigos. 
-  Tu trato es de USTED, con calidez ecuatoriana (amable, respetuosa, empática).
+  IDENTIDAD: Eres Fiorella de JRJMarket. Asesora de bienestar, amable y formal (Trato de USTED).
 
-  FILOSOFÍA DE VENTA (NEUROVENTAS + AIDA):
-  1. EDUCACIÓN Y EMPATÍA: Antes de vender, explique el "por qué". Si el cliente tiene un dolor, valide su sentir: "Le entiendo perfectamente, es muy frustrante sentirse así...".
-  2. INTERÉS GENUINO: Usted se preocupa por la salud del cliente. Si el cliente pregunta precio de entrada, salude y diga: "Con todo gusto le ayudo, pero antes cuénteme, ¿qué es lo que más le preocupa de su salud hoy?".
-  3. SEGURIDAD Y CONFIANZA: 
-     - Si piden LOCAL FÍSICO: Informe que por seguridad del país y las vacunas (extorsiones), solo manejamos bodegas cerradas en Ambato y Quito. Por eso, protegemos al cliente con PAGO CONTRA ENTREGA mediante Servientrega, Gintracon, Veloces o Laar.
-  4. GATILLOS MENTALES:
-     - ENVÍO GRATIS en la primera compra.
-     - DESCUENTO EXTRA: $2 menos si paga por transferencia o tarjeta (incentiva el pago anticipado).
-     - PRUEBA SOCIAL: "Muchos clientes me dicen que tras la primera semana ya sienten el cambio".
+  DISEÑO VISUAL DE MENSAJES (ESTRICTO):
+  - No amontone frases. Cada idea nueva debe ir en una línea diferente.
+  - Use puntos suspensivos (...) para denotar cercanía y pausas naturales.
+  - Deje una línea en blanco entre párrafos.
+  - Máximo 2 oraciones por cada bloque de texto.
+  - NUNCA envíe más de 30 palabras sin un salto de línea.
 
-  REGLAS DE FORMATO (ESTÉTICA):
-  - PROHIBIDO bloques de texto largos. Use párrafos cortos de 2 oraciones máximo.
-  - Use saltos de línea (doble Enter) para que el mensaje "respire".
-  - Use negritas solo en palabras clave de beneficio.
-  - Máximo 3 mensajes cortos por respuesta.
-  - Use Emojis con moderación (solo para dar calidez).
+  ESTRATEGIA DE VENTA:
+  1. INDAGACIÓN: Si saludan, responda con calidez y haga UNA O DOS preguntas separadas para saber qué les duele.
+  2. EMPATÍA: Use frases como: "Le comprendo perfectamente..." o "Vea, le cuento que a muchos de nuestros clientes les pasaba lo mismo...".
+  3. SEGURIDAD: Local físico solo bodegas en Ambato/Quito por seguridad (vacunas). Pago contra entrega para su tranquilidad.
+  4. OFERTA: Envío GRATIS primera compra. -$2 de descuento en transferencia/tarjeta.
 
-  CONOCIMIENTO TÉCNICO:
+  CONOCIMIENTO:
   ${baseConocimiento}
 
-  MENSAJE DEL CLIENTE A PROCESAR: "${clienteMsg}"`;
+  CLIENTE DICE: "${clienteMsg}"`;
 
   try {
     let textoFinal = "";
 
-    // --- LÓGICA DE IA ---
     if (provider === 'grok') {
       const resp = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
@@ -78,24 +69,29 @@ export default async function handler(req, res) {
         headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: "gpt-4o-mini",
-          messages: [{ role: "system", content: "Asesora de bienestar experta." }, { role: "user", content: masterPrompt }]
+          messages: [{ role: "system", content: "Eres Fiorella, asesora estética y persuasiva." }, { role: "user", content: masterPrompt }]
         })
       });
       const json = await resp.json();
       textoFinal = json.choices?.[0]?.message?.content;
     }
 
-    // --- ENVÍO A EVOLUTION ---
     if (textoFinal) {
-      // Dividimos el mensaje por párrafos dobles para enviarlos como mensajes separados si es necesario
-      const parrafos = textoFinal.split('\n\n').filter(p => p.trim() !== "");
+      // --- DIVISIÓN INTELIGENTE DE MENSAJES ---
+      // Separamos por saltos de línea dobles o triples para enviar globos de texto distintos
+      const parrafos = textoFinal.split(/\n\n+/).filter(p => p.trim() !== "");
       
-      for (const p of parrafos.slice(0, 3)) { // Máximo 3 mensajes
+      for (const p of parrafos.slice(0, 3)) { 
         await fetch(`${baseUrl}/message/sendText/${instanceActual.trim()}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-          body: JSON.stringify({ number: remoteJid, text: p.trim() })
+          body: JSON.stringify({ 
+            number: remoteJid, 
+            text: p.trim().replace(/\n/g, '\n') // Mantenemos los saltos simples dentro del globo
+          })
         });
+        // Pequeña pausa de 1 segundo entre mensajes para que parezca humano
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
     return res.status(200).send('OK');
