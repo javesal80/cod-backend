@@ -1,4 +1,5 @@
 export default async function handler(request, response) {
+    // --- CONFIGURACIÓN DE CORS (MANTENIDO) ---
     const origin = request.headers.origin || '';
     response.setHeader('Access-Control-Allow-Origin', origin);
     response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -8,7 +9,8 @@ export default async function handler(request, response) {
 
     const { 
         EVOLUTION_URL, INSTANCE_DESPACHO, TOKEN_DESPACHO, EVOLUTION_TOKEN, 
-        IA_PROVIDER, GROK_API_KEY, GEMINI_API_KEY, GITHUB_USER, GITHUB_REPO 
+        IA_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY, GROK_API_KEY,
+        GITHUB_USER, GITHUB_REPO 
     } = process.env;
 
     const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
@@ -16,98 +18,97 @@ export default async function handler(request, response) {
     const repo = "cod-backend";
     const GITHUB_BASE = `https://raw.githubusercontent.com/${user}/${repo}/main`;
 
+    console.log("--- [CEREBRO] PROCESANDO PEDIDO FIORELLA ---");
     const orderData = request.body;
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
 
-        // 1. Teléfono y Saludo
+        // 1. Limpieza de Teléfono y Saludo Dinámico (MANTENIDO)
         let cleanPhone = String(orderData["Teléfono"]).replace(/\D/g, '');
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
         const hora = new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil", hour: 'numeric', hour12: false});
-        let saludo = (hora >= 5 && hora < 12) ? "Buenos días" : (hora >= 12 && hora < 19) ? "Buenas tardes" : "Buenas noches";
+        let saludo = (hora >= 5 && hora < 12) ? "¡Muy buenos días! ☀️" : (hora >= 12 && hora < 19) ? "¡Buenas tardes! ✨" : "¡Hola, muy buenas noches! 🌙";
 
-        // 2. Obtener info de productos desde GitHub para que la IA sepa los precios
+        // 2. Conexión con GitHub para Protocolos (MANTENIDO)
         let catalogo = { PRODUCTOS: [] };
+        let promptMaestroData = {};
         try {
-            const catRes = await fetch(`${GITHUB_BASE}/api/productos.json`);
+            const [catRes, promptRes] = await Promise.all([
+                fetch(`${GITHUB_BASE}/api/productos.json`),
+                fetch(`${GITHUB_BASE}/prompt-maestro-despacho.json`)
+            ]);
             if (catRes.ok) catalogo = await catRes.json();
-        } catch (e) { console.error("Error catálogo"); }
+            if (promptRes.ok) promptMaestroData = await promptRes.json();
+        } catch (e) { console.error("Error GitHub"); }
 
-        // 3. Pedir a la IA que formatee los productos y precios
-        const promptPrecios = `
-        Basado en este pedido: "${orderData["Productos"]}" y este catálogo: ${JSON.stringify(catalogo)}, 
-        genera una lista detallada con precios y el total final.
-        Formato:
-        Cant x Producto .... $Precio
-        Total $Suma
-        
-        Responde SOLO la lista, sin textos extra.
-        `;
+        // 3. Lógica de Lista Vertical con Neuromarketing (MEJORADO)
+        let productosRaw = orderData["Productos"] || "";
+        let listaVertical = productosRaw.split(',')
+            .map(item => {
+                let nombre = item.trim();
+                if (nombre.toLowerCase().includes("kidgrow")) return `✅ ${nombre} (Crecimiento y Nutrición) 🚀`;
+                if (nombre.toLowerCase().includes("magnesio")) return `✅ ${nombre} (Bienestar y Energía) ✨`;
+                if (nombre.toLowerCase().includes("shilajit")) return `✅ ${nombre} (Vitalidad Natural) 🏔️`;
+                return `✅ ${nombre}`;
+            }).join('\n');
 
-        // Intentamos Grok, si falla usamos Gemini (IA_PROVIDER)
-        let listaDetallada = "";
-        if (IA_PROVIDER === 'xai' || IA_PROVIDER === 'grok') {
-            listaDetallada = await llamarXAI(promptPrecios, GROK_API_KEY);
-        } else {
-            listaDetallada = await llamarGemini(promptPrecios, GEMINI_API_KEY);
-        }
-
-        // Si la IA falla, usamos al menos el texto crudo del Excel para no enviar nada vacío
-        if (!listaDetallada || listaDetallada.length < 5) {
-            listaDetallada = orderData["Productos"];
-        }
-
-        // 4. Definir y enviar los 4 mensajes por separado
+        // 4. Definición de los 4 Mensajes (ESTILO HUMANO)
         const mensajes = [
-            `${saludo} ${orderData["Cliente"]}.`,
-            `Nos comunicamos para confirmar el siguiente pedido:\n\n${listaDetallada}`,
-            `para:\n${orderData["Cliente"]}\nCELULAR: ${cleanPhone}\n${orderData["Dirección"]}\n${orderData["Ciudad"]}`,
-            `Es correcto?`
+            `${saludo} ${orderData["Cliente"]}. ¡Qué gusto saludarte! 👋`,
+            `Estamos felices de procesar tu compra. Aquí tienes el resumen de tu pedido: 📦\n\n${listaVertical}`,
+            `Lo estaremos enviando a estos datos:\n\n📍 *Para:* ${orderData["Cliente"]}\n📱 *Celular:* ${cleanPhone}\n🏠 *Dirección:* ${orderData["Dirección"]}\n🏙️ *Ciudad:* ${orderData["Ciudad"]}`,
+            `¿Los datos son correctos para proceder con tu despacho? 😊`
         ];
 
+        // 5. Envío Secuencial con Delays (NATURALIDAD)
         for (const msg of mensajes) {
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
                 body: JSON.stringify({ number: cleanPhone, text: msg })
             });
-            await new Promise(r => setTimeout(r, 2000)); // Pausa de 2 segundos entre mensajes
+            await new Promise(r => setTimeout(r, 2500));
         }
 
         return response.status(200).json({ success: true });
 
     } catch (error) {
-        console.error("ERROR:", error.message);
+        console.error("❌ ERROR CRÍTICO:", error.message);
         return response.status(200).json({ error: error.message });
     }
 }
 
-// --- FUNCIONES IA ---
+// --- FUNCIONES IA (MANTENIDAS: GEMINI, OPENAI, GROK) ---
 async function llamarXAI(prompt, key) {
-    try {
-        const res = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                model: "grok-beta", 
-                messages: [{ role: "system", content: "Eres un experto en facturación. Solo devuelves listas de productos y precios." }, { role: "user", content: prompt }]
-            })
-        });
-        const data = await res.json();
-        return data.choices?.[0]?.message?.content || "";
-    } catch (e) { return ""; }
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            model: "grok-beta", 
+            messages: [{ role: "system", content: "Eres Fiorella, asistente de JRJMarket." }, { role: "user", content: prompt }]
+        })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
 }
 
 async function llamarGemini(prompt, key) {
-    try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        const data = await res.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    } catch (e) { return ""; }
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+    });
+    const data = await res.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
+
+async function llamarChatGPT(prompt, key) {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: prompt }] })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "";
 }
