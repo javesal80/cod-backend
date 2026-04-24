@@ -8,60 +8,73 @@ export default async function handler(request, response) {
 
     const { 
         EVOLUTION_URL, INSTANCE_DESPACHO, TOKEN_DESPACHO, EVOLUTION_TOKEN, 
-        IA_PROVIDER, GROK_API_KEY 
+        IA_PROVIDER, GROK_API_KEY, GEMINI_API_KEY, GITHUB_USER, GITHUB_REPO 
     } = process.env;
 
     const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
+    const user = "javesal80"; 
+    const repo = "cod-backend";
+    const GITHUB_BASE = `https://raw.githubusercontent.com/${user}/${repo}/main`;
+
     const orderData = request.body;
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
 
-        // 1. Limpieza de Teléfono y Hora
+        // 1. Teléfono y Saludo
         let cleanPhone = String(orderData["Teléfono"]).replace(/\D/g, '');
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
         const hora = new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil", hour: 'numeric', hour12: false});
-        let saludo = "Buenos días";
-        if (hora >= 12 && hora < 19) saludo = "Buenas tardes";
-        if (hora >= 19 || hora < 5) saludo = "Buenas noches";
+        let saludo = (hora >= 5 && hora < 12) ? "Buenos días" : (hora >= 12 && hora < 19) ? "Buenas tardes" : "Buenas noches";
 
-        // 2. IA para formatear la lista de precios y total (Grok)
+        // 2. Obtener info de productos desde GitHub para que la IA sepa los precios
+        let catalogo = { PRODUCTOS: [] };
+        try {
+            const catRes = await fetch(`${GITHUB_BASE}/api/productos.json`);
+            if (catRes.ok) catalogo = await catRes.json();
+        } catch (e) { console.error("Error catálogo"); }
+
+        // 3. Pedir a la IA que formatee los productos y precios
         const promptPrecios = `
-        A partir de estos productos: "${orderData["Productos"]}", genera una lista con precios individuales y un total. 
-        Usa este estilo (ajusta los precios según tu lista real):
-        2 Kidgrow por $35
-        1 Magnesio por $18
+        Basado en este pedido: "${orderData["Productos"]}" y este catálogo: ${JSON.stringify(catalogo)}, 
+        genera una lista detallada con precios y el total final.
+        Formato:
+        Cant x Producto .... $Precio
+        Total $Suma
         
-        Total $53
-        
-        SOLO responde la lista y el total, nada más.
+        Responde SOLO la lista, sin textos extra.
         `;
 
-        const listaPrecios = await llamarXAI(promptPrecios, GROK_API_KEY);
+        // Intentamos Grok, si falla usamos Gemini (IA_PROVIDER)
+        let listaDetallada = "";
+        if (IA_PROVIDER === 'xai' || IA_PROVIDER === 'grok') {
+            listaDetallada = await llamarXAI(promptPrecios, GROK_API_KEY);
+        } else {
+            listaDetallada = await llamarGemini(promptPrecios, GEMINI_API_KEY);
+        }
 
-        // 3. Definir los mensajes por separado
+        // Si la IA falla, usamos al menos el texto crudo del Excel para no enviar nada vacío
+        if (!listaDetallada || listaDetallada.length < 5) {
+            listaDetallada = orderData["Productos"];
+        }
+
+        // 4. Definir y enviar los 4 mensajes por separado
         const mensajes = [
             `${saludo} ${orderData["Cliente"]}.`,
-            `Nos comunicamos para confirmar el siguiente pedido:\n\n${listaPrecios}`,
+            `Nos comunicamos para confirmar el siguiente pedido:\n\n${listaDetallada}`,
             `para:\n${orderData["Cliente"]}\nCELULAR: ${cleanPhone}\n${orderData["Dirección"]}\n${orderData["Ciudad"]}`,
             `Es correcto?`
         ];
 
-        // 4. Función para enviar con delay (pausa entre mensajes)
         for (const msg of mensajes) {
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
-                body: JSON.stringify({ 
-                    number: cleanPhone, 
-                    text: msg,
-                    delay: 1500 // Pausa de 1.5 seg entre mensajes para naturalidad
-                })
+                body: JSON.stringify({ number: cleanPhone, text: msg })
             });
-            // Pequeño tiempo de espera adicional en el bucle
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(r => setTimeout(r, 2000)); // Pausa de 2 segundos entre mensajes
         }
 
         return response.status(200).json({ success: true });
@@ -72,16 +85,29 @@ export default async function handler(request, response) {
     }
 }
 
-// --- FUNCIÓN GROK ---
+// --- FUNCIONES IA ---
 async function llamarXAI(prompt, key) {
-    const res = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            model: "grok-beta", 
-            messages: [{ role: "user", content: prompt }]
-        })
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    try {
+        const res = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                model: "grok-beta", 
+                messages: [{ role: "system", content: "Eres un experto en facturación. Solo devuelves listas de productos y precios." }, { role: "user", content: prompt }]
+            })
+        });
+        const data = await res.json();
+        return data.choices?.[0]?.message?.content || "";
+    } catch (e) { return ""; }
+}
+
+async function llamarGemini(prompt, key) {
+    try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        });
+        const data = await res.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } catch (e) { return ""; }
 }
