@@ -2,79 +2,72 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async (request, response) => {
     const { 
-        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN_DESPACHO, 
+        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN, 
         SUPABASE_URL, SUPABASE_KEY, GROK_API_KEY 
     } = process.env;
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const body = request.body;
 
-    console.log("--- INICIO DE PROCESO ---");
-
-    if (!body?.data?.message || body.data.key.fromMe) {
-        return response.status(200).send("Ignorado");
-    }
+    // 1. Filtro de entrada
+    if (!body?.data?.message || body.data.key.fromMe) return response.status(200).send("OK");
 
     const telefono = body.data.key.remoteJid.replace('@s.whatsapp.net', '');
     const mensajeCliente = (body.data.message.conversation || body.data.message.extendedTextMessage?.text || "").trim();
 
-    console.log(`1. 📞 Cliente: ${telefono} | Dijo: "${mensajeCliente}"`);
-
     try {
-        // BUSCAR MEMORIA
+        // 2. Buscar datos del cliente
         const { data: cliente } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
-        if (!cliente) {
-            console.log("❌ 2. Memoria: No encontrada en Supabase");
-            return response.status(200).send("Sin memoria");
-        }
-        console.log(`✅ 2. Memoria: Encontrada (${cliente.nombre})`);
+        if (!cliente) return response.status(200).send("Sin memoria");
 
-        // LLAMADA A GROK
-        console.log("🧠 3. Llamando a Grok...");
-        const resIA = await fetch('https://api.x.ai/v1/chat/completions', {
+        const productos = cliente.datos_excel.Productos;
+
+        // 3. Llamada a Grok con formato RESPONSES (Tu formato específico)
+        // Nota: Agregamos las instrucciones de Fiorella directamente en el input
+        const promptFinal = `Eres Fiorella, asistente persuasiva de JRJMarket. 
+        Contexto: El cliente compró ${productos}. 
+        Pregunta del cliente: "${mensajeCliente}". 
+        REGLA: Si dice que NO, sé empática y trata de salvar la venta. 
+        Responde brevemente:`;
+
+        const resIA = await fetch('https://api.x.ai/v1/responses', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
+            headers: { 
+                'Authorization': `Bearer ${GROK_API_KEY}`, 
+                'Content-Type': 'application/json' 
+            },
             body: JSON.stringify({ 
-                model: "grok-beta", 
-                messages: [
-                    { role: "system", content: "Eres Fiorella, asistente de JRJMarket. Responde con calidez." },
-                    { role: "user", content: `Cliente compró ${cliente.datos_excel.Productos}. Dijo: ${mensajeCliente}. Responde:` }
-                ]
+                "model": "grok-4.20-reasoning", 
+                "input": promptFinal
             })
         });
 
         const dataIA = await resIA.json();
         
-        // LOG DE RESPUESTA IA
-        console.log("🤖 4. Respuesta Raw de Grok:", JSON.stringify(dataIA));
+        // 4. Extracción de respuesta según el formato de "responses"
+        // Normalmente este formato devuelve { "message": "texto" } o { "output": "texto" }
+        // Según tu curl, Grok responde en el campo "message" o directamente el texto.
+        const textoIA = dataIA.message || dataIA.output || (dataIA.choices && dataIA.choices[0].text);
 
-        const textoFinal = dataIA.choices?.[0]?.message?.content;
-        if (!textoFinal) {
-            console.log("❌ 5. Error: Grok no devolvió texto.");
+        if (!textoIA) {
+            console.log("❌ Error en formato Grok:", JSON.stringify(dataIA));
             return response.status(200).send("Error IA");
         }
-        console.log(`📝 5. Texto a enviar: "${textoFinal.substring(0, 40)}..."`);
 
-        // ENVÍO A WHATSAPP
-        const payload = { number: telefono, text: textoFinal };
-        console.log("📤 6. Payload para Evolution:", JSON.stringify(payload));
-
-        const resEnvio = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+        // 5. Envío a WhatsApp via Evolution
+        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
-            body: JSON.stringify(payload)
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            body: JSON.stringify({ 
+                number: telefono, 
+                text: textoIA.trim()
+            })
         });
-
-        const resWhaBody = await resEnvio.text();
-        
-        // LOG DE RESULTADO FINAL
-        console.log(`📡 7. Status Evolution: ${resEnvio.status}`);
-        console.log(`📄 8. Respuesta Evolution Raw: ${resWhaBody}`);
 
         return response.status(200).json({ success: true });
 
     } catch (e) {
-        console.error("🔥 ERROR CRÍTICO:", e.message);
-        return response.status(200).send("Crash");
+        console.error("🔥 Crash:", e.message);
+        return response.status(200).send(e.message);
     }
 };
