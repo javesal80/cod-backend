@@ -9,7 +9,7 @@ module.exports = async (request, response) => {
     if (request.method === 'OPTIONS') return response.status(200).end();
 
     const { 
-        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN, 
+        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN_DESPACHO, 
         SUPABASE_URL, SUPABASE_KEY 
     } = process.env;
 
@@ -49,7 +49,7 @@ module.exports = async (request, response) => {
         for (const msg of mensajes) {
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                 body: JSON.stringify({ number: cleanPhone, text: msg })
             });
             await new Promise(r => setTimeout(r, 1500));
