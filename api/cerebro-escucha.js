@@ -7,14 +7,14 @@ module.exports = async (req, res) => {
     
     if (req.method !== 'POST') return res.status(200).send('OK');
 
-    const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY } = process.env;
+    const { EVOLUTION_URL, EVOLUTION_TOKEN_DESPACHO, INSTANCE_DESPACHO, GROK_API_KEY } = process.env;
 
     const data = req.body?.data;
     if (!data?.message || data.key?.fromMe) return res.status(200).send('OK');
 
     const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
     const remoteJid = data.key?.remoteJid;
-    const instName = INSTANCE_NAME || "VitaeLAB";
+    const instName = INSTANCE_DESPACHO || "Despacho_JRJ";
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
 
     console.log(`📩 De: ${remoteJid} | Msg: ${clienteMsg}`);
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
         console.log("📤 Enviando respuesta...");
         const finalReq = await fetch(`${baseUrl}/message/sendText/${instName}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
             body: JSON.stringify({ number: remoteJid, text: textoFinal })
         });
 
