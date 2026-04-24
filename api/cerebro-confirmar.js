@@ -31,25 +31,23 @@ export default async function handler(request, response) {
             return response.status(200).json({ success: false, error: "Estructura inválida" });
         }
 
-        // 1. Limpieza de Teléfono
         let rawPhone = orderData["Teléfono"] || (orderData.shipping_address ? orderData.shipping_address.phone : "");
         let cleanPhone = String(rawPhone).replace(/\D/g, '');
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // 2. Mapeo de Variables
         const nombreCliente = orderData["Cliente"] || "Cliente";
         const productosString = orderData["Productos"] || "Productos JRJ";
         const ciudadDestino = orderData["Ciudad"] || "Ecuador";
 
-        // 3. Conexión con GitHub (CAMBIO PUNTUAL: api/productos.json)
-        console.log("📡 Conectando con GitHub para protocolos...");
+        // --- CONEXIÓN CON GITHUB (api/productos.json) ---
+        console.log(`📡 Conectando a GitHub: ${GITHUB_BASE}/api/productos.json`);
         let catalogo = { PRODUCTOS: [] };
         let promptMaestroData = { identidad: "Asistente de ventas", tono: "amable" };
 
         try {
             const [catRes, promptRes] = await Promise.all([
-                fetch(`${GITHUB_BASE}/api/productos.json`), // <--- RUTA CORREGIDA
+                fetch(`${GITHUB_BASE}/api/productos.json`),
                 fetch(`${GITHUB_BASE}/prompt-maestro-despacho.json`)
             ]);
 
@@ -59,12 +57,12 @@ export default async function handler(request, response) {
             if (promptRes.ok) promptMaestroData = await promptRes.json();
         } catch (e) { console.error("⚠️ Error de red en GitHub"); }
 
-        // 4. Búsqueda de Protocolo
         let infoProducto = "Información general de salud de JRJMarket.";
         const productosLower = productosString.toLowerCase();
         if (catalogo.PRODUCTOS && Array.isArray(catalogo.PRODUCTOS)) {
             for (const p of catalogo.PRODUCTOS) {
                 if (p.keywords && p.keywords.some(k => productosLower.includes(k.toLowerCase()))) {
+                    console.log(`🎯 Producto detectado: ${p.nombre}`);
                     const txtRes = await fetch(`${GITHUB_BASE}/data/${p.archivo}`);
                     if (txtRes.ok) infoProducto = await txtRes.text();
                     break;
@@ -72,12 +70,11 @@ export default async function handler(request, response) {
             }
         }
 
-        // 5. Construcción del Prompt
         const fullPrompt = `IDENTIDAD: ${JSON.stringify(promptMaestroData)}. INFO PRODUCTO: ${infoProducto}. CLIENTE: ${nombreCliente}. PRODUCTOS: ${productosString}. CIUDAD: ${ciudadDestino}. TAREA: Confirma pedido y pide referencia detallada de su casa para Servientrega.`;
 
-        // 6. Selección de Motor de IA (Respetando IA_PREFERIDA: Grok)
+        // --- SELECCIÓN DE IA (PRIORIDAD GROK/XAI) ---
         let respuestaIA = "";
-        const motor = IA_PREFERIDA || 'xai'; 
+        const motor = IA_PREFERIDA || 'xai';
         console.log(`🤖 Usando motor de IA: ${motor}`);
 
         if (motor === 'xai') {
@@ -90,7 +87,7 @@ export default async function handler(request, response) {
 
         if (!respuestaIA) throw new Error(`La IA (${motor}) no devolvió contenido.`);
 
-        // 7. Envío a WhatsApp
+        // --- ENVÍO A EVOLUTION API ---
         console.log("📤 Enviando a WhatsApp...");
         const sendRes = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
@@ -100,7 +97,6 @@ export default async function handler(request, response) {
 
         const finalData = await sendRes.json();
         console.log("✅ Proceso completado:", JSON.stringify(finalData));
-
         return response.status(200).json({ success: true });
 
     } catch (error) {
@@ -109,7 +105,7 @@ export default async function handler(request, response) {
     }
 }
 
-// --- FUNCIONES DE APOYO (AJUSTE PUNTUAL EN LLAMARXAI) ---
+// --- FUNCIONES DE APOYO (ESTRUCTURA GROK CORREGIDA) ---
 
 async function llamarGemini(prompt, key) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
@@ -130,20 +126,16 @@ async function llamarChatGPT(prompt, key) {
 }
 
 async function llamarXAI(prompt, key) {
-    // CAMBIO PUNTUAL: Ajuste de estructura para la API de xAI (Grok)
+    // ESTRUCTURA DE ENVÍO QUE FUNCIONA CON GROK
     const res = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${key}`, 
-            'Content-Type': 'application/json' 
-        },
+        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             model: "grok-beta", 
             messages: [
                 { role: "system", content: "Eres Fiorella, una asistente cálida y eficiente de JRJMarket." },
                 { role: "user", content: prompt } 
             ],
-            stream: false,
             temperature: 0.7
         })
     });
