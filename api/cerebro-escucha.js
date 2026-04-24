@@ -2,7 +2,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 module.exports = async (request, response) => {
     const { 
-        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN, 
+        EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN_DESPACHO, 
         SUPABASE_URL, SUPABASE_KEY, GROK_API_KEY 
     } = process.env;
 
@@ -57,7 +57,7 @@ module.exports = async (request, response) => {
         // 5. Envío a WhatsApp via Evolution
         await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
             body: JSON.stringify({ 
                 number: telefono, 
                 text: textoIA.trim()
