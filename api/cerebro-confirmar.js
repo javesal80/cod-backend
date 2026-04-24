@@ -11,20 +11,21 @@ export default async function handler(request, response) {
         INSTANCE_DESPACHO, 
         TOKEN_DESPACHO, 
         EVOLUTION_TOKEN, 
-        IA_PREFERIDA, 
+        IA_PROVIDER, // Usamos la que tienes en Vercel según imagen 33049d
         GEMINI_API_KEY, 
         OPENAI_API_KEY, 
-        XAI_API_KEY,
-        GITHUB_USER, 
-        GITHUB_REPO 
+        GROK_API_KEY  // Usamos la que tienes en Vercel según imagen 3304c1
     } = process.env;
 
     const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
-    const GITHUB_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main`;
+    
+    // Escribimos las rutas directas para evitar el error de 'undefined'
+    const user = "javesal80"; 
+    const repo = "cod-backend";
+    const GITHUB_BASE = `https://raw.githubusercontent.com/${user}/${repo}/main`;
 
     console.log("--- [CEREBRO] INICIO DE PROCESAMIENTO ---");
     const orderData = request.body;
-    console.log("Datos recibidos:", JSON.stringify(orderData));
 
     try {
         if (!orderData || (!orderData["Teléfono"] && !orderData.shipping_address)) {
@@ -40,7 +41,7 @@ export default async function handler(request, response) {
         const productosString = orderData["Productos"] || "Productos JRJ";
         const ciudadDestino = orderData["Ciudad"] || "Ecuador";
 
-        // --- CONEXIÓN CON GITHUB (api/productos.json) ---
+        // CONEXIÓN CON GITHUB (api/productos.json)
         console.log(`📡 Conectando a GitHub: ${GITHUB_BASE}/api/productos.json`);
         let catalogo = { PRODUCTOS: [] };
         let promptMaestroData = { identidad: "Asistente de ventas", tono: "amable" };
@@ -52,8 +53,6 @@ export default async function handler(request, response) {
             ]);
 
             if (catRes.ok) catalogo = await catRes.json();
-            else console.warn(`⚠️ No se encontró: ${GITHUB_BASE}/api/productos.json`);
-            
             if (promptRes.ok) promptMaestroData = await promptRes.json();
         } catch (e) { console.error("⚠️ Error de red en GitHub"); }
 
@@ -62,7 +61,6 @@ export default async function handler(request, response) {
         if (catalogo.PRODUCTOS && Array.isArray(catalogo.PRODUCTOS)) {
             for (const p of catalogo.PRODUCTOS) {
                 if (p.keywords && p.keywords.some(k => productosLower.includes(k.toLowerCase()))) {
-                    console.log(`🎯 Producto detectado: ${p.nombre}`);
                     const txtRes = await fetch(`${GITHUB_BASE}/data/${p.archivo}`);
                     if (txtRes.ok) infoProducto = await txtRes.text();
                     break;
@@ -70,25 +68,22 @@ export default async function handler(request, response) {
             }
         }
 
-        const fullPrompt = `IDENTIDAD: ${JSON.stringify(promptMaestroData)}. INFO PRODUCTO: ${infoProducto}. CLIENTE: ${nombreCliente}. PRODUCTOS: ${productosString}. CIUDAD: ${ciudadDestino}. TAREA: Confirma pedido y pide referencia detallada de su casa para Servientrega.`;
+        const fullPrompt = `IDENTIDAD: ${JSON.stringify(promptMaestroData)}. INFO PRODUCTO: ${infoProducto}. CLIENTE: ${nombreCliente}. PRODUCTOS: ${productosString}. CIUDAD: ${ciudadDestino}. TAREA: Confirma pedido y pide referencia detallada de su casa.`;
 
-        // --- SELECCIÓN DE IA (PRIORIDAD GROK/XAI) ---
         let respuestaIA = "";
-        const motor = IA_PREFERIDA || 'xai';
-        console.log(`🤖 Usando motor de IA: ${motor}`);
+        console.log(`🤖 Motor seleccionado: ${IA_PROVIDER}`);
 
-        if (motor === 'xai') {
-            respuestaIA = await llamarXAI(fullPrompt, XAI_API_KEY);
-        } else if (motor === 'openai') {
+        // RESPETAMOS TUS IFS DE SELECCIÓN
+        if (IA_PROVIDER === 'xai' || IA_PROVIDER === 'grok') {
+            respuestaIA = await llamarXAI(fullPrompt, GROK_API_KEY);
+        } else if (IA_PROVIDER === 'openai') {
             respuestaIA = await llamarChatGPT(fullPrompt, OPENAI_API_KEY);
-        } else if (motor === 'gemini') {
+        } else if (IA_PROVIDER === 'gemini') {
             respuestaIA = await llamarGemini(fullPrompt, GEMINI_API_KEY);
         }
 
-        if (!respuestaIA) throw new Error(`La IA (${motor}) no devolvió contenido.`);
+        if (!respuestaIA) throw new Error(`La IA (${IA_PROVIDER}) no devolvió contenido.`);
 
-        // --- ENVÍO A EVOLUTION API ---
-        console.log("📤 Enviando a WhatsApp...");
         const sendRes = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
@@ -105,7 +100,7 @@ export default async function handler(request, response) {
     }
 }
 
-// --- FUNCIONES DE APOYO (ESTRUCTURA GROK CORREGIDA) ---
+// --- FUNCIONES DE APOYO ---
 
 async function llamarGemini(prompt, key) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
@@ -126,17 +121,15 @@ async function llamarChatGPT(prompt, key) {
 }
 
 async function llamarXAI(prompt, key) {
-    // ESTRUCTURA DE ENVÍO QUE FUNCIONA CON GROK
     const res = await fetch('https://api.x.ai/v1/chat/completions', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             model: "grok-beta", 
             messages: [
-                { role: "system", content: "Eres Fiorella, una asistente cálida y eficiente de JRJMarket." },
+                { role: "system", content: "Eres Fiorella, una asistente cálida de JRJMarket." },
                 { role: "user", content: prompt } 
-            ],
-            temperature: 0.7
+            ]
         })
     });
     const data = await res.json();
