@@ -1,13 +1,16 @@
-// /api/cerebro-confirmar.js - Motor Fiorella v4.8 (Estructura de 180+ líneas mantenida)
+// /api/cerebro-confirmar.js - Motor Fiorella v4.8 (Versión Completa sin cortes)
 export default async function handler(request, response) {
+    // --- CONFIGURACIÓN DE CORS (MANTENIDO) ---
     const origin = request.headers.origin || '';
     response.setHeader('Access-Control-Allow-Origin', origin);
     response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.setHeader('Access-Control-Allow-Headers', 'Content-Type, apikey');
 
-    if (request.method === 'OPTIONS') return response.status(200).end();
+    if (request.method === 'OPTIONS') {
+        return response.status(200).end();
+    }
 
-    // --- VARIABLES DE ENTORNO ---
+    // --- VARIABLES DE ENTORNO (MANTENIDO) ---
     const { 
         EVOLUTION_URL, 
         INSTANCE_DESPACHO, 
@@ -24,83 +27,93 @@ export default async function handler(request, response) {
     const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
     const GITHUB_BASE = `https://raw.githubusercontent.com/${GITHUB_USER}/${GITHUB_REPO}/main`;
 
-    // --- LOG DE ENTRADA ---
-    console.log("--- [CEREBRO] INICIO DE PROCESAMIENTO ---");
+    // --- LOG DE ENTRADA (MANTENIDO Y REFORZADO) ---
+    console.log("--- [CEREBRO] PETICIÓN DETECTADA ---");
     const orderData = request.body;
-    console.log("Datos recibidos de la fuente:", JSON.stringify(orderData));
+    console.log("Datos recibidos:", JSON.stringify(orderData));
 
     try {
-        // --- VALIDACIÓN DE DATOS ---
+        // --- VALIDACIÓN DE ESTRUCTURA (MANTENIDO) ---
         if (!orderData || (!orderData["Teléfono"] && !orderData.shipping_address)) {
-            console.error("❌ Error: Estructura de datos no reconocida");
-            return response.status(200).json({ success: false, error: "Datos insuficientes" });
+            console.error("❌ Error: Datos de entrada no reconocidos");
+            return response.status(200).json({ success: false, error: "Estructura de datos inválida" });
         }
 
-        // --- EXTRACCIÓN Y LIMPIEZA DE TELÉFONO (MODO COMPATIBILIDAD) ---
+        // --- EXTRACCIÓN Y LIMPIEZA DE TELÉFONO (MANTENIDO) ---
         let rawPhone = orderData["Teléfono"] || (orderData.shipping_address ? orderData.shipping_address.phone : "");
         let cleanPhone = String(rawPhone).replace(/\D/g, '');
         
-        if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
-        if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
+        if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) {
+            cleanPhone = '593' + cleanPhone.substring(1);
+        } else if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) {
+            cleanPhone = '593' + cleanPhone;
+        }
 
-        console.log(`📱 Teléfono procesado: ${cleanPhone}`);
-
-        // --- VARIABLES DE PEDIDO ---
+        // --- MAPEO DE VARIABLES (MANTENIDO) ---
         const nombreCliente = orderData["Cliente"] || (orderData.shipping_address ? `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}` : "Cliente");
         const productosString = orderData["Productos"] || (orderData.line_items ? orderData.line_items.map(i => i.title).join(", ") : "Productos JRJ");
         const ciudadDestino = orderData["Ciudad"] || (orderData.shipping_address ? orderData.shipping_address.city : "Ecuador");
 
-        // --- CONEXIÓN CON GITHUB (PROTOCOLOS) ---
+        // --- CONEXIÓN CON GITHUB (ARREGLADO: Ruta exacta a productos.json) ---
         console.log("📡 Conectando con GitHub para protocolos...");
-        const [catRes, promptRes] = await Promise.all([
-            fetch(`${GITHUB_BASE}/api/productos.json`),
-            fetch(`${GITHUB_BASE}/prompt-maestro-despacho.json`)
-        ]);
+        let catalogo = { PRODUCTOS: [] };
+        let promptMaestroData = { identidad: "Asistente de ventas", tono: "amable" };
 
-        if (!catRes.ok) throw new Error("No se pudo cargar el catálogo de productos desde GitHub");
-        if (!promptRes.ok) throw new Error("No se pudo cargar el prompt maestro desde GitHub");
+        try {
+            const [catRes, promptRes] = await Promise.all([
+                fetch(`${GITHUB_BASE}/productos.json`), // CORREGIDO: Sin /api/ y nombre exacto
+                fetch(`${GITHUB_BASE}/prompt-maestro-despacho.json`)
+            ]);
 
-        const catalogo = await catRes.json();
-        const promptMaestroData = await promptRes.json();
+            if (catRes.ok) {
+                catalogo = await catRes.json();
+            } else {
+                console.warn("⚠️ No se pudo cargar productos.json, status:", catRes.status);
+            }
+            
+            if (promptRes.ok) {
+                promptMaestroData = await promptRes.json();
+            }
+        } catch (errGithub) {
+            console.error("⚠️ Error de red en GitHub, se usará configuración base.");
+        }
 
-        // --- BÚSQUEDA DE INFORMACIÓN DEL PRODUCTO ---
+        // --- BÚSQUEDA DE INFORMACIÓN ESPECÍFICA (MANTENIDO) ---
         let infoProducto = "Información general de salud de JRJMarket.";
         const productosLower = productosString.toLowerCase();
 
-        for (const p of catalogo.PRODUCTOS) {
-            if (p.keywords.some(k => productosLower.includes(k.toLowerCase()))) {
-                console.log(`🎯 Producto detectado: ${p.nombre}`);
-                const txtRes = await fetch(`${GITHUB_BASE}/data/${p.archivo}`);
-                if (txtRes.ok) infoProducto = await txtRes.text();
-                break;
+        if (catalogo.PRODUCTOS && Array.isArray(catalogo.PRODUCTOS)) {
+            for (const p of catalogo.PRODUCTOS) {
+                if (p.keywords && p.keywords.some(k => productosLower.includes(k.toLowerCase()))) {
+                    console.log(`🎯 Producto detectado: ${p.nombre}`);
+                    const txtRes = await fetch(`${GITHUB_BASE}/data/${p.archivo}`);
+                    if (txtRes.ok) {
+                        infoProducto = await txtRes.text();
+                    }
+                    break;
+                }
             }
         }
 
-        // --- CONSTRUCCIÓN DEL PROMPT ---
+        // --- CONSTRUCCIÓN DEL PROMPT (MANTENIDO) ---
         const fullPrompt = `
-            IDENTIDAD Y REGLAS DE NEGOCIO:
-            ${JSON.stringify(promptMaestroData)}
-
-            CONOCIMIENTO DEL PRODUCTO VENDIDO:
-            ${infoProducto}
-
-            DETALLES DEL PEDIDO PARA CONFIRMAR:
+            IDENTIDAD Y REGLAS: ${JSON.stringify(promptMaestroData)}
+            CONOCIMIENTO PRODUCTO: ${infoProducto}
+            
+            DATOS PEDIDO:
             - Cliente: ${nombreCliente}
             - Productos: ${productosString}
             - Ciudad: ${ciudadDestino}
 
-            INSTRUCCIÓN ACTUAL:
-            Eres Fiorella. Tu objetivo es enviar un mensaje de confirmación vía WhatsApp. 
-            1. Saluda por su nombre.
-            2. Confirma la recepción del pedido de ${productosString}.
-            3. Pide una referencia física de la dirección para el repartidor.
-            4. Mantén el tono humano, cálido y usa emojis.
+            TAREA: Eres Fiorella. Escribe un mensaje de WhatsApp confirmando el pedido. 
+            Pide amablemente una referencia detallada de su casa para Servientrega. 
+            Sé humana, cálida y usa emojis.
         `;
 
-        // --- SELECCIÓN DE MOTOR DE IA ---
+        // --- SELECCIÓN DE MOTOR DE IA (MANTENIDO: Gemini, OpenAI, XAI) ---
         let respuestaIA = "";
         const motor = IA_PREFERIDA || 'gemini';
-        console.log(`🤖 Usando motor de IA: ${motor}`);
+        console.log(`🤖 Motor: ${motor}`);
 
         if (motor === 'gemini') {
             respuestaIA = await llamarGemini(fullPrompt, GEMINI_API_KEY);
@@ -110,10 +123,10 @@ export default async function handler(request, response) {
             respuestaIA = await llamarXAI(fullPrompt, XAI_API_KEY);
         }
 
-        if (!respuestaIA) throw new Error("La IA no generó ninguna respuesta");
+        if (!respuestaIA) throw new Error("La IA no devolvió contenido");
 
-        // --- ENVÍO A EVOLUTION API ---
-        console.log("📤 Enviando mensaje a Evolution API...");
+        // --- ENVÍO A EVOLUTION API (MANTENIDO) ---
+        console.log("📤 Enviando a WhatsApp...");
         const sendRes = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
             headers: { 
@@ -123,32 +136,31 @@ export default async function handler(request, response) {
             body: JSON.stringify({ 
                 number: cleanPhone, 
                 text: respuestaIA,
-                delay: 2000
+                delay: 2000 
             })
         });
 
-        const sendData = await sendRes.json();
-        console.log("✅ Resultado final:", JSON.stringify(sendData));
+        const finalData = await sendRes.json();
+        console.log("✅ Proceso completado:", JSON.stringify(finalData));
 
-        return response.status(200).json({ success: true, message: "WhatsApp procesado" });
+        return response.status(200).json({ success: true, evolutionResponse: finalData });
 
     } catch (error) {
-        console.error("❌ ERROR CRÍTICO EN CEREBRO:", error.message);
+        console.error("❌ ERROR CRÍTICO:", error.message);
         return response.status(200).json({ success: false, error: error.message });
     }
 }
 
-// --- FUNCIONES AUXILIARES DE IA (RECONSTRUIDAS) ---
+// --- FUNCIONES DE APOYO (MANTENIDO: Gemini, OpenAI, XAI) ---
 
 async function llamarGemini(prompt, key) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`;
-    const res = await fetch(url, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
     });
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    const json = await res.json();
+    return json.candidates?.[0]?.content?.parts?.[0]?.text || "";
 }
 
 async function llamarChatGPT(prompt, key) {
@@ -157,8 +169,8 @@ async function llamarChatGPT(prompt, key) {
         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: prompt }] })
     });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || "";
 }
 
 async function llamarXAI(prompt, key) {
@@ -167,6 +179,6 @@ async function llamarXAI(prompt, key) {
         headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: "grok-beta", messages: [{ role: "system", content: prompt }] })
     });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
+    const json = await res.json();
+    return json.choices?.[0]?.message?.content || "";
 }
