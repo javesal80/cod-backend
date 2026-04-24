@@ -1,3 +1,9 @@
+// ... constantes arriba ...
+export default async function handler(request, response) {
+    console.log("🔔 [WEBHOOK] ¡ALGO LLEGÓ!");
+    console.log("📦 BODY:", JSON.stringify(request.body));
+    
+    // El resto de tu código igual...
 const { createClient } = require('@supabase/supabase-js');
 
 export default async function handler(request, response) {
