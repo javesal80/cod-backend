@@ -1,50 +1,35 @@
 const fs = require('fs');
 const path = require('path');
 
-const historialConversacion = {}; 
-
 module.exports = async (req, res) => {
-    console.log("--- 🏁 INICIO DE PROCESO ---");
-
+    // 1. Logs mínimos para no saturar pero saber qué pasa
+    console.log("--- 🏁 INICIO ---");
+    
     if (req.method !== 'POST') return res.status(200).send('OK');
 
-    const { 
-        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY 
-    } = process.env;
+    const { EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, GROK_API_KEY } = process.env;
 
     const data = req.body?.data;
     if (!data?.message || data.key?.fromMe) return res.status(200).send('OK');
 
     const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
     const remoteJid = data.key?.remoteJid;
-    const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
+    const instName = INSTANCE_NAME || "VitaeLAB";
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
 
-    // --- MEMORIA ---
-    if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
-    historialConversacion[remoteJid].push(`Cliente: ${clienteMsg}`);
-
-    // --- CATÁLOGO ---
-    let baseConocimiento = "";
-    try {
-        const txtPath = path.join(process.cwd(), 'api', 'combo-regeneracion.txt');
-        baseConocimiento = fs.existsSync(txtPath) ? fs.readFileSync(txtPath, 'utf8') : "Sin catálogo";
-    } catch (e) { console.log("❌ Error catálogo:", e.message); }
-
-    const inputGrok = `Eres Fiorella de JRJMarket. Trato de USTED. Persuasiva.
-    Catálogo: ${baseConocimiento}
-    Historial: ${historialConversacion[remoteJid].join("\n")}
-    Responde directo como Fiorella:`;
+    console.log(`📩 De: ${remoteJid} | Msg: ${clienteMsg}`);
 
     try {
-        // --- AVISO DE CONEXIÓN EN WHATSAPP ---
-        await fetch(`${baseUrl}/message/sendText/${instName}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ number: remoteJid, text: "⚙️ _Conectando con Grok Reasoning..._" })
-        });
+        // 2. Cargar catálogo con seguridad absoluta
+        let catálogo = "Asesora de bienestar JRJMarket. Trato de USTED.";
+        try {
+            const txtPath = path.join(process.cwd(), 'api', 'combo-regeneracion.txt');
+            if (fs.existsSync(txtPath)) catálogo = fs.readFileSync(txtPath, 'utf8');
+        } catch (e) { console.log("⚠️ Sin catálogo físico, usando base."); }
 
-        const resp = await fetch('https://api.x.ai/v1/responses', {
+        // 3. Llamada a Grok (Sin memoria compleja para evitar fallos de Vercel)
+        console.log("🧠 Conectando a Grok...");
+        const respIA = await fetch('https://api.x.ai/v1/responses', {
             method: 'POST',
             headers: { 
                 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
@@ -52,57 +37,41 @@ module.exports = async (req, res) => {
             },
             body: JSON.stringify({
                 "model": "grok-4.20-reasoning",
-                "input": inputGrok
+                "input": `Eres Fiorella de JRJMarket. Trato de USTED. Persuasiva. Catálogo: ${catálogo.substring(0, 1000)}. Cliente dice: "${clienteMsg}". Responde de forma cálida y corta:`
             })
         });
         
-        const json = await resp.json();
-
-        // Extracción del texto
-        let textoIA = "";
+        const jsonIA = await respIA.json();
+        
+        // 4. Extracción ultra-segura del texto (basado en tu log de éxito anterior)
+        let textoFinal = "";
         try {
-            const messageOutput = json.output?.find(o => o.type === 'message');
-            if (messageOutput?.content) {
-                textoIA = messageOutput.content.find(c => c.type === 'output_text')?.text || "";
-            }
-        } catch (err) { textoIA = ""; }
+            // Buscamos el contenido de texto dentro de la estructura de Grok
+            const msgObj = jsonIA.output?.find(o => o.type === 'message');
+            textoFinal = msgObj?.content?.find(c => c.type === 'output_text')?.text || "";
+        } catch (e) { textoFinal = ""; }
 
-        if (!textoIA) {
-            await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                body: JSON.stringify({ number: remoteJid, text: "❌ _Grok no devolvió texto válido._" })
-            });
-            return res.status(200).send('Error Grok');
+        if (!textoFinal) {
+            console.log("❌ Grok no dio texto. Raw:", JSON.stringify(jsonIA).substring(0, 100));
+            return res.status(200).send('IA Error');
         }
 
-        // --- AVISO DE RESPUESTA RECIBIDA EN WHATSAPP ---
-        await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        // Limpiar prefijos de la IA
+        textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
+
+        // 5. Envío a WhatsApp (Sin cascada compleja para asegurar entrega)
+        console.log("📤 Enviando respuesta...");
+        const finalReq = await fetch(`${baseUrl}/message/sendText/${instName}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ number: remoteJid, text: `✅ _Grok respondió con éxito._` })
+            body: JSON.stringify({ number: remoteJid, text: textoFinal })
         });
 
-        textoIA = textoIA.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
-
-        // --- ENVÍO CASCADA DE FIORELLA ---
-        let partes = textoIA.split('\n').filter(p => p.trim() !== "");
-        for (const parte of partes) {
-            await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                body: JSON.stringify({ number: remoteJid, text: parte })
-            });
-            await new Promise(r => setTimeout(r, 1000));
-        }
+        const status = await finalReq.text();
+        console.log(`✅ Fin. Evolution dijo: ${status.substring(0, 20)}`);
 
     } catch (error) { 
         console.log("🔥 ERROR:", error.message);
-        await fetch(`${baseUrl}/message/sendText/${instName}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ number: remoteJid, text: `⚠️ _Error técnico: ${error.message}_` })
-        });
     }
 
     return res.status(200).send('OK');
