@@ -11,24 +11,23 @@ export default async function handler(request, response) {
 
     const { 
         EVOLUTION_URL, INSTANCE_DESPACHO, TOKEN_DESPACHO, EVOLUTION_TOKEN, 
-        IA_PROVIDER, GEMINI_API_KEY, OPENAI_API_KEY, GROK_API_KEY,
-        GITHUB_USER, GITHUB_REPO, SUPABASE_URL, SUPABASE_KEY 
+        SUPABASE_URL, SUPABASE_KEY 
     } = process.env;
 
     const apikeyFinal = TOKEN_DESPACHO || EVOLUTION_TOKEN;
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-    
-    // Rutas de GitHub (Mantenidas directas para evitar errores)
-    const user = "javesal80"; 
-    const repo = "cod-backend";
-    const GITHUB_BASE = `https://raw.githubusercontent.com/${user}/${repo}/main`;
-
     const orderData = request.body;
 
-    try {
-        if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
+    // --- LOG 1: LLEGADA DESDE LA WEB ---
+    console.log("🚀 [INICIO] Datos recibidos del Excel/Landing");
 
-        // 1. Limpieza de Teléfono y Saludo con Energía (MANTENIDO)
+    try {
+        if (!orderData || !orderData["Teléfono"]) {
+            console.log("⚠️ [ERROR] No se recibió teléfono en el body");
+            return response.status(200).json({ success: false });
+        }
+
+        // 1. Limpieza de Teléfono y Saludo (MANTENIDO)
         let cleanPhone = String(orderData["Teléfono"]).replace(/\D/g, '');
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
@@ -36,9 +35,10 @@ export default async function handler(request, response) {
         const hora = new Date().toLocaleString("en-US", {timeZone: "America/Guayaquil", hour: 'numeric', hour12: false});
         let saludo = (hora >= 5 && hora < 12) ? "¡Muy buenos días! ☀️" : (hora >= 12 && hora < 19) ? "¡Buenas tardes! ✨" : "¡Hola, muy buenas noches! 🌙";
 
-        // --- 2. ADHERIR MEMORIA (NUEVO) ---
-        // Guardamos los datos del Excel en Supabase para que el Robot tenga referencia postventa
-        await supabase.from('memoria_clientes').upsert({
+        // --- LOG 2: GUARDADO EN MEMORIA ---
+        console.log(`💾 [SUPABASE] Intentando guardar memoria para: ${cleanPhone}`);
+        
+        const { error: errorSupa } = await supabase.from('memoria_clientes').upsert({
             telefono: cleanPhone,
             nombre: orderData["Cliente"],
             datos_excel: orderData,
@@ -46,25 +46,24 @@ export default async function handler(request, response) {
             ultima_interaccion: new Date()
         });
 
-        // 3. Conexión con GitHub para Protocolos (MANTENIDO)
-        let catalogo = { PRODUCTOS: [] };
-        try {
-            const catRes = await fetch(`${GITHUB_BASE}/api/productos.json`);
-            if (catRes.ok) catalogo = await catRes.json();
-        } catch (e) { console.error("Error GitHub"); }
+        if (errorSupa) {
+            console.error("❌ [SUPABASE ERROR]:", errorSupa.message);
+        } else {
+            console.log("✅ [SUPABASE] Datos guardados correctamente en la tabla.");
+        }
 
-        // 4. Lógica de Lista Vertical con Neuromarketing y Emoticones (MANTENIDO)
+        // 2. Formateo de Lista Vertical (MANTENIDO)
         let productosRaw = orderData["Productos"] || "";
         let listaVertical = productosRaw.split(',')
             .map(item => {
                 let nombre = item.trim();
-                if (nombre.toLowerCase().includes("kidgrow")) return `✅ ${nombre} (Crecimiento y Nutrición) 🚀`;
-                if (nombre.toLowerCase().includes("magnesio")) return `✅ ${nombre} (Bienestar y Energía) ✨`;
-                if (nombre.toLowerCase().includes("shilajit")) return `✅ ${nombre} (Vitalidad Natural) 🏔️`;
+                if (nombre.toLowerCase().includes("kidgrow")) return `✅ ${nombre} (Crecimiento) 🚀`;
+                if (nombre.toLowerCase().includes("magnesio")) return `✅ ${nombre} (Bienestar) ✨`;
+                if (nombre.toLowerCase().includes("shilajit")) return `✅ ${nombre} (Vitalidad) 🏔️`;
                 return `✅ ${nombre}`;
             }).join('\n');
 
-        // 5. Definición de los 4 Mensajes (MANTENIDO)
+        // 3. Los 4 Mensajes (MANTENIDO)
         const mensajes = [
             `${saludo} ${orderData["Cliente"]}. ¡Qué gusto saludarte! 👋`,
             `Estamos felices de procesar tu compra. Aquí tienes el resumen de tu pedido: 📦\n\n${listaVertical}`,
@@ -72,52 +71,29 @@ export default async function handler(request, response) {
             `¿Los datos son correctos para proceder con tu despacho? 😊`
         ];
 
-        // 6. Envío Secuencial con Delays (MANTENIDO)
+        // --- LOG 3: ENVÍO WHATSAPP ---
+        console.log(`📤 [WHATSAPP] Iniciando envío de los 4 mensajes a ${cleanPhone}...`);
+
         for (const msg of mensajes) {
-            await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+            const res = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': apikeyFinal },
                 body: JSON.stringify({ number: cleanPhone, text: msg })
             });
-            await new Promise(r => setTimeout(r, 2500));
+            
+            if (res.ok) {
+                console.log(`✅ Mensaje enviado OK`);
+            } else {
+                console.log(`❌ Error enviando mensaje: ${res.status}`);
+            }
+            await new Promise(r => setTimeout(r, 2000));
         }
 
+        console.log("🏁 [FIN] Proceso de confirmación terminado.");
         return response.status(200).json({ success: true });
 
     } catch (error) {
-        console.error("❌ ERROR:", error.message);
+        console.error("🔥 [CRASH CEREBRO-CONFIRMAR]:", error.message);
         return response.status(200).json({ error: error.message });
     }
-}
-
-// --- FUNCIONES IA (MANTENIDAS: GEMINI, OPENAI, GROK) ---
-async function llamarXAI(prompt, key) {
-    const res = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            model: "grok-beta", 
-            messages: [{ role: "system", content: "Eres Fiorella, asistente de JRJMarket. Persuasiva, cálida y servicial." }, { role: "user", content: prompt }]
-        })
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
-}
-
-async function llamarGemini(prompt, key) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-    });
-    const data = await res.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-}
-
-async function llamarChatGPT(prompt, key) {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST', headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: "gpt-4o-mini", messages: [{ role: "system", content: prompt }] })
-    });
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content || "";
 }
