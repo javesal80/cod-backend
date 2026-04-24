@@ -9,95 +9,72 @@ module.exports = async (request, response) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const body = request.body;
 
-    console.log("-----------------------------------------");
-    console.log("🚀 [PASO 1] WEBHOOK RECIBIDO");
+    console.log("--- INICIO DE PROCESO ---");
 
     if (!body?.data?.message || body.data.key.fromMe) {
-        console.log("⏭️ [LOG] Mensaje omitido (es propio o sin texto)");
-        return response.status(200).send("OK");
+        return response.status(200).send("Ignorado");
     }
 
     const telefono = body.data.key.remoteJid.replace('@s.whatsapp.net', '');
     const mensajeCliente = (body.data.message.conversation || body.data.message.extendedTextMessage?.text || "").trim();
-    
-    console.log(`👤 [CLIENTE]: ${telefono}`);
-    console.log(`💬 [MENSAJE]: "${mensajeCliente}"`);
+
+    console.log(`1. 📞 Cliente: ${telefono} | Dijo: "${mensajeCliente}"`);
 
     try {
-        // BUSCAR EN SUPABASE
-        const { data: cliente, error: errorSupa } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
-        
-        if (errorSupa || !cliente) {
-            console.log("❌ [ERROR SUPABASE]: No se encontró memoria para este número.");
-            return response.status(200).send("No memo");
+        // BUSCAR MEMORIA
+        const { data: cliente } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
+        if (!cliente) {
+            console.log("❌ 2. Memoria: No encontrada en Supabase");
+            return response.status(200).send("Sin memoria");
         }
+        console.log(`✅ 2. Memoria: Encontrada (${cliente.nombre})`);
 
-        console.log("✅ [PASO 2] MEMORIA RECUPERADA:", cliente.nombre);
-
-        // PREPARAR LLAMADA A IA
-        const promptIA = `Eres Fiorella. El cliente compró ${cliente.datos_excel.Productos} y dice: "${mensajeCliente}". Responde con calidez y neuromarketing.`;
-        
-        console.log("🧠 [PASO 3] ENVIANDO A GROK...");
-
-        const gResponse = await fetch("https://api.x.ai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${GROK_API_KEY}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                "model": "grok-beta",
-                "messages": [
-                    { "role": "system", "content": "Eres Fiorella, asistente de JRJMarket." },
-                    { "role": "user", "content": promptIA }
-                ],
-                "temperature": 0.7
+        // LLAMADA A GROK
+        console.log("🧠 3. Llamando a Grok...");
+        const resIA = await fetch('https://api.x.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                model: "grok-beta", 
+                messages: [
+                    { role: "system", content: "Eres Fiorella, asistente de JRJMarket. Responde con calidez." },
+                    { role: "user", content: `Cliente compró ${cliente.datos_excel.Productos}. Dijo: ${mensajeCliente}. Responde:` }
+                ]
             })
         });
 
-        const gData = await gResponse.json();
+        const dataIA = await resIA.json();
         
-        // --- LOG DE RESPUESTA DE IA ---
-        console.log("🤖 [GROK RESPONSE]:", JSON.stringify(gData));
+        // LOG DE RESPUESTA IA
+        console.log("🤖 4. Respuesta Raw de Grok:", JSON.stringify(dataIA));
 
-        if (!gData.choices || !gData.choices[0]) {
-            console.log("❌ [ERROR IA]: Grok no devolvió texto.");
-            return response.status(200).send("IA Error");
+        const textoFinal = dataIA.choices?.[0]?.message?.content;
+        if (!textoFinal) {
+            console.log("❌ 5. Error: Grok no devolvió texto.");
+            return response.status(200).send("Error IA");
         }
-
-        const textoIA = gData.choices[0].message.content;
-        console.log(`📝 [TEXTO GENERADO]: "${textoIA.substring(0, 50)}..."`);
+        console.log(`📝 5. Texto a enviar: "${textoFinal.substring(0, 40)}..."`);
 
         // ENVÍO A WHATSAPP
-        console.log("📤 [PASO 4] ENVIANDO A EVOLUTION API...");
-        
-        const payloadWha = {
-            "number": telefono,
-            "text": textoIA,
-            "delay": 1000,
-            "linkPreview": true
-        };
+        const payload = { number: telefono, text: textoFinal };
+        console.log("📤 6. Payload para Evolution:", JSON.stringify(payload));
 
-        console.log("📦 [PAYLOAD WHATSAPP]:", JSON.stringify(payloadWha));
-
-        const resEvolution = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "apikey": EVOLUTION_TOKEN
-            },
-            body: JSON.stringify(payloadWha)
+        const resEnvio = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            body: JSON.stringify(payload)
         });
 
-        const resWhaText = await resEvolution.text();
-        console.log(`📡 [STATUS EVOLUTION]: ${resEvolution.status}`);
-        console.log(`📄 [RESPUESTA EVOLUTION]: ${resWhaText}`);
+        const resWhaBody = await resEnvio.text();
+        
+        // LOG DE RESULTADO FINAL
+        console.log(`📡 7. Status Evolution: ${resEnvio.status}`);
+        console.log(`📄 8. Respuesta Evolution Raw: ${resWhaBody}`);
 
-        console.log("🏁 [FIN] PROCESO COMPLETADO");
         return response.status(200).json({ success: true });
 
-    } catch (error) {
-        console.error("🔥 [CRASH CRÍTICO]:", error.message);
+    } catch (e) {
+        console.error("🔥 ERROR CRÍTICO:", e.message);
         return response.status(200).send("Crash");
     }
 };
