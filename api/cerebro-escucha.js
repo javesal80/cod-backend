@@ -9,11 +9,12 @@ export default async function handler(request, response) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const body = request.body;
 
-    // --- LOG DE ENTRADA ---
-    console.log("📥 [WEBHOOK] Señal recibida de Evolution API");
+    // --- LOG 1: ENTRADA ---
+    console.log("🚀 [WEBHOOK] Petición recibida desde Evolution");
 
+    // 1. Filtro de seguridad: Solo mensajes entrantes del cliente
     if (!body.data || !body.data.message || body.data.key.fromMe) {
-        console.log("⏭️ [LOG] Mensaje omitido (es un mensaje saliente o sin texto)");
+        console.log("⏭️ [LOG] Mensaje omitido (es saliente o no tiene contenido)");
         return response.status(200).send("OK");
     }
 
@@ -23,92 +24,93 @@ export default async function handler(request, response) {
     console.log(`💬 [LOG] Mensaje de: ${telefono} | Texto: "${mensajeCliente}"`);
 
     try {
-        // --- BUSCAR EN MEMORIA ---
-        console.log(`🔍 [LOG] Buscando en Supabase al cliente: ${telefono}`);
-        const { data: clientes, error: errSupabase } = await supabase
-            .from('memoria_clientes')
-            .select('*')
-            .eq('telefono', telefono);
-
-        if (errSupabase) {
-            console.error("❌ [LOG ERROR Supabase]:", errSupabase.message);
-            return response.status(200).send("Error");
-        }
-
-        const cliente = clientes && clientes.length > 0 ? clientes[0] : null;
+        // --- LOG 2: BASE DE DATOS ---
+        console.log(`🔍 [LOG] Buscando en Supabase memoria para: ${telefono}`);
+        
+        // 2. BUSCAR EN MEMORIA (Qué compró y qué dirección dio)
+        const { data: cliente } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
 
         if (!cliente) {
-            console.log("⚠️ [LOG] El número no existe en la tabla de despacho (memoria_clientes)");
-            return response.status(200).send("No es despacho");
+            console.log("⚠️ [LOG] Cliente NO encontrado en memoria de despacho.");
+            return response.status(200).send("No es cliente de despacho");
         }
 
-        console.log("✅ [LOG] Cliente hallado en memoria. Pedido:", cliente.datos_excel.Productos);
+        console.log("✅ [LOG] Cliente localizado. Datos Excel recuperados.");
 
         const datos = cliente.datos_excel;
         const direccionActual = datos.Dirección || "";
+        
+        // 3. LÓGICA DE VALIDACIÓN DE DIRECCIÓN (Calles y Referencia)
         const tieneEstructuraVálida = /( y | entre | junto a | frente a | mz | villa | casa | lote | piso )/i.test(direccionActual);
 
         let promptIA = "";
 
         // CASO A: EL CLIENTE CONFIRMA
         if (mensajeCliente.includes("si") || mensajeCliente.includes("correcto") || mensajeCliente.includes("ok")) {
-            console.log("🤖 [LOG] Rama: Confirmación de datos");
+            console.log("🤖 [IA] Rama: Confirmación de pedido.");
             if (!tieneEstructuraVálida) {
-                promptIA = `Eres Fiorella. El cliente confirmó el pedido, pero su dirección "${direccionActual}" está incompleta. Tu tarea es decirle exactamente esto: '¡Excelente! Por favor ayudenos con el lugar de entrega solo tengo esto: ${direccionActual}. Para una entrega más eficaz ayúdame con la calle secundaria o una referencia detallada de tu casa.' Usa emojis.`;
+                promptIA = `Eres Fiorella. El cliente confirmó el pedido, pero su dirección "${direccionActual}" está incompleta. Tu tarea es decirle exactamente esto con tu calidez: '¡Excelente! Por favor ayudenos con el lugar de entrega solo tengo esto: ${direccionActual}. Para una entrega más eficaz ayúdame con la calle secundaria o una referencia detallada de tu casa.' Usa emojis de ubicación y casa.`;
             } else {
-                promptIA = `Eres Fiorella. El cliente confirmó y la dirección está completa. Agradece y confirma despacho inmediato con emojis de felicidad.`;
+                promptIA = `Eres Fiorella. El cliente confirmó y su dirección parece buena. Agradece con calidez y dile que procedes al despacho inmediato para que le llegue pronto. Usa emojis de camión y felicidad.`;
             }
         } 
         
-        // CASO B: EL CLIENTE YA NO QUIERE (REVENDEDORA)
+        // CASO B: EL CLIENTE YA NO QUIERE (Revendedora con Neuromarketing)
         else if (mensajeCliente.includes("no") || mensajeCliente.includes("cancela") || mensajeCliente.includes("deseo")) {
-            console.log("🤖 [LOG] Rama: Intento de cancelación");
-            promptIA = `Eres Fiorella. El cliente dice que ya no desea el pedido de ${datos.Productos}. Tu misión es NO rendirte pero sin ser pesada. Aplica neuromarketing, pregunta con empatía qué pasó, recuérdale los beneficios de salud de forma persuasiva y trata de salvar la venta.`;
+            console.log("🤖 [IA] Rama: Reventa/Cancelación.");
+            promptIA = `Eres Fiorella. El cliente dice que ya no desea el pedido de ${datos.Productos}. Tu misión es NO rendirte pero sin ser pesada. Aplica neuromarketing: 1. Pregunta con mucha empatía qué sucedió o si tiene alguna duda con el beneficio del producto. 2. Recuérdale brevemente por qué ${datos.Productos} es bueno para su salud. 3. Ayúdale, no solo quieras vender. Trata de salvar la venta con calidez.`;
         }
 
-        // CASO C: SOPORTE / OTROS
+        // CASO C: SOPORTE / PREGUNTAS / POSTVENTA
         else {
-            console.log("🤖 [LOG] Rama: Otros / Soporte");
-            promptIA = `Eres Fiorella. Responde cálidamente a: "${mensajeCliente}" basándote en que compró ${datos.Productos}.`;
+            console.log("🤖 [IA] Rama: Otros/Soporte.");
+            promptIA = `Eres Fiorella. El cliente pregunta: "${mensajeCliente}". Usa los datos de su compra (${datos.Productos}) para responder con autoridad y calidez. Mantén siempre la persuasión y los emoticons que te caracterizan.`;
         }
 
-        // --- LLAMADA A GROK ---
-        console.log("🧠 [LOG] Solicitando respuesta a Grok...");
-        const resIA = await fetch('https://api.x.ai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${GROK_API_KEY}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                model: "grok-beta", 
-                messages: [
-                    { role: "system", content: "Eres Fiorella, asistente de JRJMarket. Persuasiva, cálida y usas muchos emoticons." },
-                    { role: "user", content: promptIA }
-                ]
-            })
-        });
+        // --- LOG 3: LLAMADA IA ---
+        console.log("🧠 [LOG] Llamando a Grok...");
 
-        const dataIA = await resIA.json();
-        const textoFinal = dataIA.choices?.[0]?.message?.content;
+        // 4. GENERAR RESPUESTA CON GROK
+        const respuestaIA = await llamarGrok(promptIA, GROK_API_KEY);
 
-        if (!textoFinal) {
-            console.error("❌ [LOG ERROR IA]: Grok no devolvió texto.");
-            return response.status(200).send("Error IA");
-        }
+        console.log("📤 [LOG] Enviando respuesta a WhatsApp.");
 
-        console.log("📤 [LOG] Enviando respuesta final a WhatsApp");
-
-        // --- ENVÍO FINAL ---
-        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+        // 5. ENVIAR A WHATSAPP
+        const resWhats = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ number: telefono, text: textoFinal })
+            body: JSON.stringify({ number: telefono, text: respuestaIA })
         });
 
+        if (resWhats.ok) {
+            console.log("🎯 [LOG] Mensaje enviado con éxito.");
+        } else {
+            console.error("❌ [LOG ERROR WhatsApp] Status:", resWhats.status);
+        }
+
+        // Actualizamos la última interacción en la memoria
         await supabase.from('memoria_clientes').update({ ultima_interaccion: new Date() }).eq('telefono', telefono);
 
         return response.status(200).json({ success: true });
 
     } catch (error) {
-        console.error("🔥 [LOG CRASH]:", error.message);
+        console.error("🔥 [CRASH LOG]:", error.message);
         return response.status(200).send("OK");
     }
+}
+
+async function llamarGrok(prompt, key) {
+    const res = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            model: "grok-beta", 
+            messages: [
+                { role: "system", content: "Eres Fiorella, asistente cálida y persuasiva de JRJMarket. Usas emoticons, validas logística y aplicas neuromarketing." },
+                { role: "user", content: prompt }
+            ]
+        })
+    });
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || "Disculpe, ¿me podría repetir? 😊";
 }
