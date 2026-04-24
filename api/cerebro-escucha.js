@@ -9,22 +9,36 @@ module.exports = async (request, response) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
     const body = request.body;
 
-    // 1. FILTRO DE ENTRADA (Igual al bot funcional)
+    console.log("-----------------------------------------");
+    console.log("🚀 [PASO 1] WEBHOOK RECIBIDO");
+
     if (!body?.data?.message || body.data.key.fromMe) {
+        console.log("⏭️ [LOG] Mensaje omitido (es propio o sin texto)");
         return response.status(200).send("OK");
     }
 
     const telefono = body.data.key.remoteJid.replace('@s.whatsapp.net', '');
     const mensajeCliente = (body.data.message.conversation || body.data.message.extendedTextMessage?.text || "").trim();
+    
+    console.log(`👤 [CLIENTE]: ${telefono}`);
+    console.log(`💬 [MENSAJE]: "${mensajeCliente}"`);
 
     try {
-        // 2. RECUPERAR MEMORIA
-        const { data: cliente } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
-        if (!cliente) return response.status(200).send("No cliente");
+        // BUSCAR EN SUPABASE
+        const { data: cliente, error: errorSupa } = await supabase.from('memoria_clientes').select('*').eq('telefono', telefono).single();
+        
+        if (errorSupa || !cliente) {
+            console.log("❌ [ERROR SUPABASE]: No se encontró memoria para este número.");
+            return response.status(200).send("No memo");
+        }
 
-        const productos = cliente.datos_excel.Productos;
+        console.log("✅ [PASO 2] MEMORIA RECUPERADA:", cliente.nombre);
 
-        // 3. FORMATO DE ENVÍO A GROK (Estructura exacta de Fiorella)
+        // PREPARAR LLAMADA A IA
+        const promptIA = `Eres Fiorella. El cliente compró ${cliente.datos_excel.Productos} y dice: "${mensajeCliente}". Responde con calidez y neuromarketing.`;
+        
+        console.log("🧠 [PASO 3] ENVIANDO A GROK...");
+
         const gResponse = await fetch("https://api.x.ai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -34,45 +48,56 @@ module.exports = async (request, response) => {
             body: JSON.stringify({
                 "model": "grok-beta",
                 "messages": [
-                    {
-                        "role": "system",
-                        "content": "Eres Fiorella, una asistente de ventas cálida, persuasiva y experta en salud de JRJMarket. Tu objetivo es ayudar al cliente y salvar ventas usando neuromarketing. Usa emoticons y un tono amable."
-                    },
-                    {
-                        "role": "user",
-                        "content": `Contexto: El cliente compró ${productos}. \nPregunta del cliente: "${mensajeCliente}" \n\nResponde como Fiorella:`
-                    }
+                    { "role": "system", "content": "Eres Fiorella, asistente de JRJMarket." },
+                    { "role": "user", "content": promptIA }
                 ],
-                "temperature": 0.7,
-                "stream": false
+                "temperature": 0.7
             })
         });
 
         const gData = await gResponse.json();
         
-        // 4. EXTRACCIÓN DEL CONTENIDO (Formato Grok)
-        const textoIA = gData.choices[0].message.content;
+        // --- LOG DE RESPUESTA DE IA ---
+        console.log("🤖 [GROK RESPONSE]:", JSON.stringify(gData));
 
-        // 5. FORMATO DE RESPUESTA A EVOLUTION
+        if (!gData.choices || !gData.choices[0]) {
+            console.log("❌ [ERROR IA]: Grok no devolvió texto.");
+            return response.status(200).send("IA Error");
+        }
+
+        const textoIA = gData.choices[0].message.content;
+        console.log(`📝 [TEXTO GENERADO]: "${textoIA.substring(0, 50)}..."`);
+
+        // ENVÍO A WHATSAPP
+        console.log("📤 [PASO 4] ENVIANDO A EVOLUTION API...");
+        
+        const payloadWha = {
+            "number": telefono,
+            "text": textoIA,
+            "delay": 1000,
+            "linkPreview": true
+        };
+
+        console.log("📦 [PAYLOAD WHATSAPP]:", JSON.stringify(payloadWha));
+
         const resEvolution = await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "apikey": EVOLUTION_TOKEN
             },
-            body: JSON.stringify({
-                "number": telefono,
-                "text": textoIA,
-                "delay": 1200, // Simula escritura
-                "linkPreview": true
-            })
+            body: JSON.stringify(payloadWha)
         });
 
-        console.log(`✅ Respuesta enviada. Status: ${resEvolution.status}`);
+        const resWhaText = await resEvolution.text();
+        console.log(`📡 [STATUS EVOLUTION]: ${resEvolution.status}`);
+        console.log(`📄 [RESPUESTA EVOLUTION]: ${resWhaText}`);
+
+        console.log("🏁 [FIN] PROCESO COMPLETADO");
         return response.status(200).json({ success: true });
 
     } catch (error) {
-        console.error("🔥 Error en formato Fiorella:", error.message);
-        return response.status(200).send("Error");
+        console.error("🔥 [CRASH CRÍTICO]:", error.message);
+        return response.status(200).send("Crash");
     }
 };
