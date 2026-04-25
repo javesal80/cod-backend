@@ -23,6 +23,12 @@ module.exports = async (req, res) => {
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
+      // Fechas dinámicas
+    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+    const hoy = new Date();
+    const mañana = dias[(hoy.getDay() + 1) % 5];
+    const pasado = dias[(hoy.getDay() + 2) % 5];
+    
    // --- GESTIÓN DE MEMORIA ---
     if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
     historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
@@ -93,12 +99,7 @@ module.exports = async (req, res) => {
     CONOCIMIENTO ACTUAL: ${baseConocimiento}
     HISTORIAL RECIENTE: ${JSON.stringify(historialConversacion[remoteJid])}`;
              
-     // Fechas dinámicas
-    const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
-    const hoy = new Date();
-    const mañana = dias[(hoy.getDay() + 1) % 7];
-    const pasado = dias[(hoy.getDay() + 2) % 7];
-
+      
     // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
     baseConocimiento = infoEspecifica 
