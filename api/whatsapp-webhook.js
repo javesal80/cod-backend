@@ -48,7 +48,11 @@ module.exports = async (req, res) => {
                 }
             }
         }
-    } catch (e) {
+    } 
+    
+    
+    
+    catch (e) {
         console.error("Error en el enrutador de productos:", e.message);
     }
 
@@ -71,8 +75,7 @@ module.exports = async (req, res) => {
     
     REGLAS: Formato CASCADA, usa puntos suspensivos (...), sé muy humana.`;
 
-    try {
-        let textoFinal = "";
+    let textoFinal = "";
         
     // --- GESTIÓN DE MEMORIA ---
     if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
@@ -93,7 +96,8 @@ module.exports = async (req, res) => {
         const prodData = fs.existsSync(productosPath) ? fs.readFileSync(productosPath, 'utf8') : "";
         const txtData = fs.existsSync(txtPath) ? fs.readFileSync(txtPath, 'utf8') : "";
         baseConocimiento = `CATÁLOGO:\n${prodData}\n\nDETALLES TÉCNICOS:\n${txtData}`;
-    } catch (e) { console.error("Error carga conocimiento:", e.message); }
+    } 
+    catch (e) { console.error("Error carga conocimiento:", e.message); }
 
 // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
