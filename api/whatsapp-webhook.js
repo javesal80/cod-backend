@@ -92,8 +92,7 @@ module.exports = async (req, res) => {
     
     CONOCIMIENTO ACTUAL: ${baseConocimiento}
     HISTORIAL RECIENTE: ${JSON.stringify(historialConversacion[remoteJid])}`;
-    REGLAS: Formato CASCADA, usa puntos suspensivos (...), sé muy humana.`;
-         
+             
      // Fechas dinámicas
     const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const hoy = new Date();
