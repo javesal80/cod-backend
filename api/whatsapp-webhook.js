@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
-            const msgLower = clienteMsg.toLowerCase();
+            const msgLower = clienteMsg.toLowerCase().trim();
             
             // Buscamos si alguna keyword del JSON está en el mensaje del cliente
             const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
@@ -77,8 +77,10 @@ module.exports = async (req, res) => {
     // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
     baseConocimiento = infoEspecifica 
-        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nUSA ESTA INFO:\n${infoEspecifica}`
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO:\n${infoEspecifica}`
+        : "AVISO: No sé qué producto quiere el cliente. SALUDA Y PREGUNTA educadamente qué producto vio (Combo o KidGrow). NO INVENTES PRECIOS.";
         : "El cliente está saludando o preguntando algo general. Responde con calidez, sé amable, indaga qué le duele y no pidas el nombre todavía.";
+     
     
     const masterPrompt = `
     IDENTIDAD: Eres Fiorella de JRJMarket, asesora experta en bienestar. No eres una vendedora común, eres una amiga que ayuda. Trato de USTED siempre.
@@ -198,6 +200,12 @@ module.exports = async (req, res) => {
                 .filter(l => l !== "")
                 .slice(0, 3); // Límite de seguridad
 
+            // Si el primer mensaje es muy corto (un saludo), lo pegamos al segundo
+            if (partes.length > 1 && partes[0].length < 30) {
+            partes[1] = partes[0] + " " + partes[1];
+            partes.shift(); // Borra el saludo solo
+            }
+            
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
