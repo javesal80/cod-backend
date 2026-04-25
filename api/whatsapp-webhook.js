@@ -45,10 +45,13 @@ module.exports = async (req, res) => {
     let baseConocimiento = "";
     
     try {
-        const productosPath = path.join(process.cwd(), 'api', 'productos.json');
+        const productosPath = path.join(__dirname, 'productos.json');
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             const msgLower = clienteMsg.toLowerCase().trim();
+
+        // Forzamos un log que SIEMPRE salga
+            console.log("==> Buscando keyword:", msgLower);
             
             // Buscamos si alguna keyword del JSON está en el mensaje del cliente
             const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
