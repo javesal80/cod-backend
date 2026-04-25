@@ -86,17 +86,7 @@ module.exports = async (req, res) => {
     const mañana = dias[(hoy.getDay() + 1) % 7];
     const pasado = dias[(hoy.getDay() + 2) % 7];
 
-    // --- CARGA DE CONOCIMIENTO ---
-    try {
-        const productosPath = path.join(process.cwd(), 'api', 'productos.json');
-        const txtPath = path.join(process.cwd(), 'api', 'combo-regeneracion.txt');
-        const prodData = fs.existsSync(productosPath) ? fs.readFileSync(productosPath, 'utf8') : "";
-        const txtData = fs.existsSync(txtPath) ? fs.readFileSync(txtPath, 'utf8') : "";
-        baseConocimiento = `CATÁLOGO:\n${prodData}\n\nDETALLES TÉCNICOS:\n${txtData}`;
-    } 
-    catch (e) { console.error("Error carga conocimiento:", e.message); }
-
-// --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
+    // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
     baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
