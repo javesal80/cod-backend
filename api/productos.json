@@ -1,8 +1,14 @@
 {
   "PRODUCTOS": [
     {
+      "nombre": "Combo Multicolágeno & Oil Oregano",
       "keywords": ["oregano", "orégano", "colageno", "colágeno", "combo", "regeneracion", "biotina", "gastritis", "hongo", "cansado", "dolor", "piel", "articulacion", "energia"],
       "archivo": "combo-regeneracion.txt"
+    },
+    {
+      "nombre": "KidGrow Crecimiento",
+      "keywords": ["kidgrow", "larginina", "crecimiento", "estatura", "niños"],
+      "archivo": "kidgrow.txt"
     }
   ]
 }
