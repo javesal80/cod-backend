@@ -158,25 +158,25 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // --- FORMATEO CASCADA Y ENVÍO ---
-            let cascada = textoFinal
-                .replace(/([.!?])\s+(?=[A-Z¿¡])|([.!?])$/gm, "$1\n") 
-                .replace(/\.\.\.\s*/g, "...\n")           
-                .split('\n').map(l => l.trim()).filter(l => l !== "").join('\n');
+           // --- FORMATEO CASCADA FLEXIBLE ---
+let partes = textoFinal
+    .split('\n') // Dividimos por los saltos de línea que la IA decida
+    .map(l => l.trim())
+    .filter(l => l !== "");
 
-            // Aquí aplicamos el límite: solo enviamos las primeras 3 partes
-            const partes = cascada.slice(0, 3);
-           
-            for (const parte of partes) {
-                await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                    body: JSON.stringify({ number: remoteJid, text: parte })
-                });
-                await new Promise(r => setTimeout(r, 1500));
-            }
-        }
-    } catch (error) { console.error("Error Maestro:", error.message); }
+// Enviamos lo que la IA generó (sea 1, 2 o 3 partes), pero nunca más de 3
+const totalAEnviar = partes.slice(0, 3); 
 
-    return res.status(200).send('OK');
+for (const parte of totalAEnviar) {
+    await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+        body: JSON.stringify({ number: remoteJid, text: parte })
+    });
+    
+    // Si hay más de un mensaje, esperamos un poquito entre ellos
+    if (totalAEnviar.length > 1) {
+        await new Promise(r => setTimeout(r, 1400));
+    }
+}
 };
