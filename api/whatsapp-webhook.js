@@ -158,25 +158,24 @@ module.exports = async (req, res) => {
                 });
             }
 
-           // --- FORMATEO CASCADA FLEXIBLE ---
-let partes = textoFinal
-    .split('\n') // Dividimos por los saltos de línea que la IA decida
-    .map(l => l.trim())
-    .filter(l => l !== "");
+   // --- CASCADA FLEXIBLE (1 A 3 MENSAJES) ---
+            let partes = textoFinal
+                .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
+                .split('\n')
+                .map(l => l.trim())
+                .filter(l => l !== "")
+                .slice(0, 3); // Límite de seguridad
 
-// Enviamos lo que la IA generó (sea 1, 2 o 3 partes), pero nunca más de 3
-const totalAEnviar = partes.slice(0, 3); 
+            for (const parte of partes) {
+                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    body: JSON.stringify({ number: remoteJid, text: parte })
+                });
+                if (partes.length > 1) await new Promise(r => setTimeout(r, 1400));
+            }
+        }
+    } catch (error) { console.error("Error flujo:", error.message); }
 
-for (const parte of totalAEnviar) {
-    await fetch(`${baseUrl}/message/sendText/${instName}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-        body: JSON.stringify({ number: remoteJid, text: parte })
-    });
-    
-    // Si hay más de un mensaje, esperamos un poquito entre ellos
-    if (totalAEnviar.length > 1) {
-        await new Promise(r => setTimeout(r, 1400));
-    }
-}
-};
+    return res.status(200).send('OK');
+}; 
