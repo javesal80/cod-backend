@@ -46,6 +46,7 @@ module.exports = async (req, res) => {
     
     try {
         const productosPath = path.join(__dirname, 'productos.json');
+        console.log("==> Intentando leer JSON en:", productosPath);
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             const msgLower = clienteMsg.toLowerCase().trim();
@@ -59,8 +60,10 @@ module.exports = async (req, res) => {
             );
 
             if (productoEncontrado) {
+                console.log("==> Producto Detectado:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
+                console.log("==> Intentando leer TXT en:", txtPath);
                 
                 if (fs.existsSync(txtPath)) {
                     infoEspecifica = fs.readFileSync(txtPath, 'utf8');
