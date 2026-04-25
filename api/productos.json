@@ -6,9 +6,9 @@
       "archivo": "combo-regeneracion.txt"
     },
     {
-      "nombre": "KidGrow Crecimiento",
-      "keywords": ["kidgrow", "larginina", "crecimiento", "estatura", "niños"],
-      "archivo": "kidgrow.txt"
+  "nombre": "KidGrow",
+  "keywords": ["niños", "crecer", "estatura", "hijo", "hija", "kidgrow", "concentración", "estudio"],
+  "archivo": "kidgrow.txt"
     }
   ]
 }
