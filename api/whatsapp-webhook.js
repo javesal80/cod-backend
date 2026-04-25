@@ -5,7 +5,6 @@ const path = require('path');
 const historialConversacion = {};
 
 module.exports = async (req, res) => {
-    console.log("--- 🏁 INICIO PROCESO FIORELLA MAESTRA ---");
     if (req.method !== 'POST') return res.status(200).send('OK');
 
     const { 
@@ -24,6 +23,56 @@ module.exports = async (req, res) => {
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
+// --- 1. BUSCAR QUÉ PRODUCTO CORRESPONDE ---
+    let infoEspecifica = "";
+    let nombreProducto = "";
+    
+    try {
+        const productosPath = path.join(process.cwd(), 'api', 'productos.json');
+        if (fs.existsSync(productosPath)) {
+            const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
+            
+            // Buscamos si alguna keyword del JSON está en el mensaje del cliente
+            const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
+                p.keywords.some(k => clienteMsg.includes(k.toLowerCase()))
+            );
+
+            if (productoEncontrado) {
+                nombreProducto = productoEncontrado.nombre;
+                const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
+                
+                if (fs.existsSync(txtPath)) {
+                    infoEspecifica = fs.readFileSync(txtPath, 'utf8');
+                    console.log(`🔎 Match encontrado: ${nombreProducto}. Usando: ${productoEncontrado.archivo}`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error en el enrutador de productos:", e.message);
+    }
+
+    // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
+    // Si no encontró match, usamos un mensaje genérico o el catálogo base
+    let baseConocimiento = infoEspecifica 
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
+        : "El cliente está saludando o preguntando algo general. Responde con calidez sobre JRJMarket.";
+
+    const masterPrompt = `
+    IDENTIDAD: Eres Fiorella de JRJMarket (Asesora de bienestar). Trato de USTED.
+    PERSONALIDAD: Empática, sutil, experta en neuroventas.
+    
+    ESTRATEGIA: 
+    - Si el conocimiento especifica un producto, enfócate en sus beneficios para el dolor del cliente.
+    - Si no hay un producto claro, indaga qué le preocupa de su salud hoy.
+    
+    CONOCIMIENTO ACTUAL:
+    ${baseConocimiento}
+    
+    REGLAS: Formato CASCADA, usa puntos suspensivos (...), sé muy humana.`;
+
+    try {
+        let textoFinal = "";
+        
     // --- GESTIÓN DE MEMORIA ---
     if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
     historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
@@ -45,6 +94,12 @@ module.exports = async (req, res) => {
         baseConocimiento = `CATÁLOGO:\n${prodData}\n\nDETALLES TÉCNICOS:\n${txtData}`;
     } catch (e) { console.error("Error carga conocimiento:", e.message); }
 
+// --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
+    // Si no encontró match, usamos un mensaje genérico o el catálogo base
+    let baseConocimiento = infoEspecifica 
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
+        : "El cliente está saludando o preguntando algo general. Responde con calidez sobre JRJMarket.";
+    
     const masterPrompt = `
     IDENTIDAD: Eres Fiorella de JRJMarket, asesora experta en bienestar. No eres una vendedora común, eres una amiga que ayuda. Trato de USTED siempre.
     
