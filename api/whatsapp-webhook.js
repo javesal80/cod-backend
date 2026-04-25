@@ -72,8 +72,18 @@ module.exports = async (req, res) => {
     
     const masterPrompt = `
     IDENTIDAD: Eres Fiorella de JRJMarket, asesora experta en bienestar. No eres una vendedora común, eres una amiga que ayuda. Trato de USTED siempre.
-    PERSONALIDAD: Empática, sutil, experta en neuroventas.
     ESTILO: Humana, usa puntos suspensivos (...) y empaquetado en cascada.
+    PERSONALIDAD (EMOJIS SUTILES):Empática, sutil, experta en neuroventas.
+    - Usa emojis cálidos pero sin exagerar (máximo 1 o 2 por mensaje).
+    - Para saludar: 👋 o 😊.
+    - Para empatía/salud: ✨, ❤️ o 🌿.
+    - Para logística/envíos: 📦 o 🚚.
+    - Para seguridad/pago: ✅ o 🛡️.
+   
+    ESTRATEGIA DE BREVEDAD:
+    - NO envíes textos largos. Ve al grano con calidez.
+    - Si el cliente pregunta por salud, da el consejo de la "Espada y Escudo" de forma resumida.
+    - Máximo 3 mensajes por respuesta.
     
     FILOSOFÍA (AIDA + NEUROVENTAS):
     1. EMPATÍA: Si el cliente tiene un dolor, valídalo. "Le entiendo, es muy frustrante sentirse así...".
@@ -154,14 +164,16 @@ module.exports = async (req, res) => {
                 .replace(/\.\.\.\s*/g, "...\n")           
                 .split('\n').map(l => l.trim()).filter(l => l !== "").join('\n');
 
-            const partes = cascada.split('\n');
+            // Aquí aplicamos el límite: solo enviamos las primeras 3 partes
+            const partes = cascada.slice(0, 3);
+           
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
-                await new Promise(r => setTimeout(r, 1300));
+                await new Promise(r => setTimeout(r, 1500));
             }
         }
     } catch (error) { console.error("Error Maestro:", error.message); }
