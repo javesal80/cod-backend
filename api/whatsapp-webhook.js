@@ -78,7 +78,6 @@ module.exports = async (req, res) => {
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
     baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO:\n${infoEspecifica}`
-        : "AVISO: No sé qué producto quiere el cliente. SALUDA Y PREGUNTA educadamente qué producto vio (Combo o KidGrow). NO INVENTES PRECIOS.";
         : "El cliente está saludando o preguntando algo general. Responde con calidez, sé amable, indaga qué le duele y no pidas el nombre todavía.";
      
     
