@@ -23,6 +23,11 @@ module.exports = async (req, res) => {
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
+   // --- GESTIÓN DE MEMORIA ---
+    if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
+    historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
+    if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
+    
 // --- 1. BUSCAR QUÉ PRODUCTO CORRESPONDE ---
     let infoEspecifica = "";
     let nombreProducto = "";
@@ -32,6 +37,7 @@ module.exports = async (req, res) => {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
+            const msgLower = clienteMsg.toLowerCase();
             
             // Buscamos si alguna keyword del JSON está en el mensaje del cliente
             const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
@@ -48,48 +54,39 @@ module.exports = async (req, res) => {
                 }
             }
         }
-    } 
-    
-    
-    
-    catch (e) {
+    } catch (e) {
         console.error("Error en el enrutador de productos:", e.message);
     }
 
     // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
     baseConocimiento = infoEspecifica 
-        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
-        : "El cliente está saludando o preguntando algo general. Responde con calidez sobre JRJMarket.";
-
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nUSA ESTA INFO:\n${infoEspecifica}`
+        : "El cliente está saludando o preguntando algo general. Responde con calidez, sé amable, indaga qué le duele y no pidas el nombre todavía.";
     const masterPrompt = `
-    IDENTIDAD: Eres Fiorella de JRJMarket (Asesora de bienestar). Trato de USTED.
+    IDENTIDAD: Eres Fiorella de JRJMarket (Asesora de bienestar). Asesora de bienestar y AMIGA. Trato de USTED.
     PERSONALIDAD: Empática, sutil, experta en neuroventas.
+    ESTILO: Humana, usa puntos suspensivos (...) y empaquetado en cascada.
     
     ESTRATEGIA: 
+    - No seas vendedora de catálogo. Sé la amiga que da el consejo justo.
+    - Explica que no hay local por seguridad (vacunas/extorsiones) pero que el Pago Contra Entrega protege al cliente.
+    - Envío GRATIS en su primera compra.
     - Si el conocimiento especifica un producto, enfócate en sus beneficios para el dolor del cliente.
-    - Si no hay un producto claro, indaga qué le preocupa de su salud hoy.
+    - Si no hay un producto claro, indaga qué le preocupa de su salud hoy y aconcejale un producto que tengamos.
     
     CONOCIMIENTO ACTUAL:
     ${baseConocimiento}
     
     REGLAS: Formato CASCADA, usa puntos suspensivos (...), sé muy humana.`;
-
-    let textoFinal = "";
-        
-    // --- GESTIÓN DE MEMORIA ---
-    if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
-    historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
-    if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
-
-    // Fechas dinámicas
+         
+     // Fechas dinámicas
     const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const hoy = new Date();
     const mañana = dias[(hoy.getDay() + 1) % 7];
     const pasado = dias[(hoy.getDay() + 2) % 7];
 
     // --- CARGA DE CONOCIMIENTO ---
-    let baseConocimiento = "";
     try {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         const txtPath = path.join(process.cwd(), 'api', 'combo-regeneracion.txt');
