@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
             
             // Buscamos si alguna keyword del JSON está en el mensaje del cliente
             const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
-                p.keywords.some(k => clienteMsg.includes(k.toLowerCase()))
+                p.keywords.some(k => msgLower.includes(k.toLowerCase()))
             );
 
             if (productoEncontrado) {
@@ -91,7 +91,8 @@ module.exports = async (req, res) => {
     2. MEMORIA ACTIVA: Revisa lo que el cliente ya te dijo. Si ya te contó que le duele el estómago, NO le vuelvas a preguntar "¿Qué le preocupa?", si no contesta recuerda cual fue la ultima pregunta y trata de que te conteste ara seguir la conversacón. 
     3. BREVEDAD HUMANA: No mandes más de 2 o 3 mensajes. Si el cliente no responde, no insistas con la misma pregunta, recuerda lo ultimo dicho y trata de recobrar el hilo de la conversación.
     4. HILO LÓGICO: Siempre manten la memoria de la conversación, siempre debes mantener el hilo de la conversación
-
+    5. Si el cliente menciona un producto, saluda y dale la info de inmediato, no des vueltas.
+    
      REGLA CRÍTICA DE PRODUCTO:
     - Si el sistema te dice que "No sé qué producto quiere", NO inventes productos ni precios.
     - En ese caso, di algo como: "¡Hola! Qué gusto saludarle... 😊 Con gusto le ayudo, pero ¿me podría decir en qué producto está interesado o qué malestar quiere tratar? Así le doy la información exacta.. y de acuerdo a esa información busco en los productos cual le puede servir.. ✨"
