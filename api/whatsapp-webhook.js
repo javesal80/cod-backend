@@ -32,8 +32,13 @@ module.exports = async (req, res) => {
    // --- GESTIÓN DE MEMORIA ---
     if (!historialConversacion[remoteJid]) historialConversacion[remoteJid] = [];
     historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
+    // Limitamos la memoria para que no se confunda con cosas muy viejas (max 10 mensajes)
     if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
-    
+    // Creamos el texto de "memoria" para enviárselo a la IA
+    const contextoMemoria = historialConversacion[remoteJid]
+    .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
+    .join('\n');
+
 // --- 1. BUSCAR QUÉ PRODUCTO CORRESPONDE ---
     let infoEspecifica = "";
     let nombreProducto = "";
@@ -137,6 +142,7 @@ module.exports = async (req, res) => {
     baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
         : "El cliente está saludando o preguntando algo general. Responde con calidez sobre JRJMarket.";
+
     
     
     try {
