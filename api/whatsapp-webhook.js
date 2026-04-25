@@ -97,7 +97,7 @@ module.exports = async (req, res) => {
 
 // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
-    let baseConocimiento = infoEspecifica 
+    baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nDETALLES TÉCNICOS:\n${infoEspecifica}`
         : "El cliente está saludando o preguntando algo general. Responde con calidez sobre JRJMarket.";
     
