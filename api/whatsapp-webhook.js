@@ -222,7 +222,7 @@ if (!textoFinal.includes('?')) {
         headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             model: "grok-4.20-reasoning", 
-            input: `Eres Fiorella de JRJMarket. La conversación hasta ahora fue:\n${contextoMemoria}\nFiorella acaba de decir: "${textoFinal}"\n\nEscribe UNA sola pregunta corta y natural para continuar la conversación, coherente con lo que se habló. Solo la pregunta, nada más.`
+            "input": masterPrompt + `\nCliente dice: "${clienteMsg}"\nResponde como Fiorella. OBLIGATORIO: tu respuesta debe terminar con una pregunta directa y coherente con la conversación. Si no termina con "?", la respuesta es incorrecta.` 
         })
     });
     const jsonPregunta = await respPregunta.json();
