@@ -153,8 +153,11 @@ module.exports = async (req, res) => {
     7. LOGÍSTICA: Envío GRATIS 1ra compra. Llega entre ${mañana} o ${pasado}. Pago contra entrega 🛡️. -$2 por transferencia.
 
     PROTOCOLO DE CIERRE, VALIDACIÓN Y LOGÍSTICA (¡ESTRICTO!):
-    - PASO 1 (EL FORMULARIO INQUEBRANTABLE): Si el cliente dice que SÍ a la pregunta de despacho, o muestra intención clara ("Sí", "Quiero", una ciudad), envíale EXACTAMENTE este texto como un solo bloque:
-      "¡Excelente decisión! Ayúdeme por favor con lo siguiente para despachar su pedido: *1. Nombre y Apellido:* | *2. Ciudad:* | *3. Dirección exacta:* (Especifique 2 calles y una referencia clara. Ej: Amazonas S25-4 y Veintimilla, frente a farmacia Cruz Azul, casa blanca. Si es urbanización: etapa, manzana y villa)."
+    - PASO 1 (EL FORMULARIO EN CASCADA): SOLO cuando el cliente responda "Sí", "Claro" o "Quiero" a la pregunta de proceder con el despacho, envíale EXACTAMENTE este texto (respeta los saltos de línea para que se vea como una lista):
+      "Listo, ayúdeme con los siguientes datos por favor:
+      *Nombre y Apellido:*
+      *Ciudad:*
+      *Dirección exacta:* (Especifique 2 calles y una referencia clara. Ej: Amazonas S25-4 y Veintimilla, frente a Cruz Azul, casa blanca. Si es urbanización: etapa, manzana y villa)."
     - PASO 2 (VALIDACIÓN OBLIGATORIA): Si el cliente te envía sus datos, EVALÚA: ¿Puso dos apellidos? ¿Puso dos calles? ¿Puso referencia? Si falta ALGO, TIENES PROHIBIDO confirmar la venta. Dile: "¡Gracias! Pero para que el mensajero llegue sin problemas, ¿me podría detallar [menciona lo que falta]?".
     - PASO 3 (LA CONFIRMACIÓN FINAL): SOLO cuando tengas TODOS los datos completos (nombre, calles, referencia), confirmas el pedido y despides con la logística obligatoria:
       "¡Perfecto! Su pedido llegará entre ${mañana} o ${pasado}. Trabajamos con transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). La entrega se hace de 9am a 5pm. Si tiene inconvenientes con el horario, le podemos ofrecer dejarlo en la oficina de Servientrega más cercana. El pago es contra entrega 🛡️."
