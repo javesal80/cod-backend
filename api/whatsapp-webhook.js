@@ -70,31 +70,9 @@ module.exports = async (req, res) => {
         console.error("Error leyendo memoria:", e.message);
     }
 
-    // --- DETECCIÓN DE INTENCIÓN Y ESTADOS (¡CORREGIDO: ANTES DE LLAMAR A LA IA!) ---
+// --- 1. BUSCAR PRODUCTO (PERSISTENTE) ---
+    // (Lo hacemos primero para saber si tenemos un producto cargado antes de evaluar la intención)
     const msgLower = clienteMsg.toLowerCase().trim();
-    
-    // Si no estamos cerrando la venta aún, evaluamos si quiere precio
-    if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
-        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
-        if (intencionCompra) etapaActual = "CALIENTE";
-    }
-    
-    // De Caliente a Cierre
-    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|despacho|enviar/i.test(msgLower)) etapaActual = "CIERRE";
-    
-    // EL FIX DEL BUCLE: Si estamos en cierre y se despide, lo mandamos a postventa ANTES de hablar con la IA
-    if (etapaActual === "CIERRE" && /gracias|listo|ok|perfecto|muy amable/i.test(msgLower)) etapaActual = "POSTVENTA";
-
-    // --- GUARDADO DE HISTORIAL ---
-    const esPrimerMensaje = historialConversacion_arr.length === 0;
-    historialConversacion_arr.push({ role: "user", content: clienteMsg });
-    if (historialConversacion_arr.length > 20) historialConversacion_arr = historialConversacion_arr.slice(-20);
-
-    const contextoMemoria = historialConversacion_arr
-        .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
-        .join('\n');
-
-    // --- BUSCAR PRODUCTO (PERSISTENTE) ---
     let infoEspecifica = "";
     let nombreProducto = "";
     const productoKey = `prod:${cleanJid}`;
@@ -123,8 +101,33 @@ module.exports = async (req, res) => {
     }
 
     const baseConocimiento = infoEspecifica 
-       ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
-        : "⚠️ ALERTA: EL CLIENTE AÚN NO HA MENCIONADO NINGÚN PRODUCTO NI DOLOR. Tu único objetivo en este turno es saludarlo (si es el primer mensaje) y preguntarle en qué producto está interesado para poder activar el conocimiento.";
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
+        : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio, dile amablemente: 'Con gusto le ayudo con la información y precios, ¿me podría indicar en qué producto está interesado? ✨'";
+
+    // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS ---
+    if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
+        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
+        // EL FIX: Solo salta a CALIENTE si ya sabemos de qué producto está hablando
+        if (intencionCompra && nombreProducto !== "") {
+            etapaActual = "CALIENTE";
+        }
+    }
+    
+    // De Caliente a Cierre
+    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|despacho|enviar/i.test(msgLower)) etapaActual = "CIERRE";
+    
+    // De Cierre a Postventa (El Fix del Bucle)
+    if (etapaActual === "CIERRE" && /gracias|listo|ok|perfecto|muy amable/i.test(msgLower)) etapaActual = "POSTVENTA";
+
+    // --- 3. GUARDADO DE HISTORIAL ---
+    const esPrimerMensaje = historialConversacion_arr.length === 0;
+    historialConversacion_arr.push({ role: "user", content: clienteMsg });
+    if (historialConversacion_arr.length > 20) historialConversacion_arr = historialConversacion_arr.slice(-20);
+
+    const contextoMemoria = historialConversacion_arr
+        .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
+        .join('\n');
+
     
     // --- MASTER PROMPT (FUNNEL INTELIGENTE Y HUMANO) ---
     const masterPrompt = `
