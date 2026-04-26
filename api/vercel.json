@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/whatsapp-webhook.js": {
+      "includeFiles": "api/*.txt"
+    }
+  }
+}
