@@ -177,7 +177,7 @@ module.exports = async (req, res) => {
             textoFinal = jsonIA.choices?.[0]?.message?.content || "";
         }
 
-            if (textoFinal) {
+        if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
 
             // 1. EL SALVAVIDAS DE NEUROVENTAS: Si por algún motivo la IA no generó el '?',
@@ -232,7 +232,12 @@ module.exports = async (req, res) => {
                 });
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1000));
             }
-        }
+        } // Fin del if (textoFinal)
+
+    } catch (error) { 
+        // ESTE ES EL CATCH QUE FALTABA
+        console.error("Error flujo general:", error.message); 
+    }
 
     return res.status(200).send('OK');
 };
