@@ -31,9 +31,14 @@ module.exports = async (req, res) => {
     historialConversacion[remoteJid].push({ role: "user", content: clienteMsg });
     if (historialConversacion[remoteJid].length > 10) historialConversacion[remoteJid].shift();
     
-    const contextoMemoria = historialConversacion[remoteJid]
-        .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
-        .join('\n');
+    // Historial desde Evolution API (viene en el webhook)
+const mensajesAnteriores = data.messageContext?.quotedMessage || null;
+const contextoMemoria = historialConversacion[remoteJid]
+    .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
+    .join('\n');
+
+// Detectar si es primer mensaje
+const esPrimerMensaje = historialConversacion[remoteJid].length <= 1;
 
     let infoEspecifica = "";
     let nombreProducto = "";
@@ -82,7 +87,8 @@ module.exports = async (req, res) => {
     ESTILO: Humana, usa puntos suspensivos (...), emoticons para no dar una conversación muy plana y que sea mas entendible y mejor estructurada para el cliente y tiene empaquetado en cascada.
     TU MISIÓN: descubrir la necesidad del cliente para ofrecerle la solución exacta.
     TU OBJETIVO SUPREMO: Mantener viva la conversación. Nunca despaches al cliente.
-    CONTINUIDAD: Lee el historial. Si el cliente ya te dijo algo, úsalo. No repitas saludos si ya saludaste.
+    CONTINUIDAD: Lee el historial al final de este prompt. Si el historial tiene más de 1 mensaje, PROHIBIDO saludar de nuevo. Continúa la conversación desde donde quedó.
+    ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - puedes saludar' : 'NO - PROHIBIDO saludar, continúa el hilo'}.
     IMPORTANTE: Si el cliente dice Comprar, Quiero comprar o ya dice que desea el producto, saludas e inicias la venta la fase de cierre (nombre dirección y eso); Si El cliente acaba de preguntar por ${nombreProducto || 'un producto'}. 
     SALUDA y DALE la información del producto la información no mas de 3 mensajes de texto, y envia un cuarto mensaje con una pregunta abierta indagando si necesita más info o necesita conocer algo en específico, siempre una pregunta que mantenga el interes y mantenga la conversación persuasiva.
     Usa esta información para responder de inmediato: 
