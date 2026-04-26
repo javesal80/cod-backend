@@ -214,6 +214,22 @@ BREVEDAD: Da la info del producto de forma humana, no como lista, y luego lanza 
 
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
+
+// SI NO TERMINA EN PREGUNTA, PEDIRLE A GROK QUE AGREGUE UNA
+if (!textoFinal.includes('?')) {
+    const respPregunta = await fetch('https://api.x.ai/v1/responses', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            model: "grok-4.20-reasoning", 
+            input: `Eres Fiorella de JRJMarket. La conversación hasta ahora fue:\n${contextoMemoria}\nFiorella acaba de decir: "${textoFinal}"\n\nEscribe UNA sola pregunta corta y natural para continuar la conversación, coherente con lo que se habló. Solo la pregunta, nada más.`
+        })
+    });
+    const jsonPregunta = await respPregunta.json();
+    const msgPregunta = jsonPregunta.output?.find(o => o.type === 'message');
+    const preguntaIA = msgPregunta?.content?.find(c => c.type === 'output_text')?.text?.trim();
+    if (preguntaIA) textoFinal = textoFinal + "\n\n" + preguntaIA;
+}
             historialConversacion[remoteJid].push({ role: "assistant", content: textoFinal });
 
             // --- NOTIFICACIÓN DE VENTA ---
