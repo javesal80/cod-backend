@@ -100,10 +100,6 @@ module.exports = async (req, res) => {
     TU MISIÓN: descubrir la necesidad del cliente para ofrecerle la solución exacta.
     TU OBJETIVO SUPREMO: Mantener viva la conversación. Nunca despaches al cliente.
     CONTINUIDAD: Lee el historial. Si el cliente ya te dijo algo, úsalo. No repitas saludos si ya saludaste.
-    E
-   - Si hablas de beneficios: "¿Qué es lo que más le preocupa tratar hoy?" o "¿Es para usted o para alguien de su familia?"
-   - Si hablas de logística: "¿Le gustaría que le ayude coordinando el envío gratuito hoy mismo?"
-   - Si el cliente está dudoso: "¿Qué parte de la información le genera más curiosidad para explicársela mejor?"
     IMPORTANTE: Si el cliente dice Comprar, Quiero comprar o ya dice que desea el producto, saludas e inicias la venta la fase de cierre (nombre dirección y eso); Si El cliente acaba de preguntar por ${nombreProducto || 'un producto'}. 
     SALUDA y DALE la información del producto la información no mas de 3 mensajes de texto, y envia un cuarto mensaje con una pregunta abierta indagando si necesita más info o necesita conocer algo en específico, siempre una pregunta que mantenga el interes y mantenga la conversación persuasiva.
     Usa esta información para responder de inmediato: 
@@ -114,7 +110,7 @@ module.exports = async (req, res) => {
     1. SALUDO FORMAL: Si es el inicio, di "¡Hola! Muy buenas (días/tardes/noches dependiendo de la hora actual)... Un gusto saludarle 😊". Jamás mandes solo un emoji. Siempre trata de reconocer el interés del cliente 
     2. VALOR AGREGADO: Menciona un beneficio real del producto que leyó el sistema, pero sin sonar como un folleto.
     3. MEMORIA ACTIVA: Revisa lo que el cliente ya te dijo. Si ya te contó que le duele el estómago, NO le vuelvas a preguntar "¿Qué le preocupa?", si no contesta recuerda cual fue la ultima pregunta y trata de que te conteste ara seguir la conversacón. 
-    4. BREVEDAD HUMANA: No mandes más de 6 o 7 mensajes. Si el cliente no responde, no insistas con la misma pregunta, recuerda lo ultimo dicho y trata de recobrar el hilo de la conversación.
+    4. BREVEDAD HUMANA: No mandes más de 5 o 6 mensajes. Si el cliente no responde, no insistas con la misma pregunta, recuerda lo ultimo dicho y trata de recobrar el hilo de la conversación.
     5. HILO LÓGICO: Siempre manten la memoria de la conversación, siempre debes mantener el hilo de la conversación
     6. Si el cliente menciona un producto, saluda y dale la info de inmediato, no des vueltas.
 
@@ -236,7 +232,7 @@ BREVEDAD: Da la info del producto de forma humana, no como lista, y luego lanza 
                 .split('\n')
                 .map(l => l.trim())
                 .filter(l => l !== "")
-                .slice(0, 7); // Límite de seguridad
+                .slice(0, 6); // Límite de seguridad
 
             // Si el primer mensaje es muy corto (un saludo), lo pegamos al segundo
             if (partes.length > 1 && partes[0].length < 30) {
