@@ -104,10 +104,14 @@ module.exports = async (req, res) => {
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio, dile amablemente: 'Con gusto le ayudo con la información y precios, ¿me podría indicar en qué producto está interesado? ✨'";
 
-    // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS ---
+   // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS ---
+    // Extraemos el último mensaje del cliente del historial para no olvidar si pidió precio antes
+    const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
+    const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
+
     if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
-        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
-        // EL FIX: Solo salta a CALIENTE si ya sabemos de qué producto está hablando
+        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
+        // EL FIX: Salta a CALIENTE si quiere precio (ahora o en el mensaje anterior) Y ya sabemos el producto
         if (intencionCompra && nombreProducto !== "") {
             etapaActual = "CALIENTE";
         }
@@ -118,7 +122,7 @@ module.exports = async (req, res) => {
     
     // De Cierre a Postventa (El Fix del Bucle)
     if (etapaActual === "CIERRE" && /gracias|listo|ok|perfecto|muy amable/i.test(msgLower)) etapaActual = "POSTVENTA";
-
+    
     // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
@@ -148,9 +152,9 @@ module.exports = async (req, res) => {
     2. ETAPA TIBIO: 
        - Acción: Conecta ingredientes con su dolor. Si tiene dudas técnicas, responde con paciencia como humana.
        - Transición: Solo cuando resolvió dudas: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
-    3. ETAPA CALIENTE: 
-       - Acción: Presenta 1 unidad y vende el combo ("Aproveche la súper oferta del segundo a mitad de precio, se la recomiendo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ.
-       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
+    3. ETAPA CALIENTE:
+       - Acción: Presenta 1 unidad y vende el combo ("Aproveche la súper oferta del segundo a mitad de precio, se la recomiendo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ. No enfríes la venta.
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA Y NINGUNA OTRA: "¿Cuál desearía? Le recomiendo la promoción de 2 unidades, es muy buena para obtener mejores resultados. ¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
     4. ETAPA CIERRE: 
        - Acción 1: Si aceptó el envío, envía EXACTAMENTE este texto (respeta saltos):
          "Listo, ayúdeme con los siguientes datos por favor:
@@ -216,7 +220,7 @@ module.exports = async (req, res) => {
             
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
-                    textoFinal += " ¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨";
+                    textoFinal += " ¿Cuál desearía? Le recomiendo la promoción de 2 unidades, es muy buena para obtener mejores resultados. ¿Desea que se lo enviemos y empiece a disfrutar de los beneficios? 📦✨";
                 } else {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
