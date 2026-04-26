@@ -60,18 +60,26 @@ module.exports = async (req, res) => {
             );
             
             if (productoEncontrado) {
-                console.log("==> Producto Detectado:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
-                console.log("==> Intentando leer TXT en:", txtPath);
-                console.log("==> Leyendo contenido de:", txtPath);
                 
+                console.log("==> Leyendo contenido de:", txtPath);
+
                 if (fs.existsSync(txtPath)) {
-                    infoEspecifica = fs.readFileSync(txtPath, 'utf8');
-                    console.log(`🔎 Match encontrado: ${nombreProducto}. Usando: ${productoEncontrado.archivo}`);
+                    // Leemos como buffer y convertimos a string manualmente
+                    const buffer = fs.readFileSync(txtPath);
+                    infoEspecifica = buffer.toString('utf-8');
+                    
+                    if (infoEspecifica.length > 10) {
+                        console.log("==> ÉXITO TOTAL: Caracteres leídos:", infoEspecifica.length);
+                    } else {
+                        console.log("==> AVISO: El archivo está vacío o es muy corto");
+                    }
+                } else {
+                    console.log("==> ERROR: El archivo no existe en la ruta física");
                 }
             }
-        }
+            
     // SI NO HAY INFO ESPECÍFICA, FORZAMOS A FIORELLA A PREGUNTAR
         baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nUSA ESTA INFO PARA VENDER:\n${infoEspecifica}`
