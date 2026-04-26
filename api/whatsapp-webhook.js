@@ -177,9 +177,6 @@ module.exports = async (req, res) => {
             textoFinal = jsonIA.choices?.[0]?.message?.content || "";
         }
 
-        if (textoFinal) {
-            textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
-
             if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
 
@@ -236,9 +233,6 @@ module.exports = async (req, res) => {
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1000));
             }
         }
-    } catch (error) { 
-        console.error("Error flujo general:", error.message); 
-    }
 
     return res.status(200).send('OK');
 };
