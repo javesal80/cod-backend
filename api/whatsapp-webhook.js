@@ -180,26 +180,13 @@ module.exports = async (req, res) => {
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
 
-            // SI NO TERMINA EN PREGUNTA, GROK GENERA UNA BASADA EN EL HILO REAL
+            if (textoFinal) {
+            textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
+
+            // 1. EL SALVAVIDAS DE NEUROVENTAS: Si por algún motivo la IA no generó el '?',
+            // inyectamos una pregunta de cierre genérica y poderosa al instante, SIN usar más APIs.
             if (!textoFinal.includes('?')) {
-                try {
-                    const respQ = await fetch('https://api.x.ai/v1/responses', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            model: "grok-4.20-reasoning", 
-                            input: `Eres Fiorella de JRJMarket Ecuador. Esta es la conversación hasta ahora:\n${contextoMemoria}\n\nFiorella acaba de decir:\n"${textoFinal}"\n\nEscribe ÚNICAMENTE una pregunta corta (máximo 12 palabras) que sea la continuación natural y coherente de esta conversación específica. Solo la pregunta, sin saludos ni explicaciones.`
-                        })
-                    });
-                    const jsonQ = await respQ.json();
-                    const msgQ = jsonQ.output?.find(o => o.type === 'message');
-                    const preguntaIA = msgQ?.content?.find(c => c.type === 'output_text')?.text?.trim();
-                    if (preguntaIA && preguntaIA.includes('?')) {
-                        textoFinal = textoFinal + "\n\n" + preguntaIA;
-                    }
-                } catch (eQ) {
-                    console.error("Error generando pregunta:", eQ.message);
-                }
+                textoFinal += " Para poder asesorarle correctamente, ¿me podría contar un poquito qué es lo que más le preocupa o qué resultados busca? ✨";
             }
 
             // GUARDAR HISTORIAL EN REDIS
@@ -220,14 +207,21 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // CASCADA DE MENSAJES (Optimizada para Vercel Serverless)
+            // CASCADA DE MENSAJES (Optimizada para NUNCA borrar la pregunta)
             let partes = textoFinal
                 .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
                 .split('\n')
                 .map(l => l.trim())
-                .filter(l => l !== "")
-                .slice(0, 5);
+                .filter(l => l !== "");
 
+            // REGLA ANTI-HACHAZO: Si hay más de 5 mensajes, asegurarnos de que la última línea (la pregunta) se conserve.
+            if (partes.length > 5) {
+                const preguntaFinal = partes.pop(); // Extraemos la pregunta
+                partes = partes.slice(0, 4);        // Cortamos el exceso del medio
+                partes.push(preguntaFinal);         // Volvemos a pegar la pregunta al final
+            }
+
+            // Si el primer mensaje es muy corto (ej: "¡Hola!"), lo pegamos con el segundo
             if (partes.length > 1 && partes[0].length < 30) {
                 partes[1] = partes[0] + " " + partes[1];
                 partes.shift();
@@ -242,7 +236,6 @@ module.exports = async (req, res) => {
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1000));
             }
         }
-
     } catch (error) { 
         console.error("Error flujo general:", error.message); 
     }
