@@ -154,14 +154,14 @@ module.exports = async (req, res) => {
     7. LOGÍSTICA: Envío GRATIS 1ra compra. Llega entre ${mañana} o ${pasado}. Pago contra entrega 🛡️. -$2 por transferencia.
 
     PROTOCOLO DE CIERRE, VALIDACIÓN Y LOGÍSTICA (¡ESTRICTO!):
-    - PASO 1 (EL FORMULARIO): Si el cliente dice que quiere comprar, envíale EXACTAMENTE este formulario para llenar, icluyele emoticons:
+    - PASO 1 (EL FORMULARIO): Si el cliente confirma la compra (Ej: "Sí", "Quiero comprar"), copia y pega EXACTAMENTE este bloque de texto, sin modificarlo ni acortarlo:
       "¡Excelente decisión! Ayúdeme por favor con lo siguiente para despachar su pedido:
       *Nombre y Apellido:*
       *Ciudad:*
-      *Dirección exacta:* (2 calles y referencia. Ej: Amazonas S25-4 y Veintimilla, frente a farmacia Cruz Azul, casa blanca portón negro. Si es urbanización: etapa, manzana y villa)."
-    - PASO 2 (VALIDACIÓN): Si el cliente te responde con datos incompletos (Ej: solo dice "Javier" o "Solanda"), TIENES PROHIBIDO confirmar la venta. Dile amablemente: "¡Gracias! Para que el mensajero llegue sin problemas, ¿me podría detallar sus dos apellidos, las dos calles de su casa y una referencia?".
-    - PASO 3 (LA CONFIRMACIÓN Y LOGÍSTICA): SOLO cuando tengas la dirección completa y el nombre validado, confirmas el pedido y le envías esta información OBLIGATORIA:
-      "Su pedido llegará entre ${mañana} o ${pasado}. Trabajamos con transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). La entrega se hace de 9am a 5pm. Si tiene inconvenientes con el horario, le podemos ofrecer dejarlo en la oficina de Servientrega más cercana para que lo retire tranquilamente a su tiempo. El pago es contra entrega 🛡️."
+      *Dirección exacta:* (Especifique 2 calles y una referencia clara. Ej: Amazonas S25-4 y Veintimilla, frente a farmacia Cruz Azul, casa blanca. Si es urbanización: etapa, manzana y villa)."
+    - PASO 2 (VALIDACIÓN OBLIGATORIA): Si el cliente te envía sus datos, EVALÚA: ¿Puso un apellido? ¿Puso dos calles? ¿Puso referencia? Si falta ALGO, TIENES PROHIBIDO confirmar la venta. Dile: "¡Gracias! Pero para que el mensajero llegue sin problemas, ¿me podría detallar [menciona lo que falta: ej. su apellido / la calle transversal / una referencia]?".
+    - PASO 3 (LA CONFIRMACIÓN): SOLO cuando tengas TODOS los datos completos, confirmas el pedido y despides con la logística:
+      "¡Perfecto! Su pedido llegará entre ${mañana} o ${pasado}. Trabajamos con transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). La entrega se hace de 9am a 5pm. Si tiene inconvenientes con el horario, le podemos ofrecer dejarlo en la oficina de Servientrega más cercana para que lo retire a su tiempo. El pago es contra entrega 🛡️."
     
     REGLAS ANTI-BUCLES Y MEMORIA DE ACERO (¡ESTRICTO!):
     - NO REPITAS PREGUNTAS: Lee el HISTORIAL RECIENTE. Si el cliente YA expresó su necesidad (Ej: "está pequeño", "crecer", "dolor de espalda"), TIENES PROHIBIDO volver a preguntar "¿qué busca?" o "¿qué le preocupa?". Avanza directamente a dar la solución, el precio y pide los datos de envío.
@@ -210,12 +210,17 @@ module.exports = async (req, res) => {
 
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
-
-            // 1. EL SALVAVIDAS DE NEUROVENTAS: Si por algún motivo la IA no generó el '?',
-            // inyectamos una pregunta de cierre genérica y poderosa al instante, SIN usar más APIs.
+                              
+            // 1. EL SALVAVIDAS DE NEUROVENTAS (Mejorado para Fase de Cierre)
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|de nada/i.test(textoFinal);
-                        if (!textoFinal.includes('?')) {
-                textoFinal += " Para poder asesorarle correctamente, ¿me podría contar un poquito qué es lo que más le preocupa o qué resultados busca? ✨";
+            // Si la IA está pidiendo dirección, nombres o hablando de envíos, NO inyectar pregunta de dolor.
+            const esCierre = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
+            
+                if (!textoFinal.includes('?') && !esDespedida && !esCierre) {
+                textoFinal += " Para poder asesorarle de la mejor manera, ¿me podría confirmar qué es lo que más le preocupa alrededor de su salud o bienestar? ✨";
+            } else if (!textoFinal.includes('?') && esCierre && !esDespedida) {
+                 // Si está en cierre y olvidó la pregunta, inyectamos una de cierre.
+                 textoFinal += " ¿Me ayuda con esos datos por favor? 📦";
             }
 
             // GUARDAR HISTORIAL EN REDIS
