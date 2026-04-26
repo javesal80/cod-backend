@@ -74,6 +74,11 @@ module.exports = async (req, res) => {
                         console.log("==> ÉXITO TOTAL: Caracteres leídos:", infoEspecifica.length);
                     } else {
                         console.log("==> AVISO: El archivo está vacío o es muy corto");
+                        // Segundo intento por seguridad
+        const altPath = path.join(__dirname, productoEncontrado.archivo);
+        if (fs.existsSync(altPath)) {
+            infoEspecifica = fs.readFileSync(altPath, 'utf8');
+            console.log("==> ÉXITO en segundo intento.");
                     }
                 } else {
                     console.log("==> ERROR: El archivo no existe en la ruta física");
