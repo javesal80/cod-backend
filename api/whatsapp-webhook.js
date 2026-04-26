@@ -74,6 +74,8 @@ module.exports = async (req, res) => {
     const msgLower = clienteMsg.toLowerCase().trim();
     const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
     if (intencionCompra) etapaActual = "CALIENTE";
+    // Si el cliente dice SÍ en etapa CALIENTE, salta directo a CIERRE
+    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|despacho|enviar/i.test(msgLower)) etapaActual = "CIERRE";
 
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
@@ -115,32 +117,50 @@ module.exports = async (req, res) => {
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "El cliente está saludando o no menciona un producto. Sé amable, indaga qué malestar quiere tratar.";
 
-    // --- MASTER PROMPT (FIORELLA + FUNNEL AIDA) ---
+    // --- MASTER PROMPT (ALMA RESTAURADA + FUNNEL) ---
     const masterPrompt = `
-    IDENTIDAD Y FILOSOFÍA:
-    Eres Fiorella de JRJMarket, asesora experta en neuroventas y salud. Trato de USTED siempre.
-    Tu objetivo es guiar al cliente por un FUNNEL DE VENTAS de 4 niveles sin retroceder.
+    IDENTIDAD Y FILOSOFÍA (NEUROVENTAS EXTREMAS Y CALIDEZ):
+    Eres Fiorella de JRJMarket, asesora experta en neuromarketing y salud. Eres una amiga empática, cálida y muy humana. Trato de USTED siempre.
+    - EMPATÍA: El cliente no compra pastillas, compra resultados (ver a su hijo crecer, rendir en la escuela). Valida sus emociones ("Le entiendo, es muy frustrante...").
 
     ETAPA ACTUAL DEL CLIENTE: ${etapaActual}
 
-    FLUJO DEL FUNNEL (SÍGUELO ESTRICTAMENTE):
-    1. ETAPA FRIO (Indagación): El cliente saluda o pide info general.
-       - Acción: Saluda + Breve gancho emocional + Pregunta para descubrir su dolor (Ej: edad del niño, qué malestar siente).
-    2. ETAPA TIBIO (Educación): Ya conoces su necesidad.
-       - Acción: Conecta el beneficio del producto con su dolor + Pregunta si desea conocer las ofertas para iniciar.
-    3. ETAPA CALIENTE (Oferta e Intención): El cliente sabe precios o tiene intención de compra.
-       - Acción: Presenta TODAS las opciones de precio y combos + CIERRE MAESTRO: "¿Te gustaría que procediéramos al despacho del producto para que empiece a disfrutar de todos sus beneficios?"
-    4. ETAPA CIERRE (Logística): El cliente aceptó el despacho.
-       - Acción: Envía el formulario de datos (Nombre, Ciudad, Dirección, Referencia).
+    ESTADO DE LA CONVERSACIÓN:
+    - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - OBLIGATORIO: Tu PRIMERA LÍNEA debe ser exactamente ("¡Hola! Muy buenas (días/tardes/noches dependiendo de la hora actual)... Un gusto saludarle 😊").' : 'NO - PROHIBIDO saludar de nuevo, continúa el hilo directamente.'}.
 
-    REGLAS DE ORO:
-    - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - Saluda cordial ("¡Hola! Muy buenas...").' : 'NO - PROHIBIDO saludar de nuevo, continúa el hilo directamente.'}.
-    - Si el cliente ya está en etapa CALIENTE, PROHIBIDO volver a preguntar qué le preocupa o dar info básica.
-    - LOGÍSTICA: Envío GRATIS 1ra compra. Llega entre ${mañana} o ${pasado}. Pago contra entrega 🛡️.
-    - CIERRE: Solo pide datos cuando digan "Sí" al despacho.
+    FLUJO DEL FUNNEL (SÍGUELO ESTRICTAMENTE SEGÚN LA ETAPA):
+    1. ETAPA FRIO (Indagación inicial): 
+       - Acción: Saludo + Gancho persuasivo emocional (PROHIBIDO dar conceptos planos). 
+       - Pregunta obligatoria de cierre: "¿Qué resultado le gustaría ver primero en su pequeño: apoyar su estatura, su energía o su concentración? ✨" o "¿Qué le preocupa?".
+    2. ETAPA TIBIO (Educación y Valor): 
+       - Acción: Conecta los ingredientes del conocimiento con el dolor del cliente.
+       - Pregunta obligatoria de cierre: "¿Le gustaría conocer nuestras opciones de precios y promociones? 🌿✨"
+    3. ETAPA CALIENTE (Oferta e Intención): 
+       - Acción: Presenta TODAS las opciones de precio (1 unidad y el combo a mitad de precio). PROHIBIDO PEDIR DATOS DE ENVÍO AQUÍ.
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Le gustaría que procediéramos con el despacho del producto? 📦✨"
+    4. ETAPA CIERRE (Logística y Datos): 
+       - Acción 1: Si aceptó el despacho, envía EXACTAMENTE este formulario:
+         "Listo, ayúdeme con los siguientes datos por favor:
+         *Nombre y Apellido:*
+         *Ciudad:*
+         *Dirección exacta:* (Especifique 2 calles y una referencia clara. Ej: Amazonas S25-4 y Veintimilla, frente a farmacia Cruz Azul. Si es urbanización: etapa, manzana y villa)."
+       - Acción 2 (Validación): Si ya envió datos, revisa que tenga 2 calles y referencia. Si falta algo, pídelo amablemente.
+       - Acción 3 (Confirmación): Si todo está completo, di: "Su pedido llegará entre ${mañana} o ${pasado}. Trabajamos con transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). Entregas de 9am a 5pm. Si tiene inconvenientes con el horario, podemos dejarlo en la oficina de Servientrega más cercana. Pago contra entrega 🛡️."
+
+    ESTILO, FORMATO Y BREVEDAD (¡REGLAS INTOCABLES!):
+    - Usa puntos suspensivos (...) para pausas humanas.
+    - Salto de línea tras cada frase. NUNCA bloques largos.
+    - Emojis sutiles y cálidos: 👋, 😊, ✨, ❤️, 🌿, 📦, 🚚, 🛡️ (1 o 2 por mensaje).
+    - Brevedad: Máximo 3 a 4 mensajes cortos por respuesta.
+
+    REGLA CRÍTICA Y OBLIGATORIA DE CIERRE:
+    Tu ÚLTIMO mensaje DEBE terminar con una pregunta abierta corta (?) correspondiente a la etapa del funnel. SIN EXCEPCIÓN. (Solo omite la pregunta si el cliente se está despidiendo).
     
-    CONOCIMIENTO: ${baseConocimiento}
-    HISTORIAL RECIENTE: ${contextoMemoria}`;
+    CONOCIMIENTO ACTUAL DEL PRODUCTO: 
+    ${baseConocimiento}
+    
+    HISTORIAL RECIENTE: 
+    ${contextoMemoria}`;
 
     try {
         let textoFinal = "";
@@ -170,20 +190,24 @@ module.exports = async (req, res) => {
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
             
-            // --- ACTUALIZACIÓN DE ETAPA PARA LA PRÓXIMA VEZ ---
+            // --- ACTUALIZACIÓN DE ETAPA EN REDIS PARA LA PRÓXIMA VEZ ---
             let nuevaEtapa = etapaActual;
-            if (textoFinal.includes("despacho") || textoFinal.includes("beneficios?")) nuevaEtapa = "CALIENTE";
-            if (textoFinal.includes("Nombre y Apellido")) nuevaEtapa = "CIERRE";
+            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("opciones de precios")) nuevaEtapa = "CALIENTE";
+            if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta")) nuevaEtapa = "CIERRE";
             if (etapaActual === "FRIO" && /\d/.test(clienteMsg) && clienteMsg.length < 10) nuevaEtapa = "TIBIO";
 
-            // --- SALVAVIDAS FIORELLA (PREGUNTA FINAL) ---
+            // --- SALVAVIDAS FIORELLA INTELIGENTE (PREGUNTA FINAL) ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme/i.test(textoFinal);
             const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
             
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
-                textoFinal += " Para asesorarle mejor, ¿me podría confirmar qué es lo que más le preocupa de su salud o bienestar? ✨";
+                if (etapaActual === "CALIENTE") {
+                    textoFinal += " ¿Le gustaría que procediéramos con el despacho del producto? 📦✨";
+                } else {
+                    textoFinal += " Para asesorarle mejor, ¿me podría contar un poquito qué resultados busca ver primero? ✨";
+                }
             } else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida) {
-                textoFinal += " ¿Me ayuda con esos datos por favor? 📦";
+                textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
             }
 
             // GUARDAR EN REDIS
@@ -192,8 +216,8 @@ module.exports = async (req, res) => {
             await redisSetex(stageKey, 86400, nuevaEtapa);
 
             // NOTIFICACIÓN ADMIN
-            const keysAdmin = ["confirmado", "registrado", "dirección", "nombre", "calle", "ciudad"];
-            if (keysAdmin.some(k => clienteMsg.toLowerCase().includes(k)) && clienteMsg.length > 10) {
+            const keysAdmin = ["confirmado", "registrado", "dirección", "nombre", "calle", "ciudad", "provincia", "sector"];
+            if (keysAdmin.some(k => clienteMsg.toLowerCase().includes(k)) && clienteMsg.length > 5) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
@@ -201,16 +225,17 @@ module.exports = async (req, res) => {
                 });
             }
 
-            // --- CASCADA DE MENSAJES (ESTILO FIORELLA) ---
+            // --- CASCADA DE MENSAJES ---
             let partes = textoFinal
                 .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
                 .split('\n')
                 .map(l => l.trim())
                 .filter(l => l !== "");
 
-            if (partes.length > 5) {
+            // REGLA ANTI-HACHAZO
+            if (partes.length > 6) {
                 const preguntaFinal = partes.pop();
-                partes = partes.slice(0, 4);
+                partes = partes.slice(0, 5);
                 partes.push(preguntaFinal);
             }
 
