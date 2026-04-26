@@ -212,23 +212,21 @@ BREVEDAD: Da la info del producto de forma humana, no como lista, y luego lanza 
             textoFinal = jsonIA.choices?.[0]?.message?.content || "";
         }
 
-        if (textoFinal) {
-            textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
-
-// SI NO TERMINA EN PREGUNTA, PEDIRLE A GROK QUE AGREGUE UNA
-if (!textoFinal.includes('?')) {
+        if (!textoFinal.includes('?')) {
     const respPregunta = await fetch('https://api.x.ai/v1/responses', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             model: "grok-4.20-reasoning", 
-            "input": masterPrompt + `\nCliente dice: "${clienteMsg}"\nResponde como Fiorella. OBLIGATORIO: tu respuesta debe terminar con una pregunta directa y coherente con la conversación. Si no termina con "?", la respuesta es incorrecta.` 
+            input: `Eres Fiorella de JRJMarket Ecuador. Acaba de decirle esto a un cliente:\n"${textoFinal}"\n\nEscribe ÚNICAMENTE una pregunta corta (máximo 10 palabras) que sea la continuación natural de ese mensaje. Solo la pregunta, sin saludos ni explicaciones.`
         })
     });
     const jsonPregunta = await respPregunta.json();
     const msgPregunta = jsonPregunta.output?.find(o => o.type === 'message');
     const preguntaIA = msgPregunta?.content?.find(c => c.type === 'output_text')?.text?.trim();
-    if (preguntaIA) textoFinal = textoFinal + "\n\n" + preguntaIA;
+    if (preguntaIA && preguntaIA.includes('?')) {
+        textoFinal = textoFinal + "\n\n" + preguntaIA;
+    }
 }
             historialConversacion[remoteJid].push({ role: "assistant", content: textoFinal });
 
