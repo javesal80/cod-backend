@@ -123,9 +123,9 @@ module.exports = async (req, res) => {
     }
 
     const baseConocimiento = infoEspecifica 
-        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
-        : "El cliente está saludando o no menciona un producto. Sé amable, indaga qué malestar quiere tratar.";
-
+       ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
+        : "⚠️ ALERTA: EL CLIENTE AÚN NO HA MENCIONADO NINGÚN PRODUCTO NI DOLOR. Tu único objetivo en este turno es saludarlo (si es el primer mensaje) y preguntarle en qué producto está interesado para poder activar el conocimiento.";
+    
     // --- MASTER PROMPT (FUNNEL INTELIGENTE Y HUMANO) ---
     const masterPrompt = `
     IDENTIDAD Y FILOSOFÍA (NEUROVENTAS Y NATURALIDAD):
@@ -139,8 +139,9 @@ module.exports = async (req, res) => {
 
     FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
     1. ETAPA FRIO: 
-       - Acción: Saludo + Gancho emocional obligatorio conectando con el producto.
-       - Pregunta de cierre: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+       - SI NO HAY PRODUCTO IDENTIFICADO: Saluda (si aplica) y pregunta directamente: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨". PROHIBIDO inventar información.
+       - SI YA HAY PRODUCTO IDENTIFICADO: Saluda (si aplica) y lanza el gancho emocional obligatorio conectando con el producto . Y cierra preguntando: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+       
     2. ETAPA TIBIO: 
        - Acción: Conecta ingredientes con su dolor. Si tiene dudas técnicas, responde con paciencia como humana.
        - Transición: Solo cuando resolvió dudas: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
