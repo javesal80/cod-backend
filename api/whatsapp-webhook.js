@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
                     console.log("==> ERROR: El archivo no existe en la ruta física");
                 }
             }
-            
+        }            
     // SI NO HAY INFO ESPECÍFICA, FORZAMOS A FIORELLA A PREGUNTAR
         baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nUSA ESTA INFO PARA VENDER:\n${infoEspecifica}`
