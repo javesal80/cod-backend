@@ -85,9 +85,8 @@ module.exports = async (req, res) => {
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto}.\nUSA ESTA INFO PARA VENDER:\n${infoEspecifica}`
         : "AVISO: No sé qué producto quiere el cliente. DEBES saludar y preguntar educadamente en qué producto está interesado de nuestra tienda (sin inventar nombres ni precios).";
            
-    } catch (e) {
-        console.error("Error en el enrutador de productos:", e.message);
-    }
+    } catch (e) {console.error("Error en el enrutador de productos:", e.message);
+                }
 
     // --- 2. CONSTRUIR EL CONOCIMIENTO PARA LA IA ---
     // Si no encontró match, usamos un mensaje genérico o el catálogo base
