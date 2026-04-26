@@ -71,10 +71,13 @@ module.exports = async (req, res) => {
         .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
         .join('\n');
 
-    // --- BUSCAR PRODUCTO ---
+    // --- BUSCAR PRODUCTO (CON MEMORIA PERSISTENTE EN REDIS) ---
     let infoEspecifica = "";
     let nombreProducto = "";
     let baseConocimiento = "";
+
+    // Creamos una llave única en Redis para guardar el producto de este cliente
+    const productoKey = `prod:${remoteJid.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
     try {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
@@ -84,14 +87,28 @@ module.exports = async (req, res) => {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             const msgLower = clienteMsg.toLowerCase().trim();
 
-            const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
+            // 1. Buscamos si el mensaje ACTUAL tiene una palabra clave
+            let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
                 p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
             );
             
+            // 2. Si el cliente mencionó una keyword, la guardamos en Redis por 24 horas (86400s)
+            if (productoEncontrado) {
+                await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
+            } 
+            // 3. Si NO mencionó keyword (Ej: dijo "Sí" o "Precio"), buscamos qué producto tenía guardado
+            else {
+                const productoGuardado = await redisGet(productoKey);
+                if (productoGuardado) {
+                    productoEncontrado = JSON.parse(decodeURIComponent(productoGuardado));
+                }
+            }
+
+            // 4. Si tenemos producto (ya sea nuevo o desde Redis), leemos su .txt
             if (productoEncontrado) {
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
-                console.log("==> Leyendo contenido de:", txtPath);
+                console.log("==> Producto activo:", nombreProducto, "| Leyendo:", txtPath);
 
                 if (fs.existsSync(txtPath)) {
                     const buffer = fs.readFileSync(txtPath);
