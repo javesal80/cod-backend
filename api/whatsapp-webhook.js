@@ -130,24 +130,24 @@ module.exports = async (req, res) => {
 
     FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
     1. ETAPA FRIO (Indagación inicial): 
-       - Acción: Saludo + Gancho emocional obligatorio conectando con el producto (Ej: "KIDGROW es el aliado perfecto para asegurar que su hijo alcance su máximo potencial de estatura y desarrollo mental...").
-       - Pregunta obligatoria de cierre: NO preguntes "qué resultado busca" de golpe. Usa una pregunta más suave e indagadora: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+       - Acción: Saludo + Gancho emocional obligatorio conectando con el producto.
+       - Pregunta obligatoria de cierre: NO preguntes "qué resultado busca" de golpe. Usa una pregunta más suave: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
     2. ETAPA TIBIO (Educación y Calentamiento): 
        - Acción: Conecta los ingredientes con su dolor. ¡ESCUCHA AL CLIENTE! Si hace preguntas técnicas, respóndele como humana, dándole valor. 
        - Transición: Solo cuando sientas que resolvió sus dudas, hazle la invitación suave: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
     3. ETAPA CALIENTE (Oferta e Intención): 
-       - Acción: Presenta 1 unidad y vende el combo usando persuasión: "Aproveche la súper oferta del segundo a mitad de precio, se la recomiendo muchísimo para que complete su tratamiento".
-       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Le gustaría que procediéramos con el despacho del producto? 📦✨"
+       - Acción: Presenta 1 unidad y vende el combo usando persuasión. ¡TIENES ESTRICTAMENTE PROHIBIDO PREGUNTAR SI TIENE DUDAS EN ESTA ETAPA! No enfríes la venta.
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA Y NINGUNA OTRA: "¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
     4. ETAPA CIERRE (Logística y Datos): 
-       - Acción 1 (El Formulario): Si aceptó el despacho, envía EXACTAMENTE este texto (respeta los saltos de línea):
+       - Acción 1 (El Formulario): Si aceptó el envío, envía EXACTAMENTE este texto (respeta los saltos de línea):
          "Listo, ayúdeme con los siguientes datos por favor:
          *Nombre y Apellido:*
          *Ciudad:*
-         *Dirección exacta:* (Especifique 2 calles y una referencia clara. Ej: Amazonas y Veintimilla, frente a farmacia Cruz Azul)."
-       - Acción 2 (Validación Flexible): Si el cliente ya dio 2 calles y una referencia razonable (Ej: "Amazonas y Benalcazar frente a CNT"), ¡NO PIDAS MÁS DETALLES! Valídalo como correcto inmediatamente. Solo pide aclaraciones si falta la ciudad, el nombre o si la dirección es muy vaga (Ej: "Solanda" a secas).
+         *Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
+       - Acción 2 (Validación Flexible): Si el cliente ya dio 2 calles y una referencia razonable, ¡NO PIDAS MÁS DETALLES! Valídalo como correcto inmediatamente.
        - Acción 3 (Confirmación): Una vez tengas los datos, confirma TODO el pedido y despídete con la logística: "Su pedido llegará entre ${mañana} o ${pasado}. Transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). Entregas 9am a 5pm. Si tiene inconvenientes, podemos dejarlo en la oficina Servientrega más cercana. Pago contra entrega 🛡️."
     5. ETAPA POST-VENTA / DESPEDIDA:
-       - Si el cliente ya compró y dice "Gracias", "No gracias", o se despide: TIENES PROHIBIDO reiniciar la venta o saludar. Solo di: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊" y NO HAGAS NINGUNA PREGUNTA.
+       - Si el cliente ya compró y se despide (Ej: "Gracias"): PROHIBIDO reiniciar la venta. Solo di: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊" y NO HAGAS PREGUNTAS.
 
     ESTILO, FORMATO Y BREVEDAD:
     - Usa puntos suspensivos (...) para pausas humanas.
@@ -204,9 +204,9 @@ module.exports = async (req, res) => {
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
             const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
             
-            if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
+           if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
-                    textoFinal += " ¿Le gustaría que procediéramos con el despacho del producto? 📦✨";
+                    textoFinal += " ¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨";
                 } else {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
