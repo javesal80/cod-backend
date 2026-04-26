@@ -45,28 +45,26 @@ module.exports = async (req, res) => {
     let baseConocimiento = "";
     
     try {
-        // Intentamos dos rutas por si Vercel mueve los archivos
-        const rutasPosibles = [
-            path.join(__dirname, 'productos.json'),
-            path.join(process.cwd(), 'api', 'productos.json'),
-            path.join(process.cwd(), 'productos.json')
-        ];
+        // process.cwd() apunta a la raíz del proyecto en Vercel
+        const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         
-        let productosPath = rutasPosibles.find(r => fs.existsSync(r));
-        
-        if (productosPath) {
+        console.log("==> Intentando acceder a:", productosPath);
+
+        if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             const msgLower = clienteMsg.toLowerCase().trim();
-            
+
+            // Buscamos el producto por keyword
             const productoEncontrado = dataProductos.PRODUCTOS.find(p => 
                 p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
             );
-          
+            
             if (productoEncontrado) {
                 console.log("==> Producto Detectado:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
                 console.log("==> Intentando leer TXT en:", txtPath);
+                console.log("==> Leyendo contenido de:", txtPath);
                 
                 if (fs.existsSync(txtPath)) {
                     infoEspecifica = fs.readFileSync(txtPath, 'utf8');
