@@ -213,7 +213,8 @@ module.exports = async (req, res) => {
 
             // 1. EL SALVAVIDAS DE NEUROVENTAS: Si por algún motivo la IA no generó el '?',
             // inyectamos una pregunta de cierre genérica y poderosa al instante, SIN usar más APIs.
-            if (!textoFinal.includes('?')) {
+            const esDespedida = /hasta luego|excelente día|no dude en contactarme|de nada/i.test(textoFinal);
+                        if (!textoFinal.includes('?')) {
                 textoFinal += " Para poder asesorarle correctamente, ¿me podría contar un poquito qué es lo que más le preocupa o qué resultados busca? ✨";
             }
 
