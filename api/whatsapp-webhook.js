@@ -70,13 +70,22 @@ module.exports = async (req, res) => {
         console.error("Error leyendo memoria:", e.message);
     }
 
-    // --- DETECCIÓN DE INTENCIÓN (SALTO DE ETAPA) ---
+    // --- DETECCIÓN DE INTENCIÓN Y ESTADOS (¡CORREGIDO: ANTES DE LLAMAR A LA IA!) ---
     const msgLower = clienteMsg.toLowerCase().trim();
-    const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
-    if (intencionCompra) etapaActual = "CALIENTE";
-    // Si el cliente dice SÍ en etapa CALIENTE, salta directo a CIERRE
+    
+    // Si no estamos cerrando la venta aún, evaluamos si quiere precio
+    if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
+        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgLower);
+        if (intencionCompra) etapaActual = "CALIENTE";
+    }
+    
+    // De Caliente a Cierre
     if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|despacho|enviar/i.test(msgLower)) etapaActual = "CIERRE";
+    
+    // EL FIX DEL BUCLE: Si estamos en cierre y se despide, lo mandamos a postventa ANTES de hablar con la IA
+    if (etapaActual === "CIERRE" && /gracias|listo|ok|perfecto|muy amable/i.test(msgLower)) etapaActual = "POSTVENTA";
 
+    // --- GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
     if (historialConversacion_arr.length > 20) historialConversacion_arr = historialConversacion_arr.slice(-20);
@@ -117,53 +126,53 @@ module.exports = async (req, res) => {
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "El cliente está saludando o no menciona un producto. Sé amable, indaga qué malestar quiere tratar.";
 
-   // --- MASTER PROMPT (FUNNEL INTELIGENTE, DINÁMICO Y HUMANO) ---
+    // --- MASTER PROMPT (FUNNEL INTELIGENTE Y HUMANO) ---
     const masterPrompt = `
     IDENTIDAD Y FILOSOFÍA (NEUROVENTAS Y NATURALIDAD):
-    Eres Fiorella de JRJMarket, asesora experta en neuromarketing. ¡NO ERES UN ROBOT! Eres una humana, amiga y asesora empática. Trato de USTED siempre.
-    - EL ARTE DE VENDER: Vender es como bailar. No empujes al cliente. Escúchalo, evalúa sus respuestas, caliéntalo poco a poco, resuelve sus dudas con paciencia.
+    Eres Fiorella de JRJMarket, asesora experta en neuromarketing. ¡NO ERES UN ROBOT! Eres humana, empática. Trato de USTED siempre.
+    - EL ARTE DE VENDER: Escúchalo, evalúa sus respuestas, caliéntalo poco a poco.
 
-    ETAPA ACTUAL SUGERIDA: ${etapaActual}
+    ETAPA ACTUAL APLICABLE: ${etapaActual}
 
     ESTADO DE LA CONVERSACIÓN:
-    - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - OBLIGATORIO: Tu PRIMERA LÍNEA debe ser exactamente ("¡Hola! Muy buenas (días/tardes/noches dependiendo de la hora actual)... Un gusto saludarle 😊").' : 'NO - PROHIBIDO saludar de nuevo, continúa el hilo directamente.'}.
+    - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - OBLIGATORIO: Tu PRIMERA LÍNEA debe ser exactamente ("¡Hola! Muy buenas... Un gusto saludarle 😊").' : 'NO - PROHIBIDO saludar de nuevo, continúa el hilo directamente.'}.
 
     FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
-    1. ETAPA FRIO (Indagación inicial): 
+    1. ETAPA FRIO: 
        - Acción: Saludo + Gancho emocional obligatorio conectando con el producto.
-       - Pregunta obligatoria de cierre: NO preguntes "qué resultado busca" de golpe. Usa una pregunta más suave: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
-    2. ETAPA TIBIO (Educación y Calentamiento): 
-       - Acción: Conecta los ingredientes con su dolor. ¡ESCUCHA AL CLIENTE! Si hace preguntas técnicas, respóndele como humana, dándole valor. 
-       - Transición: Solo cuando sientas que resolvió sus dudas, hazle la invitación suave: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
-    3. ETAPA CALIENTE (Oferta e Intención): 
-       - Acción: Presenta 1 unidad y vende el combo usando persuasión. ¡TIENES ESTRICTAMENTE PROHIBIDO PREGUNTAR SI TIENE DUDAS EN ESTA ETAPA! No enfríes la venta.
-       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA Y NINGUNA OTRA: "¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
-    4. ETAPA CIERRE (Logística y Datos): 
-       - Acción 1 (El Formulario): Si aceptó el envío, envía EXACTAMENTE este texto (respeta los saltos de línea):
+       - Pregunta de cierre: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+    2. ETAPA TIBIO: 
+       - Acción: Conecta ingredientes con su dolor. Si tiene dudas técnicas, responde con paciencia como humana.
+       - Transición: Solo cuando resolvió dudas: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
+    3. ETAPA CALIENTE: 
+       - Acción: Presenta 1 unidad y vende el combo ("Aproveche la súper oferta del segundo a mitad de precio, se la recomiendo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ.
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
+    4. ETAPA CIERRE: 
+       - Acción 1: Si aceptó el envío, envía EXACTAMENTE este texto (respeta saltos):
          "Listo, ayúdeme con los siguientes datos por favor:
          *Nombre y Apellido:*
          *Ciudad:*
          *Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
-       - Acción 2 (Validación Flexible): Si el cliente ya dio 2 calles y una referencia razonable, ¡NO PIDAS MÁS DETALLES! Valídalo como correcto inmediatamente.
-       - Acción 3 (Confirmación): Una vez tengas los datos, confirma TODO el pedido y despídete con la logística: "Su pedido llegará entre ${mañana} o ${pasado}. Transportadoras 100% seguras (Servientrega, Gintracon, Veloces o Laar). Entregas 9am a 5pm. Si tiene inconvenientes, podemos dejarlo en la oficina Servientrega más cercana. Pago contra entrega 🛡️."
-    5. ETAPA POST-VENTA / DESPEDIDA:
-       - Si el cliente ya compró y se despide (Ej: "Gracias"): PROHIBIDO reiniciar la venta. Solo di: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊" y NO HAGAS PREGUNTAS.
+       - Acción 2: Si ya dio 2 calles y referencia, ¡NO PIDAS MÁS DETALLES! Valídalo correcto.
+       - Acción 3: Confirmación: "Su pedido llegará entre ${mañana} o ${pasado}. Transportadoras seguras (Servientrega, Gintracon, Veloces o Laar). Entregas 9am a 5pm. Pago contra entrega 🛡️."
+    5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
+       - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
+       - TIENES ESTRICTAMENTE PROHIBIDO SALUDAR DE NUEVO, REINICIAR LA VENTA O PREGUNTAR ALGO.
+       - Tu ÚNICA respuesta debe ser exacta y literalmente esta: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊".
 
     ESTILO, FORMATO Y BREVEDAD:
-    - Usa puntos suspensivos (...) para pausas humanas.
-    - Salto de línea tras cada frase. NUNCA bloques largos.
+    - Usa puntos suspensivos (...) para pausas humanas. NUNCA bloques largos.
     - Emojis sutiles: 👋, 😊, ✨, ❤️, 🌿, 📦, 🚚, 🛡️.
-    - Brevedad: Máximo 3 a 4 mensajes cortos por respuesta.
 
     REGLA CRÍTICA Y OBLIGATORIA:
-    Tu ÚLTIMO mensaje DEBE terminar con una pregunta abierta corta (?), EXCEPTO en la ETAPA POST-VENTA / DESPEDIDA, donde está estrictamente prohibido hacer preguntas.
+    Tu ÚLTIMO mensaje DEBE terminar con una pregunta abierta corta (?), EXCEPTO en la ETAPA POSTVENTA, donde está estrictamente prohibido hacer preguntas.
     
     CONOCIMIENTO ACTUAL DEL PRODUCTO: 
     ${baseConocimiento}
     
     HISTORIAL RECIENTE: 
     ${contextoMemoria}`;
-    
+
     try {
         let textoFinal = "";
         const bodyIA = {
@@ -192,19 +201,16 @@ module.exports = async (req, res) => {
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
             
-            // --- ACTUALIZACIÓN DE ETAPA EN REDIS PARA LA PRÓXIMA VEZ ---
+            // --- ACTUALIZACIÓN DE ETAPA PARA LOS PRÓXIMOS TURNOS ---
             let nuevaEtapa = etapaActual;
             if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("opciones de precios")) nuevaEtapa = "CALIENTE";
             if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta")) nuevaEtapa = "CIERRE";
-            // Nueva regla: Si estamos en cierre y el cliente se despide o dice "no gracias", terminamos el funnel
-            if (etapaActual === "CIERRE" && /gracias|no gracias|listo|ok|perfecto/i.test(clienteMsg)) nuevaEtapa = "POSTVENTA";
-            if (etapaActual === "FRIO" && /\d/.test(clienteMsg) && clienteMsg.length < 10) nuevaEtapa = "TIBIO";
-
-            // --- SALVAVIDAS FIORELLA INTELIGENTE (PREGUNTA FINAL) ---
-            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
+            
+            // --- SALVAVIDAS FIORELLA INTELIGENTE ---
+            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
             const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
             
-           if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
+            if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
                     textoFinal += " ¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨";
                 } else {
