@@ -188,12 +188,13 @@ module.exports = async (req, res) => {
         - Si los datos están INCOMPLETOS: Menciona lo que YA tienes y pide específicamente lo que FALTA para completar los 3 puntos del checklist. 
           (Ejemplo: "¡Listo! Ya tengo su nombre y ciudad. Para agendar, por favor dígame las *dos calles* de su dirección y una *referencia clara*.")
         - Si los datos están COMPLETOS (cumple los 3 puntos del checklist): Pasa directamente al PASO C.
-
-        REGLA DE FLEXIBILIDAD 
-        - Si el cliente proporciona Cédula o Correo, ACÉPTALOS y regístralos. 
-        - Si NO los proporciona, NO los pidas ni detengas el proceso. Lo importante es el nombre y apellido, ciudad y la dirección/referencia.
+        
+        REGLA DE NO INTERFERENCIA (Cédula y Correo):
+        - NO pidas Cédula ni Correo. 
+        - Si el cliente los incluye por iniciativa propia en su mensaje, simplemente regístralos en el historial.
+        - Bajo ninguna circunstancia detengas el proceso o preguntes por estos datos si el cliente no los envió.
         - No valides rígidamente el formato de estos datos opcionales para no atascar la conversación.
-       
+              
         
         PASO A (Formulario Inicial):
           "Listo, ayúdeme con los siguientes datos por favor:
