@@ -246,9 +246,21 @@ module.exports = async (req, res) => {
             
             // --- ACTUALIZACIÓN DE ETAPA BASADA EN LAS DECISIONES DE LA IA ---
             let nuevaEtapa = etapaActual;
-            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos") || textoFinal.includes("Cuál de las opciones desearía")) nuevaEtapa = "CALIENTE";
-            if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta") || textoFinal.includes("ayúdeme con los siguientes datos") || textoFinal.includes("¿De qué ciudad nos escribe?")) nuevaEtapa = "CIERRE";
-            if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
+            
+            // Si la IA menciona datos del formulario, FORZAMOS etapa CIERRE
+            if (textoFinal.toLowerCase().includes("nombre y apellido") || 
+                textoFinal.toLowerCase().includes("dirección exacta") || 
+                textoFinal.toLowerCase().includes("ayúdeme con los siguientes datos")) {
+                nuevaEtapa = "CIERRE";
+            } 
+            // Si ya confirmó el registro, pasamos a POSTVENTA
+            else if (textoFinal.includes("registrados con éxito")) {
+                nuevaEtapa = "POSTVENTA";
+            }
+            // Si ofrece opciones pero no pide datos, se queda en CALIENTE
+            else if (textoFinal.includes("Cuál de las opciones desearía")) {
+                nuevaEtapa = "CALIENTE";
+            }
 
            // --- SALVAVIDAS FIORELLA INTELIGENTE (SIN CONFLICTOS) ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
