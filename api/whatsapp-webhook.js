@@ -28,8 +28,8 @@ module.exports = async (req, res) => {
     const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     
     let dia1 = new Date(hoy); dia1.setDate(hoy.getDate() + 1);
-    if(dia1.getDay() === 0) dia1.setDate(dia1.getDate() + 1); // Si es domingo, pasa a lunes
-    if(dia1.getDay() === 6) dia1.setDate(dia1.getDate() + 2); // Si es sábado, pasa a lunes
+    if(dia1.getDay() === 0) dia1.setDate(dia1.getDate() + 1); 
+    if(dia1.getDay() === 6) dia1.setDate(dia1.getDate() + 2); 
     
     let dia2 = new Date(dia1); dia2.setDate(dia1.getDate() + 1);
     if(dia2.getDay() === 0) dia2.setDate(dia2.getDate() + 1);
@@ -81,8 +81,7 @@ module.exports = async (req, res) => {
         console.error("Error leyendo memoria:", e.message);
     }
 
-// --- 1. BUSCAR PRODUCTO (PERSISTENTE) ---
-    // (Lo hacemos primero para saber si tenemos un producto cargado antes de evaluar la intención)
+    // --- 1. BUSCAR PRODUCTO (PERSISTENTE) ---
     const msgLower = clienteMsg.toLowerCase().trim();
     let infoEspecifica = "";
     let nombreProducto = "";
@@ -113,21 +112,23 @@ module.exports = async (req, res) => {
 
     const baseConocimiento = infoEspecifica 
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
-        : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio, dile amablemente: 'Con gusto le ayudo con la información y precios, ¿me podría indicar en qué producto está interesado? ✨'";
+        : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio o saluda, dile amablemente: 'Con gusto le ayudo con la información, ¿me podría indicar en qué producto está interesado o qué malestar quiere tratar? ✨'";
 
-   // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS ---
-    // Extraemos el último mensaje del cliente del historial para no olvidar si pidió precio antes
+    // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS HÍBRIDA ---
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
     if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
         const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
-        // EL FIX: Salta a CALIENTE si quiere precio (ahora o en el mensaje anterior) Y ya sabemos el producto
         if (intencionCompra && nombreProducto !== "") {
             etapaActual = "CALIENTE";
         }
     }
     
+    // EL FIX: Radar de Compras en JS. Si está en Caliente y elige un combo o acepta, salta al CIERRE obligatoriamente.
+    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|oferta|promocion|promo|dos|ambas|combo|enviar|despacho/i.test(msgLower)) {
+        etapaActual = "CIERRE";
+    }
     
     // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
@@ -153,22 +154,26 @@ module.exports = async (req, res) => {
     FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
     1. ETAPA FRIO: 
        - SI NO HAY PRODUCTO IDENTIFICADO: Saluda (si aplica) y pregunta directamente: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨". PROHIBIDO inventar información.
-       - SI YA HAY PRODUCTO IDENTIFICADO: Saluda (si aplica) y lanza el gancho emocional obligatorio conectando con el producto . Y cierra preguntando: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+       - SI YA HAY PRODUCTO IDENTIFICADO: Lanza el gancho emocional obligatorio conectando con el producto. Y cierra preguntando: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
        
     2. ETAPA TIBIO: 
        - Acción: Conecta ingredientes con su dolor. Si tiene dudas técnicas, responde con paciencia como humana.
        - Transición: Solo cuando resolvió dudas: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
-    3. ETAPA CALIENTE:
-       - Acción: Presenta 1 unidad y vende el combo ("Aproveche la súper oferta del segundo a mitad de precio, se la recomiendo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ. No enfríes la venta.
-       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA Y NINGUNA OTRA: "¿Cuál desearía? Le recomiendo la promoción de 2 unidades, es muy buena para obtener mejores resultados. ¿Desea que se lo enviemos y empiece a disfrutar de todos sus beneficios? 📦✨"
-    4. ETAPA CIERRE: 
-       - Acción 1: Si aceptó el envío, envía EXACTAMENTE este texto (respeta saltos):
+       
+
+    3. ETAPA CALIENTE (Momento Decisivo):
+       - Acción: Presenta los precios leyendo estrictamente la información del producto. Vende el combo o promoción usando persuasión ("Aproveche nuestra súper oferta, se la recomiendo muchísimo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ. No enfríes la venta ni repitas precios si el cliente ya eligió.
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Cuál desearía? Le recomiendo aprovechar la promoción para obtener mejores resultados. ¿Desea que se lo enviemos? 📦✨"
+            
+    4. ETAPA CIERRE (La Recolección): 
+       - Acción 1: El cliente ya aceptó el envío o eligió su combo. ENVÍA EXACTAMENTE este texto (respeta saltos):
          "Listo, ayúdeme con los siguientes datos por favor:
          *Nombre y Apellido:*
          *Ciudad:*
          *Dirección exacta (domicilio, trabajo u oficina servientrega):* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
-       - Acción 2 (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Dile: "¡Gracias! Para la guía de la transportadora, ¿me podría ayudar también con su apellido? 😊". Valída que todos los datos esten correctos. 
-       - Acción 3 (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviara por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
+       - Acción 2 (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Dile: "¡Gracias! Para la guía de la transportadora, ¿me podría ayudar también con su apellido? 😊". Valida que todos los datos estén correctos. 
+       - Acción 3 (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
+       
     5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
        - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
        - TIENES ESTRICTAMENTE PROHIBIDO SALUDAR DE NUEVO, REINICIAR LA VENTA O PREGUNTAR ALGO.
@@ -179,7 +184,7 @@ module.exports = async (req, res) => {
     - Emojis sutiles: 👋, 😊, ✨, ❤️, 🌿, 📦, 🚚, 🛡️.
 
     REGLA CRÍTICA Y OBLIGATORIA:
-    Tu ÚLTIMO mensaje DEBE terminar con una pregunta abierta corta (?), EXCEPTO en la ETAPA POSTVENTA, donde está estrictamente prohibido hacer preguntas.
+    Tu ÚLTIMO mensaje DEBE terminar con una pregunta abierta corta (?), EXCEPTO en la confirmación final y en la ETAPA POSTVENTA, donde está estrictamente prohibido hacer preguntas.
     
     CONOCIMIENTO ACTUAL DEL PRODUCTO: 
     ${baseConocimiento}
@@ -227,14 +232,15 @@ module.exports = async (req, res) => {
             
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
-                    textoFinal += " ¿Cuál desearía? Le recomiendo la promoción de 2 unidades, es muy buena para obtener mejores resultados. ¿Desea que se lo enviemos y empiece a disfrutar de los beneficios? 📦✨";
+                    // Texto genérico para cualquier promoción
+                    textoFinal += " ¿Cuál opción prefiere? Le recomiendo nuestra promoción para mejores resultados. ¿Le gustaría que se lo enviemos? 📦✨";
                 } else {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
             } else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
                 textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
             }
-
+            
             // GUARDAR EN REDIS
             historialConversacion_arr.push({ role: "assistant", content: textoFinal });
             await redisSetex(memoriaKey, 86400, JSON.stringify(historialConversacion_arr));
