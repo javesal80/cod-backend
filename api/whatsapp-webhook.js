@@ -124,7 +124,16 @@ module.exports = async (req, res) => {
             etapaActual = "CALIENTE";
         }
     }
-  
+
+        // EL FIX: Si la IA acaba de ofrecer precios o promos y el cliente dice "Sí", pasa a CALIENTE
+        const ultimoMsgIA = historialConversacion_arr.filter(h => h.role === 'assistant').pop()?.content || "";
+        if (/precios|promociones|promoción/i.test(ultimoMsgIA) && /si|sí|claro|por supuesto|dale/i.test(msgLower)) {
+            etapaActual = "CALIENTE";
+        }
+    }
+
+
+    
     // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
