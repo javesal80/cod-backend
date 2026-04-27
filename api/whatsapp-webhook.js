@@ -180,9 +180,11 @@ module.exports = async (req, res) => {
          1. Nombre: Si el cliente escribe dos palabras, es NOMBRE Y APELLIDO VÁLIDO.
          2. Ciudad: Si menciona una ciudad, es VÁLIDO.
          3. Dirección: Si menciona dos calles y cualquier dato extra de referencia, es DIRECCIÓN VÁLIDA.
-       - PASO C (Recolección por partes - ¡PACIENCIA!): Los clientes pueden enviar los datos en un sólo mensaje separados por saltos, o envían los datos en varios mensajes cortos separados. REVISA EL HISTORIAL. Si el cliente solo mandó su nombre, NO mandes errores robóticos. Dile amablemente: "¡Gracias! ¿Me ayuda también con su ciudad y dirección por favor? 😊".
-       - PASO D (APROBACIÓN EXPRÉS - ¡ÓRDEN ESTRICTA!): En el segundo que leas en el historial que ya te dio un Nombre, una Ciudad y CUALQUIER texto que parezca dirección (calles), ¡APRUEBA TODO INMEDIATAMENTE! TIENES ESTRICTAMENTE PROHIBIDO pedir más referencias o apellidos. Lanza la confirmación directa: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar). Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
-       
+        - PASO C (Recolección Flexible - ¡SÚPER IMPORTANTE!): Evalúa CÓMO responde el cliente:
+         * CASO 1 (Todo de golpe): Si el cliente te manda su nombre, ciudad y dirección en UN SOLO MENSAJE (usando comas o saltos de línea), ¡PERFECTO! Pasa INMEDIATAMENTE al PASO D. Tienes prohibido validar pieza por pieza.
+         * CASO 2 (Mensajes por partes): Si el cliente te envía la información de a poco (ej: manda solo el nombre en un mensaje), NO lo regañes ni repitas el formulario. Chatea natural: "Anotado 📝. ¿De qué ciudad nos escribe?". Si da la ciudad: "Perfecto. ¿Me ayuda con su dirección exacta por favor?".
+       - PASO D (Aprobación Inmediata y Cierre): Revisa el historial constantemente. En el instante en que confirmes que ya tienes Nombre, Ciudad y Dirección (ya sea porque lo mandó todo junto o lo reuniste por partes), ¡LA VENTA ESTÁ CERRADA! Lanza DIRECTAMENTE sin pedir más confirmaciones: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar). Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
+    
     5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
        - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
        - TIENES ESTRICTAMENTE PROHIBIDO SALUDAR DE NUEVO, REINICIAR LA VENTA O PREGUNTAR ALGO.
