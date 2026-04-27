@@ -22,7 +22,6 @@ module.exports = async (req, res) => {
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
-    // --- LÓGICA DE DÍAS (HORA ECUADOR -5) ---
     const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
     const hoy = new Date(utc + (3600000 * -5)); 
     const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -38,7 +37,6 @@ module.exports = async (req, res) => {
     const mañana = nombresDias[dia1.getDay()];
     const pasado = nombresDias[dia2.getDay()];
     
-   // --- HELPERS REDIS (CORREGIDOS PARA MEMORIA INFINITA) ---
     const redisGet = async (key) => {
         const r = await fetch(`${KV_REST_API_URL}`, {
             method: 'POST',
@@ -57,7 +55,6 @@ module.exports = async (req, res) => {
         });
     };
     
-    // --- ANTI-DUPLICADOS ---
     try {
         const existe = await redisGet(`dd:${msgId}`);
         if (existe) return res.status(200).send('OK');
@@ -66,7 +63,6 @@ module.exports = async (req, res) => {
         console.error("Dedup error:", e.message);
     }
 
-   // --- HISTORIAL Y ETAPA DESDE REDIS ---
     let historialConversacion_arr = [];
     const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
     const memoriaKey = `chat:${cleanJid}`;
@@ -88,7 +84,6 @@ module.exports = async (req, res) => {
         console.error("Error leyendo memoria:", e.message);
     }
     
-    // --- 1. BUSCAR PRODUCTO (PERSISTENTE) ---
     const msgLower = clienteMsg.toLowerCase().trim();
     let infoEspecifica = "";
     let nombreProducto = "";
@@ -125,7 +120,6 @@ module.exports = async (req, res) => {
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio o saluda, dile amablemente: 'Con gusto le ayudo con la información, ¿me podría indicar en qué producto está interesado o qué malestar quiere tratar? ✨'";
 
-    // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS HÍBRIDA ---
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
@@ -134,18 +128,17 @@ module.exports = async (req, res) => {
         if (intencionCompra && nombreProducto !== "") {
             etapaActual = "CALIENTE";
         }
-     }
-    // Si el cliente elige, saltamos a CIERRE para que el salvavidas ponga el formulario
+    }
+
     if (etapaActual === "CALIENTE" && /primera|segunda|promo|unidad|1|2|combo|uno|dos/i.test(msgLower)) {
         etapaActual = "CIERRE";
     }
-        // EL FIX: Si la IA acaba de ofrecer precios o promos y el cliente dice "Sí", pasa a CALIENTE
-        const ultimoMsgIA = historialConversacion_arr.filter(h => h.role === 'assistant').pop()?.content || "";
-        if (/precios|promociones|promoción/i.test(ultimoMsgIA) && /si|sí|claro|por supuesto|dale/i.test(msgLower)) {
-            etapaActual = "CALIENTE";
-        }
+
+    const ultimoMsgIA = historialConversacion_arr.filter(h => h.role === 'assistant').pop()?.content || "";
+    if (/precios|promociones|promoción/i.test(ultimoMsgIA) && /si|sí|claro|por supuesto|dale/i.test(msgLower)) {
+        etapaActual = "CALIENTE";
+    }
        
-   // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
     if (historialConversacion_arr.length > 20) historialConversacion_arr = historialConversacion_arr.slice(-20);
@@ -154,71 +147,20 @@ module.exports = async (req, res) => {
         .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
         .join('\n');
 
-    // --- CONSTRUCCIÓN DINÁMICA DEL PROMPT (USANDO LÓGICA IF/ELSE) ---
     let instruccionesEtapa = "";
-
     if (etapaActual === "FRIO") {
-        instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Indagación Inicial.
-        - Si en tu CONOCIMIENTO hay una "ALERTA": Tu ÚNICA respuesta debe ser: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨"
-        - Si en tu CONOCIMIENTO hay información de un producto: Redacta un párrafo corto explicando qué es y para qué sirve. Cierra OBLIGATORIAMENTE con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
-        `;
+        instruccionesEtapa = `OBJETIVO: Estás en la etapa de Indagación Inicial...`;
     } else if (etapaActual === "TIBIO") {
-        instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Educación.
-        - Conecta los ingredientes del producto con el dolor del cliente. Resuelve sus dudas.
-        - Cuando ya no tenga dudas, cierra con: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨"
-        `;
+        instruccionesEtapa = `OBJETIVO: Estás en la etapa de Educación...`;
     } else if (etapaActual === "CALIENTE") {
-        instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Venta Directa (Precios).
-        - Si el cliente aún no sabe qué hace el producto, dale una breve descripción de 1 línea.
-        - Presenta los precios estrictamente desde tu conocimiento.
-        - TIENES ESTRICTAMENTE PROHIBIDO preguntar si tiene dudas o si quiere conocer beneficios.
-        - CIERRE OBLIGATORIO: Termina tu mensaje ÚNICAMENTE con: "Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨"
-        `;
+        instruccionesEtapa = `OBJETIVO: Estás en la etapa de Venta Directa (Precios)...`;
     } else if (etapaActual === "CIERRE") {
-        instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Recolección de Datos. Eres amable pero técnica aquí.
-        - PASO A (Dijo "Sí" pero no eligió): Pregunta: "¡Excelente! ¿Cuál de las opciones desearía? 😊" y DETENTE.
-        - PASO B, REGLA DE ORO: Si vas a pedir los datos del cliente, DEBES usar EXACTAMENTE el siguiente bloque de texto, sin añadir ni quitar una sola palabra. Es una orden técnica:
-          "Listo, ayúdeme con los siguientes datos por favor:
-          *Nombre y Apellido:*
-          *Ciudad:*
-          *Dirección exacta:* (Especifique 2 calles y una referencia clara)."
-        - PASO C (Recolección Flexible): Si envía datos por partes, chatea natural: "Anotado 📝. ¿De qué ciudad nos escribe?"
-        - PASO D (CIERRE DE VENTA): Si ya tienes Nombre, Ciudad y Dirección, lanza: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracon, velosces, Urbano o Laar) por su seguras. Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
-        - REGLA ANTI-DESPEDIDA: No digas "gracias por su compra" ni te despidas hasta haber enviado el mensaje de "Datos registrados con éxito".
-        `;
-
-   
+        instruccionesEtapa = `OBJETIVO: Estás en la etapa de Recolección de Datos...`;
     } else if (etapaActual === "POSTVENTA") {
-        instruccionesEtapa = `
-        OBJETIVO: Despedida.
-        - Respuesta ÚNICA: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊".
-        `;
+        instruccionesEtapa = `OBJETIVO: Despedida.`;
     }
 
-    const masterPrompt = `
-    IDENTIDAD Y FILOSOFÍA:
-    Eres Fiorella de JRJMarket, asesora en neuromarketing. Humana y empática. Trato de USTED.
-    
-    ESTADO DE LA CONVERSACIÓN:
-    - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - Inicia diciendo: "¡Hola! Muy buenas... Un gusto saludarle 😊".' : 'NO - Continúa la charla natural.'}
-
-    INSTRUCCIONES ESTRICTAS PARA TU ETAPA ACTUAL (${etapaActual}):
-    ${instruccionesEtapa}
-
-    REGLAS GENERALES:
-    - Usa puntos suspensivos (...) para pausas humanas.
-    - Tu ÚLTIMO mensaje DEBE terminar con una pregunta (?), EXCEPTO cuando envías el formulario, confirmas el envío, o en Postventa.
-    
-    CONOCIMIENTO ACTUAL DEL PRODUCTO: 
-    ${baseConocimiento}
-    
-    HISTORIAL RECIENTE: 
-    ${contextoMemoria}
-    `;
+    const masterPrompt = `IDENTIDAD Y FILOSOFÍA: Fiorella... ETAPA: ${etapaActual}. INFO: ${baseConocimiento}. HISTORIAL: ${contextoMemoria}`;
 
     try {
         let textoFinal = "";
@@ -248,60 +190,38 @@ module.exports = async (req, res) => {
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
             
-            // --- ACTUALIZACIÓN DE ETAPA BASADA EN LAS DECISIONES DE LA IA ---
             let nuevaEtapa = etapaActual;
             
-            // Si la IA menciona datos del formulario, FORZAMOS etapa CIERRE
+            // --- CORRECCIÓN DE LLAVES AQUÍ ---
             if (textoFinal.toLowerCase().includes("nombre y apellido") || 
                 textoFinal.toLowerCase().includes("dirección exacta") || 
                 textoFinal.toLowerCase().includes("ayúdeme con los siguientes datos")) {
                 nuevaEtapa = "CIERRE";
-            } 
-            if (textoFinal.includes("registrados con éxito")) {
-        nuevaEtapa = "POSTVENTA";
-    } else if (etapaActual === "CIERRE" || textoFinal.toLowerCase().includes("nombre y apellido")) {
-        nuevaEtapa = "CIERRE";
-    }
-            }
-            // Si ofrece opciones pero no pide datos, se queda en CALIENTE
-            else if (textoFinal.includes("Cuál de las opciones desearía")) {
+            } else if (textoFinal.includes("registrados con éxito")) {
+                nuevaEtapa = "POSTVENTA";
+            } else if (etapaActual === "CIERRE" || textoFinal.toLowerCase().includes("nombre y apellido")) {
+                nuevaEtapa = "CIERRE";
+            } else if (textoFinal.includes("Cuál de las opciones desearía")) {
                 nuevaEtapa = "CALIENTE";
             }
-            
 
-          // --- SALVAVIDAS FIORELLA (CONTROL TOTAL DEL FORMULARIO) ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
             const esConfirmacionFinal = /registrados con éxito/i.test(textoFinal);
             const yaTieneFormulario = /Nombre y Apellido:/i.test(textoFinal);
 
             if (!esDespedida && !esConfirmacionFinal) {
-                // Si la etapa es CIERRE y no se ha enviado el formulario, el Salvavidas lo pone SIEMPRE
                 if (nuevaEtapa === "CIERRE" && !yaTieneFormulario) {
-                    textoFinal += `
-                    
-Listo, ayúdeme con los siguientes datos por favor:
-*Nombre y Apellido:*
-*Ciudad:*
-*Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul).`;
-                } 
-                // Si la etapa es CALIENTE y no hay pregunta, ponemos la de elegir opción
-                else if (nuevaEtapa === "CALIENTE" && !textoFinal.includes('?')) {
+                    textoFinal += `\n\nListo, ayúdeme con los siguientes datos por favor:\n*Nombre y Apellido:*\n*Ciudad:*\n*Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul).`;
+                } else if (nuevaEtapa === "CALIENTE" && !textoFinal.includes('?')) {
                     textoFinal += " Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨";
-                }
-                // Si la etapa es FRIO y no hay pregunta, ponemos la de interés
-                else if (nuevaEtapa === "FRIO" && !textoFinal.includes('?')) {
+                } else if (nuevaEtapa === "FRIO" && !textoFinal.includes('?')) {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
             }
 
-          
-          
-            // GUARDAR EN REDIS
-            historialConversacion_arr.push({ role: "assistant", content: textoFinal });
-            await redisSetex(memoriaKey, 86400, JSON.stringify(historialConversacion_arr));
+            await redisSetex(memoriaKey, 86400, JSON.stringify(historialConversacion_arr.concat({ role: "assistant", content: textoFinal })));
             await redisSetex(stageKey, 86400, nuevaEtapa);
 
-            // NOTIFICACIÓN ADMIN
             const keysAdmin = ["confirmado", "registrado", "dirección", "nombre", "calle", "ciudad", "provincia", "sector"];
             if (keysAdmin.some(k => clienteMsg.toLowerCase().includes(k)) && clienteMsg.length > 5) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
@@ -311,25 +231,7 @@ Listo, ayúdeme con los siguientes datos por favor:
                 });
             }
 
-            // --- CASCADA DE MENSAJES ---
-            let partes = textoFinal
-                .replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n") 
-                .split('\n')
-                .map(l => l.trim())
-                .filter(l => l !== "");
-
-            // REGLA ANTI-HACHAZO
-            if (partes.length > 8) {
-                const preguntaFinal = partes.pop();
-                partes = partes.slice(0, 7);
-                partes.push(preguntaFinal);
-            }
-
-            if (partes.length > 1 && partes[0].length < 30) {
-                partes[1] = partes[0] + " " + partes[1];
-                partes.shift();
-            }
-            
+            let partes = textoFinal.replace(/([.!?])\s+(?=[A-Z¿¡])/g, "$1\n").split('\n').map(l => l.trim()).filter(l => l !== "");
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
