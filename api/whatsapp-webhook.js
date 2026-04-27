@@ -178,6 +178,19 @@ module.exports = async (req, res) => {
         instruccionesEtapa = `
         OBJETIVO: Estás en la etapa de Recolección de Datos. Eres amable pero técnica aquí.
 
+        CHECKLIST OBLIGATORIO (Revisa historial y mensaje actual):
+        1. [NOMBRE]: ¿Tengo Nombre y Apellido?
+        2. [CIUDAD]: ¿Sé a qué Ciudad o Provincia va el pedido?
+        3. [DIRECCIÓN]: ¿Tengo la calle principal, la calle secundaria y una referencia (ej: frente a, color de casa, edificio), o debo tener por lo menos nombre de urbanización, con numero de lote, numero de manzana y departamento o casa?
+
+        REGLAS DE RESPUESTA:
+        - Si el mensaje está VACÍO de datos: Envía el formulario del PASO A.
+        - Si los datos están INCOMPLETOS: Menciona lo que YA tienes y pide específicamente lo que FALTA para completar los 3 puntos del checklist. 
+          (Ejemplo: "¡Listo! Ya tengo su nombre y ciudad. Para agendar, por favor dígame las *dos calles* de su dirección y una *referencia clara*.")
+        - Si los datos están COMPLETOS (cumple los 3 puntos del checklist): Pasa directamente al PASO C.
+
+        PASO A (Formulario Inicial):
+          "Listo, ayúdeme con los siguientes datos por favor:
        1. PROCESAMIENTO GENÉRICO:
            - Analiza el mensaje actual y el historial buscando: [Nombre del destinatario], [Ciudad de destino] y [Dirección/Referencia].
            - No busques palabras exactas; busca el contexto. Si el cliente menciona un lugar, asúmelo como Ciudad o Sector.
@@ -185,7 +198,6 @@ module.exports = async (req, res) => {
         2. VALIDACIÓN DINÁMICA:
            - Si el cliente ya proporcionó información que razonablemente identifica su ubicación (aunque sea solo el nombre de un barrio o ciudad), NO vuelvas a preguntar por ello.
 
-        
         - PASO A: Si el historial está vacío de datos, pedir los datos del cliente, DEBES usar EXACTAMENTE el siguiente bloque de texto, sin añadir ni quitar una sola palabra. Es una orden técnica:
           "Listo, ayúdeme con los siguientes datos por favor:
           *Nombre y Apellido:*
