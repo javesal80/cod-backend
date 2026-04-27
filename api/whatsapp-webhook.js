@@ -236,7 +236,7 @@ module.exports = async (req, res) => {
             let nuevaEtapa = etapaActual;
             if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos") || textoFinal.includes("Cuál de las opciones desearía")) nuevaEtapa = "CALIENTE";
             if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta") || textoFinal.includes("ayúdeme con los siguientes datos") || textoFinal.includes("¿De qué ciudad nos escribe?")) nuevaEtapa = "CIERRE";
-            if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes")) nuevaEtapa = "POSTVENTA";
+            if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
 
             // --- SALVAVIDAS FIORELLA INTELIGENTE ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
