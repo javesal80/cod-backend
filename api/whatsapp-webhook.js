@@ -124,12 +124,7 @@ module.exports = async (req, res) => {
             etapaActual = "CALIENTE";
         }
     }
-    
-    // EL FIX: Radar de Compras en JS. Si está en Caliente y elige un combo o acepta, salta al CIERRE obligatoriamente.
-    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|oferta|promocion|promo|dos|ambas|combo|enviar|despacho/i.test(msgLower)) {
-        etapaActual = "CIERRE";
-    }
-    
+  
     // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
@@ -166,9 +161,10 @@ module.exports = async (req, res) => {
 
     3. ETAPA CALIENTE (Momento Decisivo):
        - Acción: Presenta los precios leyendo estrictamente la información del producto. Vende el combo o promoción usando persuasión ("Aproveche nuestra súper oferta, se la recomiendo muchísimo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ. No enfríes la venta ni repitas precios si el cliente ya eligió.
+       - EVALUACIÓN SEMÁNTICA (¡TÚ DECIDES!): Analiza lo que responde el cliente. Si el cliente elige UNA de las opciones usando sus propias palabras (Ej: "la primera", "la de $xx", "la promo", "uno solo", "el combo", etc...), ¡LA VENTA AVANZA! Ignora la Etapa 3, salta inmediatamente a la ETAPA 4 (Paso B) y envíale el formulario de datos.
        - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨" (¡PROHIBIDO AÑADIR OTRA PREGUNTA!).
 
-          
+         
     4. ETAPA CIERRE (La Recolección): 
        - PASO A (Dijo "Sí" pero falta cantidad): Si el cliente respondió "Sí" a la pregunta anterior pero NO eligió su opción, pregúntale: "¡Excelente! Para preparar su paquete, ¿cuál opción desearía? Le aconsejo la promoción. 😊" Y DETENTE AQUÍ.
        - PASO B (Enviar Formulario): Si el cliente ya eligió su opción, envía EXACTAMENTE este texto Y DETENTE:
