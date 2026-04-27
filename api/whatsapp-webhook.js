@@ -175,17 +175,19 @@ module.exports = async (req, res) => {
         `;
     } else if (etapaActual === "CIERRE") {
         instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Recolección de Datos.
+        OBJETIVO: Estás en la etapa de Recolección de Datos. Eres amable pero técnica aquí.
         - Si el cliente ya eligió (Ej: "la primera", "una unidad"), ASUME LA ELECCIÓN.
         - PASO A (Dijo "Sí" pero no eligió): Pregunta: "¡Excelente! ¿Cuál de las opciones desearía? 😊" y DETENTE.
-        - PASO B (Pedir Datos): Si ya eligió su opción, envía EXACTAMENTE este texto:
+        - PASO B (REGLA DE ORO DEL FORMULARIO): Si ya eligió su opción, pide los datos, TIENES PROHIBIDO redactarlo a tu manera. Debes copiar y pegar este bloque EXACTO:
           "Listo, ayúdeme con los siguientes datos por favor:
           *Nombre y Apellido:*
           *Ciudad:*
           *Dirección exacta:* (Especifique 2 calles y una referencia clara)."
         - PASO C (Recolección Flexible): Si envía datos por partes, chatea natural: "Anotado 📝. ¿De qué ciudad nos escribe?"
-        - PASO D (Confirmación Final): Si ya tienes Nombre, Ciudad y Dirección, lanza: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras. Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
+        - PASO D (CIERRE DE VENTA): Si ya tienes Nombre, Ciudad y Dirección, lanza: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracon, velosces, Urbano o Laar) por su seguras. Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
+        - REGLA ANTI-DESPEDIDA: No digas "gracias por su compra" ni te despidas hasta haber enviado el mensaje de "Datos registrados con éxito".
         `;
+       
     } else if (etapaActual === "POSTVENTA") {
         instruccionesEtapa = `
         OBJETIVO: Despedida.
