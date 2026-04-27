@@ -177,17 +177,21 @@ module.exports = async (req, res) => {
     } else if (etapaActual === "CIERRE") {
         instruccionesEtapa = `
         OBJETIVO: Estás en la etapa de Recolección de Datos. Eres amable pero técnica aquí.
+
+       1. PROCESAMIENTO GENÉRICO:
+           - Analiza el mensaje actual y el historial buscando: [Nombre del destinatario], [Ciudad de destino] y [Dirección/Referencia].
+           - No busques palabras exactas; busca el contexto. Si el cliente menciona un lugar, asúmelo como Ciudad o Sector.
         
-        - PASO A: Pedir los datos del cliente, DEBES usar EXACTAMENTE el siguiente bloque de texto, sin añadir ni quitar una sola palabra. Es una orden técnica:
+        2. VALIDACIÓN DINÁMICA:
+           - Si el cliente ya proporcionó información que razonablemente identifica su ubicación (aunque sea solo el nombre de un barrio o ciudad), NO vuelvas a preguntar por ello.
+
+        
+        - PASO A: Si el historial está vacío de datos, pedir los datos del cliente, DEBES usar EXACTAMENTE el siguiente bloque de texto, sin añadir ni quitar una sola palabra. Es una orden técnica:
           "Listo, ayúdeme con los siguientes datos por favor:
           *Nombre y Apellido:*
           *Ciudad:*
           *Dirección exacta:* (Especifique 2 calles y una referencia clara)."
 
-          REGLAS DE PROCESAMIENTO:
-        - Analiza y lee todo el mensaje respuesta del cliente: los datos pedidos pueden venir todos juntos, separados por comas, separados con saltos de línea o pueden venir separados de uno en uno.
-        - Tienes prohibido preguntar por un dato que ya aparezca en el mensaje actual o en el historial.
-        
         - PASO B (Recolección Flexible): Si envía datos por partes, chatea natural: "Anotado 📝. ¿De qué ciudad nos escribe?"
         - PASO C (CIERRE DE VENTA): Si ya tienes Nombre, Ciudad y Dirección, lanza: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracon, velosces, Urbano o Laar) por su seguras. Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
         - REGLA ANTI-DESPEDIDA: No digas "gracias por su compra" ni te despidas hasta haber enviado el mensaje de "Datos registrados con éxito".
