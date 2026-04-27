@@ -180,8 +180,8 @@ module.exports = async (req, res) => {
          1. Nombre: Si el cliente escribe dos palabras, es NOMBRE Y APELLIDO VÁLIDO.
          2. Ciudad: Si menciona una ciudad, es VÁLIDO.
          3. Dirección: Si menciona dos calles y cualquier dato extra de referencia, es DIRECCIÓN VÁLIDA.
-       - PASO C (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Valida que todos los datos estén correctos. 
-       - PASO D (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
+       - PASO C (Recolección por partes - ¡PACIENCIA!): Los clientes pueden enviar los datos en un sólo mensaje separados por saltos, o envían los datos en varios mensajes cortos separados. REVISA EL HISTORIAL. Si el cliente solo mandó su nombre, NO mandes errores robóticos. Dile amablemente: "¡Gracias! ¿Me ayuda también con su ciudad y dirección por favor? 😊".
+       - PASO D (APROBACIÓN EXPRÉS - ¡ÓRDEN ESTRICTA!): En el segundo que leas en el historial que ya te dio un Nombre, una Ciudad y CUALQUIER texto que parezca dirección (calles), ¡APRUEBA TODO INMEDIATAMENTE! TIENES ESTRICTAMENTE PROHIBIDO pedir más referencias o apellidos. Lanza la confirmación directa: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar). Las entregas son de 9am a 5pm. Pago contra entrega 🛡️."
        
     5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
        - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
