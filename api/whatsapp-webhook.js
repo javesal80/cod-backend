@@ -250,26 +250,22 @@ module.exports = async (req, res) => {
             if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta") || textoFinal.includes("ayúdeme con los siguientes datos") || textoFinal.includes("¿De qué ciudad nos escribe?")) nuevaEtapa = "CIERRE";
             if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
 
-            // --- SALVAVIDAS FIORELLA INTELIGENTE ---
-            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
-            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
+           // --- SALVAVIDAS FIORELLA INTELIGENTE (SIN CONFLICTOS) ---
+            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
+            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|datos/i.test(textoFinal.toLowerCase());
             
+            // Solo agregamos preguntas si NO estamos en CIERRE y NO estamos despidiendo
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
-                if (etapaActual === "CALIENTE") {
-                    // Texto genérico para cualquier promoción
+                if (nuevaEtapa === "CALIENTE") {
                     textoFinal += " Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨";
-                } else {
+                } else if (nuevaEtapa === "FRIO") {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
-            } else if (etapaActual === "CALIENTE" && !textoFinal.toLowerCase().includes("cuál") && !textoFinal.toLowerCase().includes("cual")) {
-                // Refuerzo si la IA hace la pregunta de envío pero olvida la de elección
-                textoFinal = textoFinal.replace("¿Desea que se lo enviemos", "¿Cuál desearía? Le recomiendo la promoción... ¿Desea que se lo enviemos");
-                }
-                       
-             else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
+            } 
+            // Si la IA mandó el formulario pero olvidó la pregunta técnica de cierre, le ponemos una suave
+            else if (!textoFinal.includes('?') && esCierreActivo && nuevaEtapa === "CIERRE" && !esDespedida) {
                 textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
-            }      
-          
+            }
           
             // GUARDAR EN REDIS
             historialConversacion_arr.push({ role: "assistant", content: textoFinal });
