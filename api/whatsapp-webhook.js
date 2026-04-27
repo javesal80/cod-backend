@@ -166,10 +166,12 @@ module.exports = async (req, res) => {
 
     3. ETAPA CALIENTE (Momento Decisivo):
        - Acción: Presenta los precios leyendo estrictamente la información del producto. Vende el combo o promoción usando persuasión ("Aproveche nuestra súper oferta, se la recomiendo muchísimo..."). PROHIBIDO PREGUNTAR SI TIENE DUDAS AQUÍ. No enfríes la venta ni repitas precios si el cliente ya eligió.
-       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "¿Cuál desearía? Le recomiendo aprovechar la promoción para obtener mejores resultados. ¿Desea que se lo enviemos? 📦✨"
-            
+       - Pregunta obligatoria de cierre: EXACTAMENTE ESTA: "Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨" (¡PROHIBIDO AÑADIR OTRA PREGUNTA!).
+
+          
     4. ETAPA CIERRE (La Recolección): 
-       - Acción 1: El cliente ya aceptó el envío o eligió su combo. ENVÍA EXACTAMENTE este texto (respeta saltos):
+       - PASO A (Dijo "Sí" pero falta cantidad): Si el cliente respondió "Sí" a la pregunta anterior pero NO eligió su opción, pregúntale: "¡Excelente! Para preparar su paquete, ¿cuál opción desearía? Le aconsejo la promoción. 😊" Y DETENTE AQUÍ.
+       - PASO B (Enviar Formulario): Si el cliente ya eligió su opción, envía EXACTAMENTE este texto Y DETENTE:
          "Listo, ayúdeme con los siguientes datos por favor:
          *Nombre y Apellido:*
          *Ciudad:*
@@ -228,15 +230,15 @@ module.exports = async (req, res) => {
             if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos")) nuevaEtapa = "CALIENTE";
             if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta")) nuevaEtapa = "CIERRE";
             if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
-            
+
             // --- SALVAVIDAS FIORELLA INTELIGENTE ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
-            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
+            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referenvío|llegará|despachar/i.test(textoFinal);
             
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
                     // Texto genérico para cualquier promoción
-                    textoFinal += " ¿Cuál opción prefiere? Le recomiendo nuestra promoción para mejores resultados. ¿Le gustaría que se lo enviemos? 📦✨";
+                    textoFinal += " Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨";
                 } else {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
