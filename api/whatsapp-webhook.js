@@ -128,11 +128,6 @@ module.exports = async (req, res) => {
         }
     }
     
-    // De Caliente a Cierre
-    if (etapaActual === "CALIENTE" && /si|sí|claro|quiero|despacho|enviar/i.test(msgLower)) etapaActual = "CIERRE";
-    
-    // De Cierre a Postventa (El Fix del Bucle)
-    if (etapaActual === "CIERRE" && /gracias|listo|ok|perfecto|muy amable/i.test(msgLower)) etapaActual = "POSTVENTA";
     
     // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
@@ -220,10 +215,11 @@ module.exports = async (req, res) => {
         if (textoFinal) {
             textoFinal = textoFinal.replace(/^\*\*Fiorella:\*\*\s*/i, "").trim();
             
-            // --- ACTUALIZACIÓN DE ETAPA PARA LOS PRÓXIMOS TURNOS ---
+            // --- ACTUALIZACIÓN DE ETAPA BASADA EN LAS DECISIONES DE LA IA ---
             let nuevaEtapa = etapaActual;
-            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("opciones de precios")) nuevaEtapa = "CALIENTE";
+            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos")) nuevaEtapa = "CALIENTE";
             if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta")) nuevaEtapa = "CIERRE";
+            if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
             
             // --- SALVAVIDAS FIORELLA INTELIGENTE ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
