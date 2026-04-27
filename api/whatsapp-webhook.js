@@ -179,7 +179,7 @@ module.exports = async (req, res) => {
         OBJETIVO: Estás en la etapa de Recolección de Datos. Eres amable pero técnica aquí.
 
         CHECKLIST OBLIGATORIO (Revisa historial y mensaje actual):
-        1. [NOMBRE]: ¿Tengo Nombre y Apellido?
+        1. [NOMBRE y APELLIDO]: ¿Tengo Nombre y Apellido?
         2. [CIUDAD]: ¿Sé a qué Ciudad o Provincia va el pedido?
         3. [DIRECCIÓN]: ¿Tengo la calle principal, la calle secundaria y una referencia (ej: frente a, color de casa, edificio), o debo tener por lo menos nombre de urbanización, con numero de lote, numero de manzana y departamento o casa?
 
@@ -192,7 +192,7 @@ module.exports = async (req, res) => {
         PASO A (Formulario Inicial):
           "Listo, ayúdeme con los siguientes datos por favor:
        1. PROCESAMIENTO GENÉRICO:
-           - Analiza el mensaje actual y el historial buscando: [Nombre del destinatario], [Ciudad de destino] y [Dirección/Referencia].
+           - Analiza el mensaje actual y el historial buscando: [Nombre y Apellido del destinatario], [Ciudad de destino] y [Dirección/Referencia].
            - No busques palabras exactas; busca el contexto. Si el cliente menciona un lugar, asúmelo como Ciudad o Sector.
         
         2. VALIDACIÓN DINÁMICA:
