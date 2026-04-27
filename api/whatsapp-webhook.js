@@ -1,20 +1,4 @@
-const fs = require('fs');
-const path = require('path');
 
-module.exports = async (req, res) => {
-    if (req.method !== 'POST') return res.status(200).send('OK');
-
-    const { 
-        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME, 
-        GROK_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY, IA_PROVIDER,
-        KV_REST_API_URL, KV_REST_API_TOKEN
-    } = process.env;
-
-    const NUMERO_ADMIN = "593992668002";
-
-    if (!req.body?.data?.message || req.body.data.key?.fromMe) return res.status(200).send('OK');
-
-    const data = req.body.data;
     const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
