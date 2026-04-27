@@ -22,11 +22,22 @@ module.exports = async (req, res) => {
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
-    const dias = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-    const hoy = new Date();
-    const mañana = dias[(hoy.getDay() + 1) % 5];
-    const pasado = dias[(hoy.getDay() + 2) % 5];
+    // --- LÓGICA DE DÍAS (HORA ECUADOR -5) ---
+    const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
+    const hoy = new Date(utc + (3600000 * -5)); 
+    const nombresDias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    
+    let dia1 = new Date(hoy); dia1.setDate(hoy.getDate() + 1);
+    if(dia1.getDay() === 0) dia1.setDate(dia1.getDate() + 1); // Si es domingo, pasa a lunes
+    if(dia1.getDay() === 6) dia1.setDate(dia1.getDate() + 2); // Si es sábado, pasa a lunes
+    
+    let dia2 = new Date(dia1); dia2.setDate(dia1.getDate() + 1);
+    if(dia2.getDay() === 0) dia2.setDate(dia2.getDate() + 1);
+    if(dia2.getDay() === 6) dia2.setDate(dia2.getDate() + 2);
 
+    const mañana = nombresDias[dia1.getDay()];
+    const pasado = nombresDias[dia2.getDay()];
+    
     // --- HELPERS REDIS ---
     const redisGet = async (key) => {
         const r = await fetch(`${KV_REST_API_URL}/get/${key}`, {
@@ -160,9 +171,9 @@ module.exports = async (req, res) => {
          "Listo, ayúdeme con los siguientes datos por favor:
          *Nombre y Apellido:*
          *Ciudad:*
-         *Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
-       - Acción 2: Si ya dio 2 calles y referencia, ¡NO PIDAS MÁS DETALLES! Valídalo correcto.
-       - Acción 3: Confirmación: "Su pedido llegará entre ${mañana} o ${pasado}. Transportadoras seguras (Servientrega, Gintracon, Veloces o Laar). Entregas 9am a 5pm. Pago contra entrega 🛡️."
+         *Dirección exacta (domicilio, trabajo u oficina servientrega):* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
+       - Acción 2 (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Dile: "¡Gracias! Para la guía de la transportadora, ¿me podría ayudar también con su apellido? 😊". Valída que todos los datos esten correctos. 
+       - Acción 3 (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviara por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
     5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
        - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
        - TIENES ESTRICTAMENTE PROHIBIDO SALUDAR DE NUEVO, REINICIAR LA VENTA O PREGUNTAR ALGO.
