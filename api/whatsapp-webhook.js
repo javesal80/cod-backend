@@ -189,8 +189,15 @@ module.exports = async (req, res) => {
           (Ejemplo: "¡Listo! Ya tengo su nombre y ciudad. Para agendar, por favor dígame las *dos calles* de su dirección y una *referencia clara*.")
         - Si los datos están COMPLETOS (cumple los 3 puntos del checklist): Pasa directamente al PASO C.
 
+        REGLA DE FLEXIBILIDAD 
+        - Si el cliente proporciona Cédula o Correo, ACÉPTALOS y regístralos. 
+        - Si NO los proporciona, NO los pidas ni detengas el proceso. Lo importante es el nombre y apellido, ciudad y la dirección/referencia.
+        - No valides rígidamente el formato de estos datos opcionales para no atascar la conversación.
+       
+        
         PASO A (Formulario Inicial):
           "Listo, ayúdeme con los siguientes datos por favor:
+                      
        1. PROCESAMIENTO GENÉRICO:
            - Analiza el mensaje actual y el historial buscando: [Nombre y Apellido del destinatario], [Ciudad de destino] y [Dirección/Referencia].
            - No busques palabras exactas; busca el contexto. Si el cliente menciona un lugar, asúmelo como Ciudad o Sector.
@@ -206,9 +213,19 @@ module.exports = async (req, res) => {
 
         - PASO B (Recolección Flexible): Si envía datos por partes, chatea natural: "Anotado 📝. ¿De qué ciudad nos escribe?"
         - PASO C (CIERRE DE VENTA): Si ya tienes Nombre, Ciudad y Dirección, lanza: "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracom, Veloces, Urbano o Laar) por su seguridad. Las entregas son de 9am a 5pm, si tiene inconveninetes en ese horario le podemos ofrecer tambien entrega en una oficina servientrega cercana asi lo retira coordinando su tiempo y ocupaciones🛡️."
+        - REGLA DE FORMATO: No aceptes direcciones genéricas como "Mi casa" o "El centro". Exige siempre las calles.
         - REGLA ANTI-DESPEDIDA: No digas "gracias por su compra" ni te despidas hasta haber enviado el mensaje de "Datos registrados con éxito".
         `;
-  
+
+
+      
+        
+        `;
+
+
+
+
+        
     } else if (etapaActual === "POSTVENTA") {
         instruccionesEtapa = `
         OBJETIVO: Despedida.
