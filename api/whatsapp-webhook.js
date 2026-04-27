@@ -156,10 +156,11 @@ module.exports = async (req, res) => {
    
    FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
     1. ETAPA FRIO: 
+       - REGLA DE LECTURA (¡CRÍTICA!): Revisa la sección "CONOCIMIENTO ACTUAL DEL PRODUCTO" al final de este prompt.
        - SI NO HAY PRODUCTO IDENTIFICADO: Saluda (si aplica) y pregunta directamente: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨". PROHIBIDO inventar información.
-       - SI YA HAY PRODUCTO IDENTIFICADO: Lanza el gancho emocional obligatorio conectando con el producto. Y cierra preguntando: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
-       
-    2. ETAPA TIBIO: 
+       - SI YA HAY PRODUCTO IDENTIFICADO: ¡ASUME QUE YA ENCONTRAMOS EL PRODUCTO! Lanza inmediatamente el gancho emocional y cierra preguntando: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+
+   2. ETAPA TIBIO: 
        - Acción: Conecta ingredientes con su dolor. Si tiene dudas técnicas, responde con paciencia como humana.
        - Transición: Solo cuando resolvió dudas: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨".
        
