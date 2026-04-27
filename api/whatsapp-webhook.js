@@ -150,9 +150,9 @@ module.exports = async (req, res) => {
     
    ESTADO DE LA CONVERSACIÓN:
     - ES PRIMER MENSAJE: ${esPrimerMensaje ? 'SÍ - OBLIGATORIO: Tu PRIMERA LÍNEA debe ser exactamente ("¡Hola! Muy buenas... Un gusto saludarle 😊").' : 'NO - PROHIBIDO saludar de nuevo, continúa el hilo directamente.'}.
-   
+
    REGLA DE ORO DE ETAPAS:
-    - Si el sistema dice que estás en ETAPA CALIENTE, TIENES ESTRICTAMENTE PROHIBIDO preguntar si quiere saber sobre beneficios, ingredientes o si tiene dudas. Tu prioridad es cerrar la venta.
+    - Si el sistema dice que estás en ETAPA CALIENTE, TIENES ESTRICTAMENTE PROHIBIDO preguntar si quiere saber sobre beneficios, ingredientes o si tiene dudas. Tu prioridad es cerrar la venta. Tu pregunta FINAL debe ser obligatoriamente una doble alternativa. NO puedes preguntar solo si desea el envío. Debes preguntar qué opción prefiere..
    
    FLUJO DEL FUNNEL (DINÁMICO Y ESCUCHA ACTIVA):
     1. ETAPA FRIO: 
@@ -240,9 +240,15 @@ module.exports = async (req, res) => {
                 } else {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
+            } else if (etapaActual === "CALIENTE" && !textoFinal.toLowerCase().includes("cuál") && !textoFinal.toLowerCase().includes("cual")) {
+                // Refuerzo si la IA hace la pregunta de envío pero olvida la de elección
+                textoFinal = textoFinal.replace("¿Desea que se lo enviemos", "¿Cuál desearía? Le recomiendo la promoción... ¿Desea que se lo enviemos");
+                }
+                       
             } else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
                 textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
-            }
+            }        
+            
             
             // GUARDAR EN REDIS
             historialConversacion_arr.push({ role: "assistant", content: textoFinal });
