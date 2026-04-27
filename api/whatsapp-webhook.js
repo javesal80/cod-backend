@@ -176,8 +176,8 @@ module.exports = async (req, res) => {
          *Nombre y Apellido:*
          *Ciudad:*
          *Dirección exacta (domicilio, trabajo u oficina servientrega):* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
-       - Acción 2 (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Dile: "¡Gracias! Para la guía de la transportadora, ¿me podría ayudar también con su apellido? 😊". Valida que todos los datos estén correctos. 
-       - Acción 3 (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
+       - PASO C (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Valida que todos los datos estén correctos. 
+       - PASO D (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
        
     5. ETAPA POSTVENTA (¡CUIDADO AQUI!):
        - Si la Etapa Actual es POSTVENTA, significa que el cliente ya compró y se despidió.
