@@ -135,6 +135,10 @@ module.exports = async (req, res) => {
             etapaActual = "CALIENTE";
         }
      }
+    // Si el cliente elige, saltamos a CIERRE para que el salvavidas ponga el formulario
+    if (etapaActual === "CALIENTE" && /primera|segunda|promo|unidad|1|2|combo|uno|dos/i.test(msgLower)) {
+        etapaActual = "CIERRE";
+    }
         // EL FIX: Si la IA acaba de ofrecer precios o promos y el cliente dice "Sí", pasa a CALIENTE
         const ultimoMsgIA = historialConversacion_arr.filter(h => h.role === 'assistant').pop()?.content || "";
         if (/precios|promociones|promoción/i.test(ultimoMsgIA) && /si|sí|claro|por supuesto|dale/i.test(msgLower)) {
@@ -253,31 +257,44 @@ module.exports = async (req, res) => {
                 textoFinal.toLowerCase().includes("ayúdeme con los siguientes datos")) {
                 nuevaEtapa = "CIERRE";
             } 
-            // Si ya confirmó el registro, pasamos a POSTVENTA
-            else if (textoFinal.includes("registrados con éxito")) {
-                nuevaEtapa = "POSTVENTA";
+            if (textoFinal.includes("registrados con éxito")) {
+        nuevaEtapa = "POSTVENTA";
+    } else if (etapaActual === "CIERRE" || textoFinal.toLowerCase().includes("nombre y apellido")) {
+        nuevaEtapa = "CIERRE";
+    }
             }
             // Si ofrece opciones pero no pide datos, se queda en CALIENTE
             else if (textoFinal.includes("Cuál de las opciones desearía")) {
                 nuevaEtapa = "CALIENTE";
             }
-
-           // --- SALVAVIDAS FIORELLA INTELIGENTE (SIN CONFLICTOS) ---
-            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
-            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|datos/i.test(textoFinal.toLowerCase());
             
-            // Solo agregamos preguntas si NO estamos en CIERRE y NO estamos despidiendo
-            if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
-                if (nuevaEtapa === "CALIENTE") {
+
+          // --- SALVAVIDAS FIORELLA (CONTROL TOTAL DEL FORMULARIO) ---
+            const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
+            const esConfirmacionFinal = /registrados con éxito/i.test(textoFinal);
+            const yaTieneFormulario = /Nombre y Apellido:/i.test(textoFinal);
+
+            if (!esDespedida && !esConfirmacionFinal) {
+                // Si la etapa es CIERRE y no se ha enviado el formulario, el Salvavidas lo pone SIEMPRE
+                if (nuevaEtapa === "CIERRE" && !yaTieneFormulario) {
+                    textoFinal += `
+                    
+Listo, ayúdeme con los siguientes datos por favor:
+*Nombre y Apellido:*
+*Ciudad:*
+*Dirección exacta:* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul).`;
+                } 
+                // Si la etapa es CALIENTE y no hay pregunta, ponemos la de elegir opción
+                else if (nuevaEtapa === "CALIENTE" && !textoFinal.includes('?')) {
                     textoFinal += " Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨";
-                } else if (nuevaEtapa === "FRIO") {
+                }
+                // Si la etapa es FRIO y no hay pregunta, ponemos la de interés
+                else if (nuevaEtapa === "FRIO" && !textoFinal.includes('?')) {
                     textoFinal += " ¿Tiene alguna otra inquietud o le gustaría conocer nuestros precios y promociones? ✨";
                 }
-            } 
-            // Si la IA mandó el formulario pero olvidó la pregunta técnica de cierre, le ponemos una suave
-            else if (!textoFinal.includes('?') && esCierreActivo && nuevaEtapa === "CIERRE" && !esDespedida) {
-                textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
             }
+
+          
           
             // GUARDAR EN REDIS
             historialConversacion_arr.push({ role: "assistant", content: textoFinal });
