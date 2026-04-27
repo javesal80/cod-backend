@@ -129,20 +129,18 @@ module.exports = async (req, res) => {
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
-// --- MONITOREO DE ENTRADA ---
-    console.log(`[LOG] Msg Cliente: "${clienteMsg}" | Etapa Inicial: ${etapaActual}`);
-
-    if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
+    // Si ya estamos en CALIENTE y el cliente elige una opción (1, 2, primera, etc.)
+    const eligioOpcion = /primera|segunda|promo|unidad|1|2|combo|uno|dos|esa|la de/i.test(msgLower);
+    
+    if (etapaActual === "CALIENTE" && eligioOpcion) {
+        etapaActual = "CIERRE";
+        console.log(`[LOG] ¡SALTO DETECTADO! El cliente eligió opción. Nueva Etapa: CIERRE`);
+    } else if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
         const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
         if (intencionCompra && nombreProducto !== "") {
             etapaActual = "CALIENTE";
         }
-     }
-        // EL FIX: Si la IA acaba de ofrecer precios o promos y el cliente dice "Sí", pasa a CALIENTE
-        const ultimoMsgIA = historialConversacion_arr.filter(h => h.role === 'assistant').pop()?.content || "";
-        if (/precios|promociones|promoción/i.test(ultimoMsgIA) && /si|sí|claro|por supuesto|dale/i.test(msgLower)) {
-            etapaActual = "CALIENTE";
-        }
+    }
        
    // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
