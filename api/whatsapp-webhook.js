@@ -129,6 +129,9 @@ module.exports = async (req, res) => {
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
+// --- MONITOREO DE ENTRADA ---
+    console.log(`[LOG] Msg Cliente: "${clienteMsg}" | Etapa Inicial: ${etapaActual}`);
+
     if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
         const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
         if (intencionCompra && nombreProducto !== "") {
@@ -245,6 +248,10 @@ module.exports = async (req, res) => {
             
             // --- ACTUALIZACIÓN DE ETAPA BASADA EN LAS DECISIONES DE LA IA ---
             let nuevaEtapa = etapaActual;
+
+            // Verificamos si la IA detectó que debe cerrar
+            const detectoDatos = textoFinal.toLowerCase().includes("nombre y apellido");
+            console.log(`[LOG] ¿IA incluyó Formulario?: ${detectoDatos}`);
             
             // Si la IA menciona datos del formulario, FORZAMOS etapa CIERRE
             if (textoFinal.toLowerCase().includes("nombre y apellido") || 
@@ -264,6 +271,9 @@ module.exports = async (req, res) => {
            // --- SALVAVIDAS FIORELLA INTELIGENTE (SIN CONFLICTOS) ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || nuevaEtapa === "POSTVENTA";
             const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|datos/i.test(textoFinal.toLowerCase());
+
+    console.log(`[LOG] Salvavidas Check -> Etapa: ${nuevaEtapa} | Tiene ?: ${textoFinal.includes('?')} | Es Cierre Activo: ${esCierreActivo}`);
+
             
             // Solo agregamos preguntas si NO estamos en CIERRE y NO estamos despidiendo
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
