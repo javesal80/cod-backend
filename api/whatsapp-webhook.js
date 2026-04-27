@@ -245,7 +245,7 @@ module.exports = async (req, res) => {
                 textoFinal = textoFinal.replace("¿Desea que se lo enviemos", "¿Cuál desearía? Le recomiendo la promoción... ¿Desea que se lo enviemos");
                 }
                        
-            } else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
+             else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
                 textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
             }        
             
