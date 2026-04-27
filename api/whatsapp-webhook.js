@@ -238,13 +238,13 @@ module.exports = async (req, res) => {
             
             // --- ACTUALIZACIÓN DE ETAPA BASADA EN LAS DECISIONES DE LA IA ---
             let nuevaEtapa = etapaActual;
-            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos")) nuevaEtapa = "CALIENTE";
-            if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta")) nuevaEtapa = "CIERRE";
+            if (textoFinal.includes("procediéramos con el despacho") || textoFinal.includes("Desea que se lo enviemos") || textoFinal.includes("Cuál de las opciones desearía")) nuevaEtapa = "CALIENTE";
+            if (textoFinal.includes("Nombre y Apellido") || textoFinal.includes("Dirección exacta") || textoFinal.includes("ayúdeme con los siguientes datos") || textoFinal.includes("¿De qué ciudad nos escribe?")) nuevaEtapa = "CIERRE";
             if (etapaActual === "CIERRE" && (textoFinal.includes("excelente día") || textoFinal.includes("las órdenes"))) nuevaEtapa = "POSTVENTA";
 
             // --- SALVAVIDAS FIORELLA INTELIGENTE ---
             const esDespedida = /hasta luego|excelente día|no dude en contactarme|órdenes/i.test(textoFinal) || etapaActual === "POSTVENTA";
-            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referenvío|llegará|despachar/i.test(textoFinal);
+            const esCierreActivo = /dirección|nombre|apellido|ciudad|calle|referencia|envío|llegará|despachar/i.test(textoFinal);
             
             if (!textoFinal.includes('?') && !esDespedida && !esCierreActivo) {
                 if (etapaActual === "CALIENTE") {
@@ -260,9 +260,9 @@ module.exports = async (req, res) => {
                        
              else if (!textoFinal.includes('?') && esCierreActivo && !esDespedida && etapaActual !== "CIERRE") {
                 textoFinal += " ¿Me ayuda con esos datos por favor? 📝";
-            }        
-            
-            
+            }      
+          
+          
             // GUARDAR EN REDIS
             historialConversacion_arr.push({ role: "assistant", content: textoFinal });
             await redisSetex(memoriaKey, 86400, JSON.stringify(historialConversacion_arr));
@@ -286,9 +286,9 @@ module.exports = async (req, res) => {
                 .filter(l => l !== "");
 
             // REGLA ANTI-HACHAZO
-            if (partes.length > 6) {
+            if (partes.length > 8) {
                 const preguntaFinal = partes.pop();
-                partes = partes.slice(0, 5);
+                partes = partes.slice(0, 7);
                 partes.push(preguntaFinal);
             }
 
