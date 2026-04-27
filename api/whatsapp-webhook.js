@@ -176,6 +176,10 @@ module.exports = async (req, res) => {
          *Nombre y Apellido:*
          *Ciudad:*
          *Dirección exacta (domicilio, trabajo u oficina servientrega):* (Especifique 2 calles y una referencia clara, ej: Amazonas y Veintimilla frente a farmacia Cruz Azul)."
+       - PASO DE VALIDACIÓN  del PASO B (¡LEE EL MENSAJE COMPLETO! o LOS MENSAJES): Los clientes suelen enviar todos sus datos en un solo mensaje con varias líneas. Evalúa la información con LÓGICA COMÚN:
+         1. Nombre: Si el cliente escribe dos palabras, es NOMBRE Y APELLIDO VÁLIDO.
+         2. Ciudad: Si menciona una ciudad, es VÁLIDO.
+         3. Dirección: Si menciona dos calles y cualquier dato extra de referencia, es DIRECCIÓN VÁLIDA.
        - PASO C (VALIDACIÓN OBLIGATORIA): Revisa estrictamente lo que el cliente envió. ¿Puso al menos un Nombre y un APELLIDO? ¿Puso ciudad? ¿Puso 2 calles y referencia? Si el cliente solo dio un nombre (ej: "Javier"), TIENES PROHIBIDO avanzar. Valida que todos los datos estén correctos. 
        - PASO D (Confirmación): SOLO cuando tengas nombre, APELLIDO, ciudad y dirección completa: "Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras seguras (Servientrega, Gintracon, Veloces o Laar) por su seguridad. Las entregas son 9am a 5pm 🛡️."
        
