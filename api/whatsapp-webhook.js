@@ -38,22 +38,25 @@ module.exports = async (req, res) => {
     const mañana = nombresDias[dia1.getDay()];
     const pasado = nombresDias[dia2.getDay()];
     
-    // --- HELPERS REDIS ---
+   // --- HELPERS REDIS (CORREGIDOS PARA MEMORIA INFINITA) ---
     const redisGet = async (key) => {
-        const r = await fetch(`${KV_REST_API_URL}/get/${key}`, {
-            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` }
+        const r = await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["GET", key])
         });
         const d = await r.json();
         return d.result || null;
     };
 
     const redisSetex = async (key, seconds, value) => {
-        await fetch(`${KV_REST_API_URL}/setex/${key}/${seconds}/${encodeURIComponent(value)}`, {
+        await fetch(`${KV_REST_API_URL}`, {
             method: 'POST',
-            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` }
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["SETEX", key, seconds, value])
         });
     };
-
+    
     // --- ANTI-DUPLICADOS ---
     try {
         const existe = await redisGet(`dd:${msgId}`);
@@ -63,7 +66,7 @@ module.exports = async (req, res) => {
         console.error("Dedup error:", e.message);
     }
 
-    // --- HISTORIAL Y ETAPA DESDE REDIS ---
+   // --- HISTORIAL Y ETAPA DESDE REDIS ---
     let historialConversacion_arr = [];
     const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
     const memoriaKey = `chat:${cleanJid}`;
@@ -75,12 +78,16 @@ module.exports = async (req, res) => {
             redisGet(memoriaKey),
             redisGet(stageKey)
         ]);
-        if (guardado) historialConversacion_arr = JSON.parse(decodeURIComponent(guardado));
+        if (guardado) {
+            let memoriaLimpia = guardado;
+            try { memoriaLimpia = decodeURIComponent(guardado); } catch(e) {}
+            historialConversacion_arr = JSON.parse(memoriaLimpia);
+        }
         if (etapaGuardada) etapaActual = etapaGuardada;
     } catch (e) {
         console.error("Error leyendo memoria:", e.message);
     }
-
+    
     // --- 1. BUSCAR PRODUCTO (PERSISTENTE) ---
     const msgLower = clienteMsg.toLowerCase().trim();
     let infoEspecifica = "";
@@ -98,7 +105,11 @@ module.exports = async (req, res) => {
                 await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
             } else {
                 const productoGuardado = await redisGet(productoKey);
-                if (productoGuardado) productoEncontrado = JSON.parse(decodeURIComponent(productoGuardado));
+                if (productoGuardado) {
+                    let prodLimpio = productoGuardado;
+                    try { prodLimpio = decodeURIComponent(productoGuardado); } catch(e) {}
+                    productoEncontrado = JSON.parse(prodLimpio);
+                }
             }
             if (productoEncontrado) {
                 nombreProducto = productoEncontrado.nombre;
