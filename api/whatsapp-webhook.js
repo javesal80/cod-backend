@@ -218,15 +218,6 @@ module.exports = async (req, res) => {
         - REGLA ANTI-DESPEDIDA: No digas "gracias por su compra" ni te despidas hasta haber enviado el mensaje de "Datos registrados con éxito".
         `;
 
-
-      
-        
-        `;
-
-
-
-
-        
     } else if (etapaActual === "POSTVENTA") {
         instruccionesEtapa = `
         OBJETIVO: Despedida.
@@ -330,14 +321,35 @@ module.exports = async (req, res) => {
             await redisSetex(memoriaKey, 86400, JSON.stringify(historialConversacion_arr));
             await redisSetex(stageKey, 86400, nuevaEtapa);
 
-            // NOTIFICACIÓN ADMIN
-            const keysAdmin = ["confirmado", "registrado", "dirección", "nombre", "calle", "ciudad", "provincia", "sector"];
-            if (keysAdmin.some(k => clienteMsg.toLowerCase().includes(k)) && clienteMsg.length > 5) {
+           // --- NOTIFICACIÓN ADMIN (RESUMEN DE VENTA) ---
+            const esVentaExitosa = textoFinal.includes("registrados con éxito");
+
+            if (esVentaExitosa) {
+                // Extraemos el producto del historial o variable
+                const productoVendido = nombreProducto || "Producto no especificado";
+                
+                // Creamos el resumen para el administrador
+                const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*
+--------------------------------
+👤 *Cliente:* ${clienteMsg.split('\n')[0] || 'Ver historial'}
+📦 *Producto:* ${productoVendido}
+📍 *Detalles de Envío:* ${clienteMsg}
+--------------------------------
+📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}
+--------------------------------
+_Fiorella ha cerrado esta venta automáticamente._`;
+
+                // Enviamos al número del administrador
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                    body: JSON.stringify({ number: NUMERO_ADMIN, text: `📢 *NUEVA VENTA/DATO*\nDe: ${remoteJid}\nMsg: ${clienteMsg}` })
+                    body: JSON.stringify({ 
+                        number: NUMERO_ADMIN, 
+                        text: resumenVenta 
+                    })
                 });
+                
+                console.log(`[LOG] Notificación enviada al Admin para el JID: ${remoteJid}`);
             }
 
             // --- CASCADA DE MENSAJES ---
