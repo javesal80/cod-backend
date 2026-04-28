@@ -9,6 +9,52 @@
   "nombre": "KidGrow",
   "keywords": ["niños", "crecer", "estatura", "hijo", "hija", "kidgrow", "concentración", "estudio"],
   "archivo": "kidgrow.txt"
-    }
+    },
+    {
+  "id": "nubest_tall",
+  "nombre": "NuBest Tall Protein Powder",
+  "archivo": "nubest-tall.txt",
+  "keywords": [
+    "nubest",
+    "nubestall"
+    "proteina para crecer", 
+    "batido para estatura", 
+    "nubest tall", 
+    "crecimiento vegano", 
+    "proteina niños", 
+    "ganar estatura", 
+    "masa muscular niños", 
+    "crecer de estatura", 
+    "suplemento vainilla",
+    "proteina crecimiento"
+  ]
+}, 
+  {
+  "id": "oregano_oil",
+  "nombre": "Aceite de Orégano Orgánico YEJEON",
+  "archivo": "yejeon.txt",
+  "keywords": [
+    "oregano",
+    "yej eon",
+    "YEJ EON",
+    "yejeon",
+    "aceite de oregano", 
+    "carvacrol", 
+    "candida", 
+    "hongos", 
+    "parasitos", 
+    "desparasitante", 
+    "limpieza intestinal", 
+    "antibiotico natural", 
+    "bacterias", 
+    "gastritis", 
+    "flora intestinal", 
+    "infeccion", 
+    "defensas", 
+    "sistema inmune",
+    "limpieza de colon",
+    "hongo candida"
+  ]
+}
   ]
 }
