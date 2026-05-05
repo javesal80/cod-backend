@@ -93,28 +93,39 @@ module.exports = async (req, res) => {
     let infoEspecifica = "";
     let nombreProducto = "";
     const productoKey = `prod:${cleanJid}`;
-
+console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
+    
     try {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
+            console.log("📂 [DIAG] productos.json cargado.");
+            
             let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
                 p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
             );
+            console.log(`🎯 [DIAG] Keyword detectada: "${k}" en producto: ${p.nombre}`);
+            
             if (productoEncontrado) {
                 await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
             } else {
+                console.log("❓ [DIAG] No hay keyword en mensaje. Buscando en Redis...");
                 const productoGuardado = await redisGet(productoKey);
                 if (productoGuardado) {
                     let prodLimpio = productoGuardado;
                     try { prodLimpio = decodeURIComponent(productoGuardado); } catch(e) {}
                     productoEncontrado = JSON.parse(prodLimpio);
+                    console.log("🧠 [DIAG] Recuperado de Redis:", productoEncontrado.nombre);
                 }
             }
             if (productoEncontrado) {
+                console.log("💾 [DIAG] Guardando en Redis:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
+                console.log("📄 [DIAG] Buscando archivo físico en:", txtPath);
+                
                 if (fs.existsSync(txtPath)) infoEspecifica = fs.readFileSync(txtPath).toString('utf-8');
+                console.log("✅ [DIAG] TXT cargado. Caracteres:", infoEspecifica.length);
             }
         }            
     } catch (e) {
