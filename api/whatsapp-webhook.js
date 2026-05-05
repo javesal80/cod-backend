@@ -101,10 +101,16 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             console.log("📂 [DIAG] productos.json cargado.");
             
-            let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
-                p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
+             let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
+                p.keywords && p.keywords.some(k => {
+                    const detectado = msgLower.includes(k.toLowerCase());
+                    if (detectado) {
+                        // El log DEBE ir aquí adentro para que reconozca a 'k' y a 'p'
+                        console.log(`🎯 [DIAG] Keyword detectada: "${k}" en producto: ${p.nombre}`);
+                    }
+                    return detectado;
+                })
             );
-            console.log(`🎯 [DIAG] Keyword detectada: "${k}" en producto: ${p.nombre}`);
             
             if (productoEncontrado) {
                 await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
