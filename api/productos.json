@@ -15,11 +15,11 @@
    "keywords": ["nubest", "nubestall", "proteina para crecer", "batido para estatura", "nubest tall", "crecimiento vegano", "proteina niños", "ganar estatura", "masa muscular niños", "crecer de estatura", "suplemento vainilla", "proteina crecimiento"],
   "archivo": "nubest-tall.txt"
  }, 
-   {
+  {
   "nombre": "NAD+ Men Complex",
-   "keywords": ["envejecimiento", "Nad", "NAD", "NAd", "prostata", "nad complex", "nad", "vitalidad", "vitalidad masculina", "antienvejecimiento", "vitalidad sexual", "crecimiento del organo", "energía", "fuerza", "anti estres", "estres", "hormonas"],
+  "keywords": ["nad", "complex", "envejecimiento", "prostata", "vitalidad", "masculina", "sexual", "energia", "fuerza", "estres", "hormonas"],
   "archivo": "nad.txt"
- },  
+},
   {
   "nombre": "Aceite de Orégano Orgánico YEJEON",
   "archivo": "yejeon.txt"
