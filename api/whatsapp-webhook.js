@@ -126,16 +126,16 @@ console.log("🔍 [DIAG] Mensaje recibido para buscar:", msgLower);
                 console.log("📄 [DIAG] Intentando leer archivo TXT:", txtPath);
                 
                 if (fs.existsSync(txtPath)) infoEspecifica = fs.readFileSync(txtPath).toString('utf-8');
-                console.log("✅ [DIAG] TXT leído con éxito. Caracteres:", infoEspecifica.length);
-           } else {
-                    console.log("⚠️ [DIAG] ERROR: El archivo TXT no existe en la ruta.");
+               console.log("✅ [DIAG] Contenido cargado. Largo:", infoEspecifica.length);
+                } else {
+                    console.log("⚠️ [DIAG] ERROR: No existe el archivo físico:", productoEncontrado.archivo);
                 }
             }
         } else {
-            console.error("🚨 [DIAG] ERROR CRÍTICO: No se encuentra productos.json");
+            console.error("🚨 [DIAG] No se halló productos.json");
         }
     } catch (e) {
-        console.error("🚨 [DIAG] Excepción en búsqueda:", e.message);
+        console.error("🚨 [DIAG] Error en búsqueda:", e.message);
     }
 
     const baseConocimiento = infoEspecifica 
