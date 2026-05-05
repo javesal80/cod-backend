@@ -122,7 +122,8 @@ module.exports = async (req, res) => {
     }
 
     const baseConocimiento = infoEspecifica 
-        ? `DATOS ESTRATÉGICOS DEL PRODUCTO (Prioridad Absoluta):\n${infoEspecifica}`
+        
+        ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio o saluda, dile amablemente: 'Con gusto le ayudo con información, ¿me podría indicar en qué producto está interesado o qué malestar desearia tratar? ✨'";
 
     // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS HÍBRIDA ---
@@ -157,10 +158,8 @@ module.exports = async (req, res) => {
     if (etapaActual === "FRIO") {
         instruccionesEtapa = `
         OBJETIVO: Estás en la etapa de Indagación Inicial.
-        - Si el CONOCIMIENTO tiene 'DATOS ESTRATÉGICOS', usa el ÁNGULO DE DOLOR y la PREGUNTA DE CIERRE del archivo. PROHIBIDO preguntar qué producto le interesa si ya está identificado.
         - Si en tu CONOCIMIENTO hay una "ALERTA": Tu ÚNICA respuesta debe ser: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨"
-        - Si el cliente responde "NO" a conocer más, pero se nota interesado en el beneficio, asume que está listo para el precio y salta a la Etapa CALIENTE (Precios).
-        - Si en tu CONOCIMIENTO hay información de un producto: Redacta un párrafo corto maximo 3 mensajes, explicando qué es y para qué sirve. Cierra OBLIGATORIAMENTE con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+        - Si en tu CONOCIMIENTO hay información de un producto: Redacta un párrafo corto maximo 3 mensjaes, explicando qué es y para qué sirve. Cierra OBLIGATORIAMENTE con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
         `;
     } else if (etapaActual === "TIBIO") {
         instruccionesEtapa = `
