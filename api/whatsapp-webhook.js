@@ -99,8 +99,13 @@ module.exports = async (req, res) => {
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
-                p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
-            );
+    p.keywords && p.keywords.some(k => {
+        const key = k.toLowerCase().trim();
+        // Usamos límites de palabra (\b) para que "nad" se detecte aunque esté solo o con signos
+        const regex = new RegExp(`\\b${key}\\b`, 'i');
+        return regex.test(msgLower) || msgLower === key;
+    })
+);
             if (productoEncontrado) {
                 await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
             } else {
