@@ -2,7 +2,7 @@
   "PRODUCTOS": [
     {
       "nombre": "Combo Multicolágeno & Oil Oregano",
-      "keywords": ["oregano", "orégano", "colageno", "colágeno", "combo", "regeneracion", "biotina", "gastritis", "hongo", "cansado", "dolor", "piel", "articulacion", "energia"],
+      "keywords": ["Oregano", "Orégano", "Colageno", "Colágeno", "combo", "regeneracion", "biotina", "gastritis", "hongo", "cansado", "dolor", "piel", "articulacion", "energia"],
       "archivo": "combo-regeneracion.txt"
     },
     {
@@ -17,7 +17,7 @@
  }, 
    {
   "nombre": "NAD+ Men Complex",
-   "keywords": ["envejecimiento", "Nad", "NAD", "NAd","prostata", "nad complex", "nad", "vitalidad", "vitalidad masculina", "antienvejecimiento", "vitalidad sexual", "crecimiento del organo", "energía", "fuerza", "anti estres", "estres", "hormonas"],
+   "keywords": ["envejecimiento", "Nad", "NAD", "NAd", "prostata", "nad complex", "nad", "vitalidad", "vitalidad masculina", "antienvejecimiento", "vitalidad sexual", "crecimiento del organo", "energía", "fuerza", "anti estres", "estres", "hormonas"],
   "archivo": "nad.txt"
  },  
   {
