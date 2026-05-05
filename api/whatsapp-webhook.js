@@ -181,8 +181,12 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
         `;
     } else if (etapaActual === "TIBIO") {
         instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Educación.
+        OBJETIVO: Estás en la etapa de Educación y Precierre.
         - Conecta los ingredientes del producto con el dolor del cliente. Resuelve sus dudas.
+         - Si el cliente responde "NO" a tu pregunta de "¿Desea más información?":
+            1. ANALIZA: ¿Ya le diste los beneficios principales? 
+            2. SI YA LOS CONOCE: No te despidas. Interpreta ese "NO" como satisfacción. Responde: "¡Excelente! Veo que la información ha quedado clara y está listo para dar el siguiente paso. ¿Le gustaría que le comparta nuestras opciones de precios y promociones para que empiece a aprovechar los beneficios del producto? 🌿✨"
+            3. SI NO LOS CONOCE: Úsalo como objeción: "Entiendo, solo me gustaría que sepa que [Beneficio Clave] es vital para su salud. ¿Hay algo específico que le genere duda? ✨"
         - Cuando ya no tenga dudas, cierra con: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨"
         `;
     } else if (etapaActual === "CALIENTE") {
