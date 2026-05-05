@@ -93,49 +93,32 @@ module.exports = async (req, res) => {
     let infoEspecifica = "";
     let nombreProducto = "";
     const productoKey = `prod:${cleanJid}`;
-console.log("🔍 [DIAG] Mensaje recibido para buscar:", msgLower);
+
     try {
         const productosPath = path.join(process.cwd(), 'api', 'productos.json');
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
-            console.log("📂 [DIAG] JSON de productos cargado correctamente.");
-            
             let productoEncontrado = dataProductos.PRODUCTOS.find(p => 
                 p.keywords && p.keywords.some(k => msgLower.includes(k.toLowerCase()))
-                );
-            console.log(`🎯 [DIAG] ¡Keyword detectada!: "${key}" en el producto: ${p.nombre}`);
+            );
             if (productoEncontrado) {
-                console.log("💾 [DIAG] Guardando producto en Redis:", productoEncontrado.nombre);
                 await redisSetex(productoKey, 86400, JSON.stringify(productoEncontrado));
             } else {
-                console.log("❓ [DIAG] No hay keyword en este mensaje. Revisando memoria de Redis...");
                 const productoGuardado = await redisGet(productoKey);
                 if (productoGuardado) {
                     let prodLimpio = productoGuardado;
                     try { prodLimpio = decodeURIComponent(productoGuardado); } catch(e) {}
                     productoEncontrado = JSON.parse(prodLimpio);
-                    console.log("🧠 [DIAG] Recuperado de memoria Redis:", productoEncontrado.nombre);
-               } else {
-                    console.log("❌ [DIAG] Redis tampoco tiene producto guardado.");
                 }
             }
-            
             if (productoEncontrado) {
                 nombreProducto = productoEncontrado.nombre;
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
-                console.log("📄 [DIAG] Intentando leer archivo TXT:", txtPath);
-                
                 if (fs.existsSync(txtPath)) infoEspecifica = fs.readFileSync(txtPath).toString('utf-8');
-               console.log("✅ [DIAG] Contenido cargado. Largo:", infoEspecifica.length);
-                } else {
-                    console.log("⚠️ [DIAG] ERROR: No existe el archivo físico:", productoEncontrado.archivo);
-                }
             }
-        } else {
-            console.error("🚨 [DIAG] No se halló productos.json");
-        }
+        }            
     } catch (e) {
-        console.error("🚨 [DIAG] Error en búsqueda:", e.message);
+        console.error("Error en productos:", e.message);
     }
 
     const baseConocimiento = infoEspecifica 
