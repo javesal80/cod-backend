@@ -122,6 +122,7 @@ module.exports = async (req, res) => {
     }
 
     const baseConocimiento = infoEspecifica 
+        
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio o saluda, dile amablemente: 'Con gusto le ayudo con información, ¿me podría indicar en qué producto está interesado o qué malestar desearia tratar? ✨'";
 
