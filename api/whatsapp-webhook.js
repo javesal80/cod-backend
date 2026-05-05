@@ -175,8 +175,9 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
     if (etapaActual === "FRIO") {
         instruccionesEtapa = `
         OBJETIVO: Estás en la etapa de Indagación Inicial.
-        - Si en tu CONOCIMIENTO hay una "ALERTA": Tu ÚNICA respuesta debe ser: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨"
-        - Si en tu CONOCIMIENTO hay información de un producto: Redacta un párrafo corto maximo 3 mensjaes, explicando qué es y para qué sirve. Cierra OBLIGATORIAMENTE con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+        - REGLA PRIORITARIA: Si en "CONOCIMIENTO ACTUAL" ya aparece el nombre de un producto y su información técnica, tu prioridad es explicar ese producto de inmediato (máximo 3 mensajes cortos). No preguntes qué busca porque ya lo detectaste.
+        - REGLA DE RESPALDO (ALERTA): Solo si en "CONOCIMIENTO ACTUAL" ves la "⚠️ ALERTA", entonces sí pregunta: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨"
+        - CIERRE: Siempre termina con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
         `;
     } else if (etapaActual === "TIBIO") {
         instruccionesEtapa = `
