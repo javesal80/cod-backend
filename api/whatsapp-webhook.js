@@ -124,9 +124,20 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
                     console.log("🧠 [DIAG] Recuperado de Redis:", productoEncontrado.nombre);
                 }
             }
+
+            let imgProducto = "";
+            let imgBeneficios = "";
+            let imgTestimonios = "";
+            
             if (productoEncontrado) {
                 console.log("💾 [DIAG] Guardando en Redis:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
+                
+                // Capturamos las 3 posibles imágenes
+                imgProducto = productoEncontrado.img_producto || "";
+                imgBeneficios = productoEncontrado.img_beneficios || "";
+                imgTestimonios = productoEncontrado.img_testimonios || "";
+                
                 const txtPath = path.join(process.cwd(), 'api', productoEncontrado.archivo);
                 console.log("📄 [DIAG] Buscando archivo físico en:", txtPath);
                 
@@ -447,7 +458,11 @@ _Fiorella ha cerrado esta venta automáticamente._`;
                 partes[1] = partes[0] + " " + partes[1];
                 partes.shift();
             }
-            
+
+            // SEPARAMOS LA PREGUNTA PARA QUE QUEDE AL FINAL
+            const preguntaCierre = partes.length > 1 ? partes.pop() : "";
+
+            // 1. ENVIAMOS LOS PÁRRAFOS DE TEXTO
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
@@ -455,6 +470,43 @@ _Fiorella ha cerrado esta venta automáticamente._`;
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
+            }
+
+            // 2. LÓGICA DE LAS 3 FOTOS SEGÚN LA ETAPA (Variables ya existentes)
+            let fotoAEnviar = "";
+            
+            if (nombreProducto !== "") {
+                if (etapaActual === "FRIO" && imgProducto) {
+                    fotoAEnviar = imgProducto;
+                } else if (etapaActual === "TIBIO" && imgBeneficios) {
+                    fotoAEnviar = imgBeneficios;
+                } else if (etapaActual === "CALIENTE" && imgTestimonios) {
+                    fotoAEnviar = imgTestimonios;
+                }
+            }
+
+            // 3. ENVIAMOS LA FOTO QUE CORRESPONDA A LA ETAPA
+            if (fotoAEnviar !== "") {
+                await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    body: JSON.stringify({
+                        number: remoteJid,
+                        media: fotoAEnviar,
+                        mediatype: "image",
+                        caption: "" 
+                    })
+                });
+                await new Promise(r => setTimeout(r, 1500));
+            }
+
+            // 4. ENVIAMOS LA PREGUNTA DE CIERRE AL FINAL
+            if (preguntaCierre) {
+                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    body: JSON.stringify({ number: remoteJid, text: preguntaCierre })
+                });
             }
         } 
     } catch (error) { 
