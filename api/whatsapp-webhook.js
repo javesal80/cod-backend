@@ -92,6 +92,9 @@ module.exports = async (req, res) => {
     const msgLower = clienteMsg.toLowerCase().trim();
     let infoEspecifica = "";
     let nombreProducto = "";
+    let imgProducto = "";      
+    let imgBeneficios = "";    
+    let imgTestimonios = "";   
     const productoKey = `prod:${cleanJid}`;
 console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
     
@@ -125,11 +128,7 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
                 }
             }
 
-            let imgProducto = "";
-            let imgBeneficios = "";
-            let imgTestimonios = "";
-            
-            if (productoEncontrado) {
+           if (productoEncontrado) {
                 console.log("💾 [DIAG] Guardando en Redis:", productoEncontrado.nombre);
                 nombreProducto = productoEncontrado.nombre;
                 
