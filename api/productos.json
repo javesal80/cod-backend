@@ -19,6 +19,10 @@
   "nombre": "NAD+ Men Complex",
   "keywords": ["nad", "complex", "envejecimiento", "prostata", "vitalidad", "masculina", "sexual", "energia", "fuerza", "estres", "hormonas"],
   "archivo": "nad.txt"
+  "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/4.jpeg",
+  "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nad_benef.png",
+  "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nad_testi.png"
+    
 },
   {
   "nombre": "Aceite de Orégano Orgánico YEJEON",
