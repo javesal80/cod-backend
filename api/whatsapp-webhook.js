@@ -157,8 +157,11 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
-    // Si ya estamos en CALIENTE y el cliente elige una opción (1, 2, primera, etc.)
+    // Filtros de respuesta del cliente
     const eligioOpcion = /primera|segunda|promo|unidad|1|2|combo|uno|dos|esa|la de/i.test(msgLower);
+    const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
+    const afirmacionBasica = /^(si|sí|claro|por supuesto|dale|ok|okay|bueno|ya)$/i.test(msgLower);
+    const negacionBasica = /^(no|nop|nada|ninguna|no gracias|no necesito)$/i.test(msgLower);
     
     if (etapaActual === "CALIENTE" && eligioOpcion) {
         etapaActual = "CIERRE";
@@ -167,9 +170,13 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
         const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
         if (intencionCompra && nombreProducto !== "") {
             etapaActual = "CALIENTE";
+        } else if (etapaActual === "FRIO" && afirmacionBasica) {
+            etapaActual = "TIBIO"; // El cliente dijo SÍ a más información.
+        } else if ((etapaActual === "TIBIO" || etapaActual === "FRIO") && negacionBasica) {
+            etapaActual = "CALIENTE"; // El cliente dijo NO a más dudas. Listo para precios.
         }
     }
-       
+   
    // --- 3. GUARDADO DE HISTORIAL ---
     const esPrimerMensaje = historialConversacion_arr.length === 0;
     historialConversacion_arr.push({ role: "user", content: clienteMsg });
@@ -261,17 +268,23 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
 // --- REGLAS DE PERSUASIÓN Y MANEJO DE OBJECIONES ---
     const reglasPersuasion = `
     FILOSOFÍA DE VENTA:
-    - No eres una vendedora, eres una asesora que cuida la salud de los niños. 
+    - No eres una vendedora, eres una asesora que cuida de la salud de las personas. 
     - Si el cliente duda o dice "no gracias", "está caro" o "luego le aviso", NO te despidas de inmediato. 
-    - Usa la EMPATÍA: "Entiendo perfectamente su posición, como padres siempre queremos lo mejor...".
-    - Usa el COSTO DE OPORTUNIDAD: Recuérdale sutilmente que el crecimiento tiene una ventana de tiempo limitada y que KIDGROW es una inversión en el futuro de su hijo.
-    
+    - Eres una asesora de salud y bienestar de alto nivel.
+    - Si el cliente tiene dudas reales, usa la EMPATÍA y el COSTO DE OPORTUNIDAD.
+       
     MANEJO DE OBJECIONES (Sutil):
-    1. Si dice "Está caro": Enfócate en el beneficio diario. "Si lo vemos bien, son menos de $0.60 al día por la salud y el crecimiento de su pequeño, ¡menos que un caramelo!".
-    2. Si dice "Lo voy a pensar": Dale un consejo de salud extra y dile: "Claro que sí, es una decisión importante. Solo le recuerdo que estamos con las últimas unidades con envío gratis. ¿Hay algo específico que le genere duda para poder ayudarle mejor?".
-    3. Si dice "Luego le aviso": Recuérdale el beneficio mental: "Perfecto, quedo atenta. Solo como consejo, el Omega-3 que contiene ayuda muchísimo en esta etapa escolar para que no se canse tanto al estudiar. ¡Espero podamos empezar pronto!".
+    1. Si el cliente se queja del precio: Enfócate en el beneficio diario versus el costo a largo plazo de no tratar su problema de salud. (No uses frases de centavos o caramelos, adáptalo al producto actual).
+    2. Si dice "Lo voy a pensar": Dale un consejo de salud extra relacionado con su malestar principal para mantener la puerta abierta.
+    3. Si dice "Luego le aviso": Recuérdale el beneficio o losbeneficios.
 
-    REGLA DE ORO: Nunca cierres la puerta. Siempre deja una pregunta abierta o un consejo de valor que demuestre que te importa el niño, no la venta.
+       REGLA CRÍTICA SOBRE EL "NO":
+    - Si tú acabas de preguntar "¿Tiene alguna duda?" o "¿Le gustaría conocer más?" y el cliente responde "NO", esto significa que ESTÁ SATISFECHO y LISTO PARA COMPRAR.
+    - TIENES ESTRICTAMENTE PROHIBIDO tratar ese "NO" como un rechazo.
+    - Acción inmediata ante este "NO": Pasa directamente a dar una afirmación positiva ("¡Excelente! Veo que todo está claro...") y ofrécele las opciones de PRECIOS y PROMOCIONES.
+    `;
+
+    REGLA DE ORO: Nunca cierres la puerta. Siempre deja una pregunta abierta o un consejo de valor que demuestre que te interesas en el cliente, que no sólo estas para vender.
     `;
     
     const masterPrompt = `
