@@ -153,27 +153,23 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
         ? `EL CLIENTE ESTÁ INTERESADO EN: ${nombreProducto.toUpperCase()}.\nUSA ESTA INFO TÉCNICA Y PRECIOS:\n${infoEspecifica}`
         : "⚠️ ALERTA: EL CLIENTE NO HA MENCIONADO NINGÚN PRODUCTO. Si el cliente está pidiendo precio o saluda, dile amablemente: 'Con gusto le ayudo con información, ¿me podría indicar en qué producto está interesado o qué malestar desearia tratar? ✨'";
 
-    // --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS HÍBRIDA ---
+// --- 2. DETECCIÓN DE INTENCIÓN Y ESTADOS HÍBRIDA ---
     const ultimoMsgCliente = historialConversacion_arr.filter(h => h.role === 'user').pop()?.content || "";
     const msgParaIntencion = (ultimoMsgCliente + " " + msgLower).toLowerCase();
 
-    // Filtros de respuesta del cliente
+    // El código ya NO decide qué significa la respuesta del cliente, la IA lo hará.
+    // Solo forzamos el estado para soltar las fotos correctas y activar tu formulario.
     const eligioOpcion = /primera|segunda|promo|unidad|1|2|combo|uno|dos|esa|la de/i.test(msgLower);
     const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
-    const afirmacionBasica = /^(si|sí|claro|por supuesto|dale|ok|okay|bueno|ya)$/i.test(msgLower);
-    const negacionBasica = /^(no|nop|nada|ninguna|no gracias|no necesito)$/i.test(msgLower);
     
     if (etapaActual === "CALIENTE" && eligioOpcion) {
         etapaActual = "CIERRE";
         console.log(`[LOG] ¡SALTO DETECTADO! El cliente eligió opción. Nueva Etapa: CIERRE`);
     } else if (etapaActual !== "CIERRE" && etapaActual !== "POSTVENTA") {
-        const intencionCompra = /precio|valor|cuanto cuesta|promocion|promo|comprar|quiero uno|costo/i.test(msgParaIntencion);
         if (intencionCompra && nombreProducto !== "") {
-            etapaActual = "CALIENTE";
-        } else if (etapaActual === "FRIO" && afirmacionBasica) {
-            etapaActual = "TIBIO"; // El cliente dijo SÍ a más información.
-        } else if ((etapaActual === "TIBIO" || etapaActual === "FRIO") && negacionBasica) {
-            etapaActual = "CALIENTE"; // El cliente dijo NO a más dudas. Listo para precios.
+            etapaActual = "CALIENTE"; // Pidió precio directo (Foto 3)
+        } else if (etapaActual === "FRIO" && historialConversacion_arr.length > 2) {
+            etapaActual = "TIBIO"; // La charla avanzó, cambiamos de etapa silenciosamente para que se envíe la Foto 2 (Beneficios).
         }
     }
    
@@ -186,32 +182,28 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
         .map(h => `${h.role === 'user' ? 'Cliente' : 'Fiorella'}: ${h.content}`)
         .join('\n');
 
-    // --- CONSTRUCCIÓN DINÁMICA DEL PROMPT (USANDO LÓGICA IF/ELSE) ---
+    // --- CONSTRUCCIÓN DINÁMICA DEL PROMPT ---
     let instruccionesEtapa = "";
 
     if (etapaActual === "FRIO") {
         instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Indagación Inicial.
-        - REGLA PRIORITARIA: Si en "CONOCIMIENTO ACTUAL" ya aparece el nombre de un producto y su información técnica, tu prioridad es explicar ese producto de inmediato (máximo 3 mensajes cortos). No preguntes qué busca porque ya lo detectaste.
-        - REGLA DE RESPALDO (ALERTA): Solo si en "CONOCIMIENTO ACTUAL" ves la "⚠️ ALERTA", entonces sí pregunta: "¿En qué producto está interesado o qué malestar le gustaría tratar hoy? ✨"
-        - CIERRE: Siempre termina con: "¿Le gustaría conocer más del producto, sus beneficios, ingredientes o tiene alguna duda en particular? ✨"
+        OBJETIVO: Eres la dueña absoluta de la conversación. Guía al cliente según lo que leas en el historial.
+        - Presenta el producto de forma natural y urga en la herida (empatiza con el dolor del cliente).
+        - No des precios todavía.
+        - Cierra con una pregunta natural para continuar la charla.
         `;
     } else if (etapaActual === "TIBIO") {
         instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Educación y Precierre.
-        - Conecta los ingredientes del producto con el dolor del cliente. Resuelve sus dudas.
-         - Si el cliente responde "NO" a tu pregunta de "¿Desea más información?":
-            1. ANALIZA: ¿Ya le diste los beneficios principales? 
-            2. SI YA LOS CONOCE: No te despidas. Interpreta ese "NO" como satisfacción. Responde: "¡Excelente! Veo que la información ha quedado clara y está listo para dar el siguiente paso. ¿Le gustaría que le comparta nuestras opciones de precios y promociones para que empiece a aprovechar los beneficios del producto? 🌿✨"
-            3. SI NO LOS CONOCE: Úsalo como objeción: "Entiendo, solo me gustaría que sepa que [Beneficio Clave] es vital para su salud. ¿Hay algo específico que le genere duda? ✨"
-        - Cuando ya no tenga dudas, cierra con: "¿Le gustaría que le comparta nuestras opciones de precios y promociones? 🌿✨"
+        OBJETIVO: Educación y Precierre. La conversación es tuya.
+        - Lee el contexto. Si el cliente tiene dudas, resuélvelas conectando ingredientes con su dolor de forma empática.
+        - Si el cliente indica que ya entendió o que no tiene dudas, LA IA DEBE ASUMIR QUE ESTÁ LISTO PARA COMPRAR. En ese caso, ofrécele conocer los precios de forma natural.
+        - Usa tus propias palabras, adapta tu estrategia a lo que el cliente te diga.
         `;
     } else if (etapaActual === "CALIENTE") {
         instruccionesEtapa = `
-        OBJETIVO: Estás en la etapa de Venta Directa (Precios).
-        - Si el cliente aún no sabe qué hace el producto, dale una breve descripción de 1 línea.
+        OBJETIVO: Venta Directa (Precios).
         - Presenta los precios estrictamente desde tu conocimiento.
-        - TIENES ESTRICTAMENTE PROHIBIDO preguntar si tiene dudas o si quiere conocer beneficios.
+        - No vuelvas a explicar beneficios.
         - CIERRE OBLIGATORIO: Termina tu mensaje ÚNICAMENTE con: "Le recomiendo la promoción para obtener mejores resultados. ¿Cuál de las opciones desearía que le enviemos? 📦✨"
         `;
     } else if (etapaActual === "CIERRE") {
@@ -235,7 +227,6 @@ console.log("🔍 [DIAG] Mensaje para buscar:", msgLower);
         - Bajo ninguna circunstancia detengas el proceso o preguntes por estos datos si el cliente no los envió.
         - No valides rígidamente el formato de estos datos opcionales para no atascar la conversación.
               
-        
         PASO A (Formulario Inicial):
           "Listo, ayúdeme con los siguientes datos por favor:
                       
