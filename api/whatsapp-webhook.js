@@ -195,7 +195,7 @@ OFERTA
   Rol: Presentar precios con claridad. Recomendar la opción más adecuada para su caso específico.
   - Presenta las opciones del archivo del producto.
   - Recomienda una opción basándote en lo que el cliente contó de su problema.
-  - Termina siempre con: "?Cuál de las opciones le gustaría que le enviemos? 📦"
+  - Termina siempre con: "¿Cuál de las opciones le gustaría que le enviemos? 📦"
   Avanza a CIERRE: Cuando el cliente elige una opción o muestra intención clara de compra.
 
 CIERRE
@@ -249,7 +249,7 @@ CUANDO DICE "no" después de recibir los beneficios completos:
 ═══════════════════════════════════════════════
 PROTOCOLO — COMO URGAR LA HERIDA
 ═══════════════════════════════════════════════
-1. DETECTA: ?Qué le duele? Busca en el archivo el ángulo que más coincide.
+1. DETECTA: ¿Qué le duele? Busca en el archivo el ángulo que más coincide.
 2. EMPATIZA: Reconoce su dolor como real y serio.
 3. URGA: Hazle sentir la consecuencia de NO actuar hoy. Usa las frases del ángulo.
 4. SOLUCIONA: El producto como respuesta específica a ESE dolor. Con datos y cifras.
@@ -279,7 +279,7 @@ Formato exacto:
 Etapas válidas: INICIO, INDAGACION, EDUCACION, OFERTA, CIERRE, CONFIRMADO, POSTVENTA
 
 El campo "mensaje" es texto plano de WhatsApp.
-- Puedes usar *negrita* y saltos de línea con \\n
+- Puedes usar *negrita*,emoticons y saltos de línea con \\n
 - USA COMILLAS SIMPLES dentro del mensaje si necesitas citar algo, NUNCA comillas dobles (rompen el JSON)
 - Los signos de exclamacion e interrogacion de apertura (! y ?) son opcionales en español informal
 `;
@@ -399,7 +399,7 @@ _Fiorella cerró esta venta automáticamente._`;
 
             // ─── FOTO: UNA SOLA VEZ POR ETAPA ────────────────────────
             const mapaFotos = {
-                "INDAGACION": imgProducto,
+                "INICIO": imgProducto,
                 "EDUCACION":  imgBeneficios,
                 "OFERTA":     imgTestimonios
             };
