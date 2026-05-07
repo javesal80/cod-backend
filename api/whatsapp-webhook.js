@@ -229,7 +229,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             ...historialParaIA,
             { role: "user", content: clienteMsg },
             // Recordatorio de formato justo antes de la respuesta
-            { role: "system", content: 'RECUERDA: Responde ÚNICAMENTE con JSON puro, sin texto adicional. Formato exacto: {"etapa":"ETAPA","mensaje":"tu respuesta"}' }
+            { role: "system", content: 'RECUERDA: Responde ÚNICAMENTE con JSON puro, sin texto adicional. Formato exacto: {"etapa":"ETAPA","mensaje":"tu respuesta"}. CRÍTICO: Si el cliente no ha confirmado su compra y el contexto sugiere que quiere retirarse, NO te despidas — usa lo que el cliente te contó sobre su problema para persuadirlo con empatía. Devuélvele sus propias palabras y hazle ver qué pasará si no actúa. Mínimo 3 intentos genuinos antes de despedirte.' }
         ];
 
         const bodyIA = {
