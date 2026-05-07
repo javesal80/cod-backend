@@ -269,12 +269,13 @@ En el campo "mensaje": usa *negrita* y \\n para saltos de línea. Usa SOLO comil
     let nuevaEtapa  = etapaActual;
 
     try {
-        // Historial sin el último mensaje del usuario (ya está en el array)
-        const historialParaIA = historial.slice(0, -1); // sin el msg actual
-        // Agregamos el mensaje actual del usuario al final
+        // Historial sin el último mensaje del usuario
+        const historialParaIA = historial.slice(0, -1);
         const mensajesFinales = [
             ...historialParaIA,
-            { role: "user", content: clienteMsg }
+            { role: "user", content: clienteMsg },
+            // Recordatorio de formato justo antes de la respuesta
+            { role: "system", content: 'RECUERDA: Responde ÚNICAMENTE con JSON puro, sin texto adicional. Formato exacto: {"etapa":"ETAPA","mensaje":"tu respuesta"}' }
         ];
 
         const bodyIA = {
@@ -314,19 +315,15 @@ En el campo "mensaje": usa *negrita* y \\n para saltos de línea. Usa SOLO comil
         // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
         try {
-            // Limpiar markdown si la IA lo agregó
             let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-            // Extraer solo el objeto JSON si hay texto extra alrededor
             const jsonMatch = clean.match(/\{[\s\S]*\}/);
             if (jsonMatch) clean = jsonMatch[0];
             parsed = JSON.parse(clean);
         } catch (e) {
-            console.error("[PARSE ERROR]", e.message, "| RAW:", respuestaRaw.substring(0, 200));
-            // Fallback robusto: extraer etapa y mensaje con regex
-            const matchEtapa   = respuestaRaw.match(/"etapa"\s*:\s*"([A-Z]+)"/);
-            const matchMensaje = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]*?)(?<!\\)"\s*[,}]/);
-            if (matchMensaje) textoFinal = matchMensaje[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
-            nuevaEtapa = matchEtapa ? matchEtapa[1] : etapaActual;
+            console.error("[PARSE ERROR] IA no devolvió JSON — usando texto plano como fallback");
+            // Fallback: usar el texto tal cual y mantener etapa
+            textoFinal = respuestaRaw.trim();
+            nuevaEtapa  = etapaActual;
         }
 
         if (parsed) {
