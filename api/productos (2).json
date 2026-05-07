@@ -1,0 +1,49 @@
+{
+  "PRODUCTOS": [
+    {
+      "nombre": "Combo Regeneración Total (Aceite de Orégano + Multicolágeno)",
+      "descripcion_corta": "Limpieza y reparación interna. La Espada que ataca y el Escudo que repara. Para gastritis, hongos, articulaciones, piel y cabello.",
+      "keywords": ["oregano", "orégano", "colageno", "colágeno", "combo", "regeneracion", "regeneración", "biotina", "gastritis", "hongo", "hongos", "cansado", "dolor", "piel", "articulacion", "articulaciones", "energia", "energía", "rodillas", "espalda", "cabello", "candida", "cándida", "parasitos", "parásitos", "ardor", "barriga", "hinchada", "defensas", "acne", "acné"],
+      "archivo": "combo-regeneracion.txt",
+      "img_producto": "",
+      "img_beneficios": "",
+      "img_testimonios": ""
+    },
+    {
+      "nombre": "KidGrow",
+      "descripcion_corta": "Suplemento premium para niños. Activa el máximo potencial de estatura, concentración y sistema inmune.",
+      "keywords": ["niños", "niño", "niña", "crecer", "estatura", "hijo", "hija", "kidgrow", "concentración", "concentracion", "estudio", "escuela", "bajito", "bajita", "crecimiento", "alto", "altura", "memoria", "enferma", "gripe", "come poco", "selectivo", "deporte", "infantil"],
+      "archivo": "kidgrow.txt",
+      "img_producto": "",
+      "img_beneficios": "",
+      "img_testimonios": ""
+    },
+    {
+      "nombre": "NuBest Tall Protein Powder",
+      "descripcion_corta": "Batido de proteína para crecer en estatura. Ideal para adolescentes y adultos jóvenes que quieren ganar altura.",
+      "keywords": ["nubest", "nubestall", "proteina para crecer", "batido para estatura", "nubest tall", "crecimiento vegano", "proteina niños", "ganar estatura", "masa muscular niños", "crecer de estatura", "suplemento vainilla", "proteina crecimiento", "batido", "vainilla", "proteína"],
+      "archivo": "nubest-tall.txt",
+      "img_producto": "",
+      "img_beneficios": "",
+      "img_testimonios": ""
+    },
+    {
+      "nombre": "Selerb NAD+ Men's Complex",
+      "descripcion_corta": "Complejo masculino avanzado para próstata, energía celular, vitalidad y rendimiento. Para hombres de 35 en adelante.",
+      "keywords": ["nad", "complex", "envejecimiento", "prostata", "próstata", "vitalidad", "masculina", "sexual", "energia masculina", "fuerza", "estres", "estrés", "hormonas", "orina", "baño noche", "cansancio", "fatiga", "niebla mental", "testosterona", "selerb", "hombre", "virilidad", "circulacion", "circulación"],
+      "archivo": "nad.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/4.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nad_benef.png",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nad_testi.png"
+    },
+    {
+      "nombre": "Aceite de Orégano Orgánico YEJEON",
+      "descripcion_corta": "Aceite de orégano orgánico de alta concentración. Para defensas, hongos, bacterias y problemas digestivos.",
+      "keywords": ["yejeon", "yejeon oregano", "organico", "orgánico", "aceite organico"],
+      "archivo": "yejeon.txt",
+      "img_producto": "",
+      "img_beneficios": "",
+      "img_testimonios": ""
+    }
+  ]
+}
