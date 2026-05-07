@@ -188,7 +188,7 @@ ${esPrimerMensaje ? 'Es el primer mensaje — saluda: "Hola, muy buenas... Un gu
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
 
 INICIO: Cliente llegó. Salúdalo y entiende qué busca.
-INDAGACION: Ya sabes el producto o malestar. Profundiza en su situación personal para identificar su dolor real.
+INDAGACION: Ya sabes el producto. IMPORTANTE — si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta que explore SU situación personal (ej: '¿hace cuánto tiene ese problema?' o '¿qué síntoma le molesta más?'). La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
 EDUCACION: Ya sabes su dolor. Úrgalo con empatía y presenta el producto como la solución a ESE dolor.
 OFERTA: Presenta opciones y precios. Recomienda la más adecuada para su caso.
 CIERRE: Recopila datos de envío con este formulario exacto, sin cambiar una sola palabra:
