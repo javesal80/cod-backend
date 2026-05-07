@@ -62,29 +62,29 @@ module.exports = async (req, res) => {
         await redisSetex(`dd:${msgId}`, 60, "1");
     } catch (e) { console.error("Dedup error:", e.message); }
 
-    // ─── HISTORIAL Y ETAPA DESDE REDIS ───────────────────────────────
-    const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
-    const memoriaKey = `chat:${cleanJid}`;
-    const stageKey = `stage:${cleanJid}`;
+    // ─── CARGAR ESTADO DESDE REDIS ────────────────────────────────────
+    const cleanJid    = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+    const memoriaKey  = `chat:${cleanJid}`;
+    const stageKey    = `stage:${cleanJid}`;
     const productoKey = `prod:${cleanJid}`;
+    const fotosKey    = `fotos:${cleanJid}`;  // fotos ya enviadas por etapa
 
-    let historial = [];
-    let etapaActual = "INICIO";
+    let historial     = [];
+    let etapaActual   = "INICIO";
     let productoActivo = null;
+    let fotosEnviadas  = {};  // { "INDAGACION": true, "EDUCACION": true, ... }
 
     try {
-        const [guardado, etapaGuardada, prodGuardado] = await Promise.all([
+        const [guardado, etapaGuardada, prodGuardado, fotosGuardadas] = await Promise.all([
             redisGet(memoriaKey),
             redisGet(stageKey),
-            redisGet(productoKey)
+            redisGet(productoKey),
+            redisGet(fotosKey)
         ]);
-        if (guardado) {
-            try { historial = JSON.parse(decodeURIComponent(guardado)); } catch { historial = JSON.parse(guardado); }
-        }
-        if (etapaGuardada) etapaActual = etapaGuardada;
-        if (prodGuardado) {
-            try { productoActivo = JSON.parse(decodeURIComponent(prodGuardado)); } catch { productoActivo = JSON.parse(prodGuardado); }
-        }
+        if (guardado)       { try { historial      = JSON.parse(decodeURIComponent(guardado));       } catch { historial      = JSON.parse(guardado);       } }
+        if (etapaGuardada)  etapaActual = etapaGuardada;
+        if (prodGuardado)   { try { productoActivo = JSON.parse(decodeURIComponent(prodGuardado));   } catch { productoActivo = JSON.parse(prodGuardado);   } }
+        if (fotosGuardadas) { try { fotosEnviadas  = JSON.parse(decodeURIComponent(fotosGuardadas)); } catch { fotosEnviadas  = JSON.parse(fotosGuardadas); } }
     } catch (e) { console.error("Error leyendo Redis:", e.message); }
 
     // ─── CARGAR CATÁLOGO ──────────────────────────────────────────────
@@ -95,9 +95,8 @@ module.exports = async (req, res) => {
         if (fs.existsSync(productosPath)) {
             const dataProductos = JSON.parse(fs.readFileSync(productosPath, 'utf8'));
             catalogo = dataProductos.PRODUCTOS || [];
-            // Resumen compacto para cross-sell en el prompt
             resumenCatalogo = catalogo.map(p =>
-                `- ${p.nombre}: keywords [${(p.keywords || []).join(', ')}]`
+                `- ${p.nombre}: ${p.descripcion_corta || ''} | keywords: [${(p.keywords || []).join(', ')}]`
             ).join('\n');
         }
     } catch (e) { console.error("Error cargando catálogo:", e.message); }
@@ -109,9 +108,11 @@ module.exports = async (req, res) => {
     );
 
     if (productoDetectado) {
-        // El cliente mencionó un producto nuevo — actualizar producto activo
+        if (!productoActivo || productoActivo.nombre !== productoDetectado.nombre) {
+            fotosEnviadas = {};  // resetear fotos si cambia de producto
+        }
         productoActivo = productoDetectado;
-        await redisSetex(productoKey, 86400, JSON.stringify(productoActivo));
+        await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
         console.log(`[PRODUCTO] Detectado: ${productoActivo.nombre}`);
     }
 
@@ -126,154 +127,174 @@ module.exports = async (req, res) => {
                 infoProducto = fs.readFileSync(txtPath, 'utf-8');
                 console.log(`[TXT] Cargado: ${productoActivo.nombre} (${infoProducto.length} chars)`);
             }
-            imgProducto = productoActivo.img_producto || "";
-            imgBeneficios = productoActivo.img_beneficios || "";
+            imgProducto    = productoActivo.img_producto    || "";
+            imgBeneficios  = productoActivo.img_beneficios  || "";
             imgTestimonios = productoActivo.img_testimonios || "";
         } catch (e) { console.error("Error cargando TXT:", e.message); }
     }
 
-    // ─── CONSTRUIR HISTORIAL PARA LA IA ──────────────────────────────
+    // ─── HISTORIAL ────────────────────────────────────────────────────
     const esPrimerMensaje = historial.length === 0;
     historial.push({ role: "user", content: clienteMsg });
     if (historial.length > 24) historial = historial.slice(-24);
 
     // ─── MASTER PROMPT ────────────────────────────────────────────────
     const masterPrompt = `
-Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. Eres humana, empática y experta en neuroventas. Tratas al cliente siempre de USTED.
+Eres Fiorella, asesora de salud y bienestar de JRJMarket. No eres una vendedora de catálogo — eres una persona que genuinamente se preocupa por la salud del cliente y que conoce profundamente los productos que recomienda. Tratas siempre de USTED. Eres cálida, directa, y sabes exactamente cuándo empujar y cuándo escuchar.
+
+Tu tono: como una amiga experta en salud que habla con honestidad, sin presión fría, pero con convicción total en lo que recomienda.
 
 ═══════════════════════════════════════════════
-TU MISIÓN CENTRAL
+TU MISIÓN
 ═══════════════════════════════════════════════
-Eres la vendedora. TÚ llevas el hilo de la conversación. No esperas que el cliente te pida avanzar — tú lo llevas, paso a paso, desde que te escribe hasta que compra. Como una asesora de salud que realmente se preocupa por el cliente y sabe exactamente qué necesita.
+TÚ llevas el hilo. No esperas que el cliente pida avanzar — tú lo guías naturalmente desde el primer mensaje hasta que compra. Cada respuesta tuya tiene un objetivo claro: conocer su dolor, profundizar en él, presentar la solución, o cerrar la venta.
 
 ═══════════════════════════════════════════════
-CATÁLOGO DISPONIBLE (para cross-sell y detección)
+CATÁLOGO (para detectar productos y hacer cross-sell)
 ═══════════════════════════════════════════════
 ${resumenCatalogo || "Catálogo no disponible."}
 
 ${infoProducto
     ? `═══════════════════════════════════════════════
-DATA DEL PRODUCTO ACTIVO: ${productoActivo?.nombre?.toUpperCase()}
+PRODUCTO ACTIVO: ${productoActivo?.nombre?.toUpperCase()}
 ═══════════════════════════════════════════════
-FUENTE DE VERDAD: Usa ÚNICAMENTE la información de este archivo para responder sobre el producto. Solo si el cliente pregunta algo que NO está aquí, puedes usar tu conocimiento general, pero NUNCA contradigas lo que dice este archivo.
+REGLA DE ORO: Toda información sobre este producto viene ÚNICAMENTE del texto abajo. Si el cliente pregunta algo que no está aquí, puedes usar tu conocimiento general — pero JAMÁS contradigas este texto.
 
 ${infoProducto}`
     : `═══════════════════════════════════════════════
-⚠️ SIN PRODUCTO DETECTADO AÚN
+SIN PRODUCTO DETECTADO AÚN
 ═══════════════════════════════════════════════
-El cliente no ha mencionado ningún producto aún. Tu primer objetivo es descubrir QUÉ le duele o qué busca para poder identificar el producto correcto del catálogo. Pregúntale de forma natural por su malestar o necesidad.`
+El cliente no mencionó ningún producto todavía. Tu objetivo es descubrir qué le duele o qué busca. Pregúntale con naturalidad — como una asesora que quiere entender su caso antes de recomendar algo.`
 }
 
 ═══════════════════════════════════════════════
-ETAPA ACTUAL DE LA CONVERSACIÓN: ${etapaActual}
-${esPrimerMensaje ? '➡️ ES EL PRIMER MENSAJE — Saluda con: "¡Hola! Muy buenas... Un gusto saludarle 😊"' : ''}
+ESTADO ACTUAL: ${etapaActual}
+${esPrimerMensaje ? 'ES EL PRIMER MENSAJE — Saluda: "!Hola! Muy buenas... Un gusto saludarle 😊"' : ''}
 ═══════════════════════════════════════════════
 
-ETAPAS DEL FUNNEL Y CUÁNDO AVANZAR:
+FUNNEL — ETAPAS Y SEÑALES DE AVANCE:
 
-🔵 INICIO → INDAGACIÓN
-  Cuando: Cliente saluda, pregunta vaga, o no menciona producto.
-  Tu rol: Descubrir qué le duele. Pregunta abierta sobre su malestar.
-  Avanza a INDAGACION cuando: Empieces a explorar su dolor.
+INICIO
+  Rol: Saludar y descubrir qué busca el cliente.
+  Avanza a INDAGACION: Cuando el cliente mencionó un producto o un malestar.
 
-🟡 INDAGACION → EDUCACION  
-  Cuando: Ya sabes qué le duele y tienes el producto correcto.
-  Tu rol: Urgar la herida con empatía. Presentar el producto como la solución específica a ESE dolor. Usa el Ángulo que más coincida con su caso.
-  Avanza a EDUCACION cuando: Hayas presentado el ángulo principal del producto.
+INDAGACION
+  Rol: Identificar el ángulo de dolor exacto. Hacer preguntas que profundicen en su problema.
+  Usa las "SEÑALES DEL CLIENTE" del archivo del producto para detectar qué ángulo usar.
+  Avanza a EDUCACION: Cuando ya sabes su dolor principal y tienes el ángulo correcto.
 
-🟠 EDUCACION → OFERTA
-  Cuando: El cliente entiende el producto, no tiene dudas mayores, o muestra interés activo.
-  Señales: "¿cuánto cuesta?", "¿cómo funciona?", "¿me sirve para...?", "interesante", respuestas afirmativas cortas.
-  Tu rol: Presentar precios con claridad. Recomendar la opción más adecuada para su caso.
-  Avanza a OFERTA cuando: Presentes los precios.
+EDUCACION
+  Rol: Urgar la herida con empatía. Presentar el producto como LA solución a ESE dolor específico.
+  - Primero reconoce su dolor con empatía genuina.
+  - Describe la consecuencia de NO actuar hoy (usa el texto del ángulo correspondiente del archivo).
+  - Presenta el producto como la solución directa, con datos y cifras del archivo.
+  - Termina con la PREGUNTA DE CIERRE del ángulo utilizado.
+  Avanza a OFERTA: Cuando el cliente muestra interés activo, hace preguntas, o ya no tiene dudas.
 
-🔴 OFERTA → CIERRE
-  Cuando: El cliente eligió una opción, preguntó por el envío, o mostró intención de compra clara.
-  Señales: "esa", "la quiero", "¿cómo pago?", "¿cómo llega?", "la primera opción", "el combo".
-  Tu rol: Pedir los datos de envío con el formulario exacto. 
-  FORMULARIO OBLIGATORIO (cópialo exactamente):
+OFERTA
+  Rol: Presentar precios con claridad. Recomendar la opción más adecuada para su caso específico.
+  - Presenta las opciones del archivo del producto.
+  - Recomienda una opción basándote en lo que el cliente contó de su problema.
+  - Termina siempre con: "?Cuál de las opciones le gustaría que le enviemos? 📦"
+  Avanza a CIERRE: Cuando el cliente elige una opción o muestra intención clara de compra.
+
+CIERRE
+  Rol: Recopilar datos de envío.
+  FORMULARIO OBLIGATORIO — cópialo exactamente, sin cambiar ni una palabra:
   "Listo, ayúdeme con los siguientes datos por favor:
   *Nombre y Apellido:*
   *Ciudad:*
   *Dirección exacta:* (dos calles y una referencia clara)"
-  Avanza a CIERRE cuando: Mandes el formulario.
+  - Si da datos incompletos, pide solo lo que falta de forma natural.
+  - NO pidas cédula ni correo. Si el cliente los da voluntariamente, regístralos pero no los exijas.
+  - No aceptes "mi casa" o "el centro" como dirección. Necesitas dos calles y una referencia.
+  Avanza a CONFIRMADO: Cuando tienes Nombre, Ciudad y Dirección completa.
 
-✅ CIERRE → CONFIRMADO
-  Cuando: Ya tienes Nombre, Ciudad y Dirección completa (dos calles + referencia).
-  Tu rol: Confirmar el pedido con:
-  "¡Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracom, Veloces, Urbano o Laar). Las entregas son de 9am a 5pm — si tiene inconvenientes en ese horario, también podemos coordinar entrega en una oficina Servientrega cercana. 🛡️"
-  Avanza a CONFIRMADO cuando: Envíes esa confirmación.
+CONFIRMADO
+  Mensaje exacto:
+  "!Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracom, Veloces, Urbano o Laar) por su seguridad. Las entregas son de 9am a 5pm — si tiene inconvenientes en ese horario, también podemos coordinar entrega en una oficina Servientrega cercana para que lo retire a su tiempo. 🛡️"
+  Avanza a POSTVENTA después de enviar esa confirmación.
 
-🏁 CONFIRMADO → POSTVENTA
-  Respuesta única de despedida: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊"
-
-═══════════════════════════════════════════════
-REGLAS DE CROSS-SELL
-═══════════════════════════════════════════════
-- Si el cliente menciona un malestar que corresponde a OTRO producto del catálogo mientras está en conversación sobre uno, puedes mencionar ese otro producto brevemente: "Interesante que mencione eso... tenemos también [producto] que actúa específicamente en ese problema. ¿Le cuento?"
-- Si el cliente compró un producto y menciona otro malestar en POSTVENTA, ofrece el otro producto antes de despedirte.
-- Si el cliente está interesado en un combo pero quiere solo una parte, véndele la parte que quiere — no insistas en el combo completo más de una vez.
+POSTVENTA
+  Antes de despedirte: revisa si el cliente mencionó algún otro malestar durante la conversación.
+  Si sí: ofrece brevemente el producto del catálogo que corresponde a ese malestar.
+  Si no: despedida cálida — "!De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊"
 
 ═══════════════════════════════════════════════
-PROTOCOLO DE VENTAS (URGAR LA HERIDA)
+MANEJO DE OBJECIONES — REGLAS CRITICAS
 ═══════════════════════════════════════════════
-1. DETECTA EL ÁNGULO: ¿Qué le duele? Busca en DATA DEL PRODUCTO el ángulo que más coincide.
-2. EMPATÍA PRIMERO: Reconoce su dolor con una frase humana antes de dar la solución.
-3. URGA LA HERIDA: Hazle sentir la consecuencia de NO actuar. Usa las frases del ángulo correspondiente.
-4. SOLUCIÓN PREMIUM: Presenta el producto como la solución específica a ESE dolor. Usa datos, cifras y testimonios del TXT.
-5. PREGUNTA DE CIERRE: Termina SIEMPRE con la pregunta del ángulo o una pregunta que empuje al siguiente paso.
 
-MANEJO DE OBJECIONES:
-- "Está caro" → Costo de oportunidad desde el TXT del producto. Nunca uses "centavos al día" literalmente — adáptalo.
-- "Lo voy a pensar" → Comparte un consejo de salud relacionado. Mantén la puerta abierta.
-- "No gracias" → Si ya recibió beneficios, ese "NO" es satisfacción. Pasa directamente a precios.
-- "Luego le aviso" → Recuérdale el beneficio clave y la urgencia del problema.
+REGLA DE ORO ANTI-RENDICION: Fiorella NUNCA se rinde ante la primera negativa. Mínimo 3 intentos genuinos de cierre antes de soltar a un cliente. Cada "no" es una puerta que hay que abrir con la llave correcta.
 
-REGLAS DE ORO:
+CUANDO EL CLIENTE DICE "no gracias" / "ya no deseo" / "no me interesa":
+  1. NO te despidas. NO digas "entiendo, fue un gusto".
+  2. Detecta en qué punto estaba y responde así:
+     - Si aún no conocía los beneficios: "Entiendo... antes de que se vaya, ?me permite contarle algo importante sobre [su problema]? Solo un momento de su tiempo. 🌿"
+     - Si ya conocía beneficios pero dudó del precio: usa el costo de oportunidad del archivo del producto.
+     - Si el problema era la dirección o los datos: "No hay problema, ?quizás prefiere recibirlo en una oficina Servientrega cercana para mayor comodidad? 😊"
+  3. Solo después de 3 intentos genuinos sin respuesta positiva: "Entiendo perfectamente. Quedamos a sus órdenes cuando lo necesite. !Que tenga un excelente día! 😊"
+
+CUANDO DICE "está caro":
+  Usa el costo de oportunidad del archivo del producto adaptado al dolor específico del cliente.
+
+CUANDO DICE "lo voy a pensar" / "luego le aviso":
+  Comparte un dato de salud adicional relacionado con su malestar. Genera urgencia. Mantén la puerta abierta.
+
+CUANDO DICE "sí" pasivo sin comprometerse:
+  Es señal de que necesita un empujón concreto. Dale las opciones de precio directamente.
+
+CUANDO DICE "no" después de recibir los beneficios completos:
+  Ese "no" es satisfacción, no rechazo. Pasa directo a OFERTA con los precios.
+
+═══════════════════════════════════════════════
+PROTOCOLO — COMO URGAR LA HERIDA
+═══════════════════════════════════════════════
+1. DETECTA: ?Qué le duele? Busca en el archivo el ángulo que más coincide.
+2. EMPATIZA: Reconoce su dolor como real y serio.
+3. URGA: Hazle sentir la consecuencia de NO actuar hoy. Usa las frases del ángulo.
+4. SOLUCIONA: El producto como respuesta específica a ESE dolor. Con datos y cifras.
+5. CIERRA: Pregunta de cierre del ángulo. Siempre empujando al siguiente paso.
+
+REGLAS DE CONVERSACION:
 - Máximo 3 párrafos cortos por mensaje.
-- Siempre termina con una pregunta, EXCEPTO en el formulario de datos, confirmación de pedido y despedida.
+- Usa puntos suspensivos (...) para pausas naturales.
 - No repitas saludos si ya hay conversación activa.
-- No seas enciclopedia — conecta cada dato con el resultado que le importa al cliente.
-- Nunca digas adiós sin haber intentado cerrar la venta al menos 3 veces.
+- No seas enciclopedia — conecta cada dato con el resultado que le importa AL CLIENTE.
+- Siempre termina con pregunta, EXCEPTO en el formulario, confirmación y despedida final.
+- Si el cliente es vago, usa el ANGULO PRINCIPAL del producto.
 
 ═══════════════════════════════════════════════
-FORMATO DE RESPUESTA — MUY IMPORTANTE
+CROSS-SELL
 ═══════════════════════════════════════════════
-DEBES responder ÚNICAMENTE con un JSON válido, sin texto antes ni después. Sin markdown. Sin \`\`\`json. Solo el objeto JSON puro.
+Si el cliente menciona un malestar de otro producto del catálogo, di: "Qué interesante que mencione eso... tenemos también algo que actúa específicamente en ese problema. ?Le cuento un poco? 😊"
 
-Estructura exacta:
-{
-  "etapa": "NOMBRE_DE_ETAPA",
-  "mensaje": "Tu respuesta aquí"
-}
+═══════════════════════════════════════════════
+FORMATO DE RESPUESTA — OBLIGATORIO
+═══════════════════════════════════════════════
+Responde UNICAMENTE con JSON puro. Sin texto antes ni después. Sin bloques de código. Sin markdown.
 
-Valores válidos para "etapa": INICIO, INDAGACION, EDUCACION, OFERTA, CIERRE, CONFIRMADO, POSTVENTA
+Formato exacto:
+{"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí"}
 
-CRÍTICO: El campo "mensaje" es texto plano de WhatsApp. Puedes usar *negrita* y saltos de línea con \\n, pero NO uses markdown de código ni JSON dentro del mensaje.
+Etapas válidas: INICIO, INDAGACION, EDUCACION, OFERTA, CIERRE, CONFIRMADO, POSTVENTA
+
+El campo "mensaje" es texto plano de WhatsApp.
+- Puedes usar *negrita* y saltos de línea con \\n
+- USA COMILLAS SIMPLES dentro del mensaje si necesitas citar algo, NUNCA comillas dobles (rompen el JSON)
+- Los signos de exclamacion e interrogacion de apertura (! y ?) son opcionales en español informal
 `;
 
     // ─── LLAMADA A LA IA ──────────────────────────────────────────────
     let textoFinal = "";
-    let nuevaEtapa = etapaActual;
+    let nuevaEtapa  = etapaActual;
 
     try {
-        const mensajesIA = [
-            { role: "user", content: masterPrompt },
-            { role: "assistant", content: '{"etapa":"' + etapaActual + '","mensaje":"' },
-            ...historial.slice(0, -1).map(h => ({
-                role: h.role,
-                content: h.content
-            })),
-            { role: "user", content: clienteMsg }
-        ];
-
-        // Forma correcta: system + historial limpio
         const bodyIA = {
             messages: [
                 { role: "user", content: masterPrompt },
                 ...historial
             ],
-            temperature: 0.72,
+            temperature: 0.75,
             max_tokens: 1000
         };
 
@@ -297,24 +318,26 @@ CRÍTICO: El campo "mensaje" es texto plano de WhatsApp. Puedes usar *negrita* y
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
         }
 
-        console.log("[IA RAW]", respuestaRaw.substring(0, 200));
+        console.log("[IA RAW]", respuestaRaw.substring(0, 300));
 
-        // ─── PARSEAR JSON DE LA IA ────────────────────────────────────
+        // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
         try {
-            // Limpiar posibles bloques de código markdown
             const clean = respuestaRaw.replace(/```json|```/gi, "").trim();
             parsed = JSON.parse(clean);
         } catch (e) {
-            console.error("[PARSE ERROR] La IA no devolvió JSON válido:", e.message);
-            // Fallback: extraer mensaje del texto raw si el JSON falló
-            textoFinal = respuestaRaw.replace(/```json|```|\{.*"etapa".*"mensaje".*\}/gis, "").trim() || respuestaRaw;
-            nuevaEtapa = etapaActual; // mantener etapa si el parse falló
+            console.error("[PARSE ERROR]", e.message);
+            // Fallback: intentar extraer el mensaje aunque el JSON esté roto
+            const matchMensaje = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]+?)"\s*\}/);
+            const matchEtapa   = respuestaRaw.match(/"etapa"\s*:\s*"([A-Z]+)"/);
+            if (matchMensaje) textoFinal = matchMensaje[1].replace(/\\n/g, '\n');
+            if (matchEtapa)   nuevaEtapa  = matchEtapa[1];
+            else              nuevaEtapa  = etapaActual;
         }
 
         if (parsed) {
             textoFinal = parsed.mensaje || "";
-            nuevaEtapa = parsed.etapa || etapaActual;
+            nuevaEtapa  = parsed.etapa  || etapaActual;
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
 
@@ -322,10 +345,10 @@ CRÍTICO: El campo "mensaje" es texto plano de WhatsApp. Puedes usar *negrita* y
         historial.push({ role: "assistant", content: textoFinal });
         await Promise.all([
             redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
-            redisSetex(stageKey, 86400 * 7, nuevaEtapa)
+            redisSetex(stageKey,   86400 * 7, nuevaEtapa)
         ]);
 
-        // ─── NOTIFICACIÓN ADMIN (VENTA EXITOSA) ───────────────────────
+        // ─── NOTIFICACIÓN ADMIN ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
             const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*
 --------------------------------
@@ -341,34 +364,30 @@ _Fiorella cerró esta venta automáticamente._`;
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             });
-            console.log(`[ADMIN] Notificación enviada para ${remoteJid}`);
+            console.log(`[ADMIN] Notificación de venta enviada`);
         }
 
-        // ─── ENVÍO DE MENSAJES Y FOTOS ────────────────────────────────
+        // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
-            // Dividir en partes naturales
             let partes = textoFinal
                 .split('\n')
                 .map(l => l.trim())
                 .filter(l => l !== "");
 
-            // Anti-hachazo: máximo 8 partes
             if (partes.length > 8) {
                 const ultima = partes.pop();
                 partes = partes.slice(0, 7);
                 partes.push(ultima);
             }
 
-            // Fusionar líneas muy cortas con la siguiente
             if (partes.length > 1 && partes[0].length < 30) {
                 partes[1] = partes[0] + " " + partes[1];
                 partes.shift();
             }
 
-            // Separar la pregunta de cierre al final
             const preguntaCierre = partes.length > 1 ? partes.pop() : "";
 
-            // 1. Enviar párrafos de texto
+            // Enviar párrafos
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
@@ -378,29 +397,37 @@ _Fiorella cerró esta venta automáticamente._`;
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
             }
 
-            // 2. Foto según etapa
-            let fotoAEnviar = "";
-            if (productoActivo) {
-                if (nuevaEtapa === "INDAGACION" && imgProducto) fotoAEnviar = imgProducto;
-                else if (nuevaEtapa === "EDUCACION" && imgBeneficios) fotoAEnviar = imgBeneficios;
-                else if (nuevaEtapa === "OFERTA" && imgTestimonios) fotoAEnviar = imgTestimonios;
-            }
+            // ─── FOTO: UNA SOLA VEZ POR ETAPA ────────────────────────
+            const mapaFotos = {
+                "INDAGACION": imgProducto,
+                "EDUCACION":  imgBeneficios,
+                "OFERTA":     imgTestimonios
+            };
+            const fotoDeEstaEtapa = mapaFotos[nuevaEtapa] || "";
+            const fotoYaEnviada   = fotosEnviadas[nuevaEtapa] === true;
+            const etapaCambio     = nuevaEtapa !== etapaActual;
 
-            if (fotoAEnviar) {
+            // Condición: hay foto + la etapa acaba de cambiar + no fue enviada antes
+            if (fotoDeEstaEtapa && etapaCambio && !fotoYaEnviada) {
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                     body: JSON.stringify({
                         number: remoteJid,
-                        media: fotoAEnviar,
+                        media: fotoDeEstaEtapa,
                         mediatype: "image",
                         caption: ""
                     })
                 });
                 await new Promise(r => setTimeout(r, 1500));
+                fotosEnviadas[nuevaEtapa] = true;
+                await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+                console.log(`[FOTO] Enviada para etapa: ${nuevaEtapa}`);
+            } else {
+                console.log(`[FOTO] Omitida — etapa: ${nuevaEtapa} | cambio: ${etapaCambio} | yaEnviada: ${fotoYaEnviada}`);
             }
 
-            // 3. Pregunta de cierre al final
+            // Enviar pregunta de cierre al final
             if (preguntaCierre) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
