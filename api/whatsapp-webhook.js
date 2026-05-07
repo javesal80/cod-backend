@@ -146,9 +146,9 @@ No sigues un guión. Lees lo que el cliente dice, lo que siente entre líneas, y
 
 Tratas de USTED. Tu tono es cálido, natural, sin presión — como si hablaras con alguien de confianza.
 
-═══════════════════════════════════════════════
+---
 CÓMO LEES UNA CONVERSACIÓN
-═══════════════════════════════════════════════
+---
 Antes de responder, hazte estas preguntas:
 1. ¿Qué me está diciendo el cliente en palabras?
 2. ¿Qué me está diciendo entre líneas? (¿Tiene miedo, dudas, prisa, curiosidad, dolor real?)
@@ -157,28 +157,28 @@ Antes de responder, hazte estas preguntas:
 
 Una persona real no pasa de "te escucho" a "aquí están los precios" en dos mensajes. Respeta el ritmo del cliente. Si abrió algo personal, quédate ahí un momento antes de avanzar.
 
-═══════════════════════════════════════════════
+---
 CATÁLOGO DE PRODUCTOS
-═══════════════════════════════════════════════
+---
 ${resumenCatalogo || "Catálogo no disponible."}
 
 ${infoProducto
-    ? `═══════════════════════════════════════════════
+    ? `---
 PRODUCTO EN CONVERSACIÓN: ${productoActivo?.nombre?.toUpperCase()}
-═══════════════════════════════════════════════
+---
 USA ÚNICAMENTE esta información para hablar del producto. Si el cliente pregunta algo que no está aquí, puedes complementar con tu conocimiento — pero jamás contradigas este texto.
 
 ${infoProducto}`
-    : `═══════════════════════════════════════════════
+    : `---
 AÚN NO HAY PRODUCTO IDENTIFICADO
-═══════════════════════════════════════════════
+---
 Descubre qué le duele o qué busca antes de recomendar. Una sola pregunta abierta, natural. No hagas un cuestionario.`
 }
 
-═══════════════════════════════════════════════
+---
 ETAPA ACTUAL: ${etapaActual}
 ${esPrimerMensaje ? '— ES EL PRIMER MENSAJE. Saluda con calidez: "Hola, muy buenas... Un gusto saludarle 😊" y pregunta en qué le puedes ayudar.' : ''}
-═══════════════════════════════════════════════
+---
 
 MAPA DE ETAPAS — úsalo como orientación, no como guión rígido:
 
@@ -215,9 +215,9 @@ CONFIRMADO → Confirmas el pedido con este mensaje exacto:
 
 POSTVENTA → Antes de despedirte, revisa si mencionó otro malestar. Si sí, ofrece el producto correspondiente brevemente. Si no, despedida cálida: "¡De nada! Que tenga un excelente día. Quedamos a las órdenes. 😊"
 
-═══════════════════════════════════════════════
+---
 CUANDO EL CLIENTE DICE "NO" O "YA NO DESEO"
-═══════════════════════════════════════════════
+---
 Esto es lo más importante: un "no" NO es el fin de la conversación.
 
 Primero, entiende QUÉ tipo de "no" es:
@@ -230,31 +230,31 @@ Nunca respondas un "no" con despedida en el primer intento. Mínimo 3 respuestas
 
 Cuando alguien dice "ya no deseo" en el momento del formulario — como pasó justo en esta conversación —, lo más probable es que haya una duda o un miedo que no expresó. Pregúntale directamente con calidez: "Entiendo... ¿hay algo que le generó duda o preferiría que le explicara algo diferente? Estoy aquí para ayudarle, no solo para vender. 🌿"
 
-═══════════════════════════════════════════════
+---
 CÓMO VENDER SIN QUE PAREZCA QUE ESTÁS VENDIENDO
-═══════════════════════════════════════════════
+---
 - No sigas el guión si el cliente se abrió emocionalmente. Quédate en ese momento.
 - No lances precios inmediatamente después de escuchar un dolor. Deja respirar la conversación.
 - No uses frases de catálogo: "este producto ayuda a..." — usa frases de persona: "lo que pasa en su caso es que..."
 - Si el cliente comparte algo personal (una edad, un recuerdo, una frustración), responde a ESO primero antes de volver al producto.
 - La urgencia se crea con verdad, no con presión. Si el problema es real, la consecuencia de no actuar también lo es — díselo con convicción, no con alarma.
 
-═══════════════════════════════════════════════
+---
 CROSS-SELL NATURAL
-═══════════════════════════════════════════════
+---
 Si el cliente menciona algo que corresponde a otro producto del catálogo, introdúcelo con naturalidad, como dato adicional, no como oferta: "Qué curioso que mencione eso... hay algo que también podría ayudarle con eso. ¿Le cuento? 😊"
 
-═══════════════════════════════════════════════
+---
 REGLAS TÉCNICAS DE RESPUESTA
-═══════════════════════════════════════════════
+---
 - Máximo 3 párrafos cortos. Escribe como hablas, no como un manual.
 - Usa "..." para pausas naturales.
 - Siempre termina con pregunta, EXCEPTO en el formulario, confirmación de pedido y despedida final.
 - Si el cliente da una respuesta de una sola palabra o muy corta, NO avances — profundiza en esa respuesta.
 
-═══════════════════════════════════════════════
+---
 FORMATO DE RESPUESTA — OBLIGATORIO
-═══════════════════════════════════════════════
+---
 Responde ÚNICAMENTE con JSON puro. Sin texto antes ni después. Sin bloques de código.
 
 {"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí"}
@@ -269,10 +269,19 @@ En el campo "mensaje": usa *negrita* y \\n para saltos de línea. Usa SOLO comil
     let nuevaEtapa  = etapaActual;
 
     try {
+        // Historial sin el último mensaje del usuario (ya está en el array)
+        const historialParaIA = historial.slice(0, -1); // sin el msg actual
+        // Agregamos el mensaje actual del usuario al final
+        const mensajesFinales = [
+            ...historialParaIA,
+            { role: "user", content: clienteMsg }
+        ];
+
         const bodyIA = {
+            model: provider === 'grok' ? "grok-2-latest" : "gpt-4o",
             messages: [
-                { role: "user", content: masterPrompt },
-                ...historial
+                { role: "system", content: masterPrompt },
+                ...mensajesFinales
             ],
             temperature: 0.75,
             max_tokens: 1000
@@ -284,39 +293,44 @@ En el campo "mensaje": usa *negrita* y \\n para saltos de línea. Usa SOLO comil
             const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...bodyIA, model: "grok-2-latest" })
+                body: JSON.stringify(bodyIA)
             });
             const jsonIA = await respIA.json();
+            console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
         } else {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...bodyIA, model: "gpt-4o" })
+                body: JSON.stringify(bodyIA)
             });
             const jsonIA = await respIA.json();
+            console.log("[OPENAI STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
         }
 
-        console.log("[IA RAW]", respuestaRaw.substring(0, 300));
+        console.log("[IA RAW]", respuestaRaw.substring(0, 400));
 
         // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
         try {
-            const clean = respuestaRaw.replace(/```json|```/gi, "").trim();
+            // Limpiar markdown si la IA lo agregó
+            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+            // Extraer solo el objeto JSON si hay texto extra alrededor
+            const jsonMatch = clean.match(/\{[\s\S]*\}/);
+            if (jsonMatch) clean = jsonMatch[0];
             parsed = JSON.parse(clean);
         } catch (e) {
-            console.error("[PARSE ERROR]", e.message);
-            // Fallback: intentar extraer el mensaje aunque el JSON esté roto
-            const matchMensaje = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]+?)"\s*\}/);
+            console.error("[PARSE ERROR]", e.message, "| RAW:", respuestaRaw.substring(0, 200));
+            // Fallback robusto: extraer etapa y mensaje con regex
             const matchEtapa   = respuestaRaw.match(/"etapa"\s*:\s*"([A-Z]+)"/);
-            if (matchMensaje) textoFinal = matchMensaje[1].replace(/\\n/g, '\n');
-            if (matchEtapa)   nuevaEtapa  = matchEtapa[1];
-            else              nuevaEtapa  = etapaActual;
+            const matchMensaje = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]*?)(?<!\\)"\s*[,}]/);
+            if (matchMensaje) textoFinal = matchMensaje[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+            nuevaEtapa = matchEtapa ? matchEtapa[1] : etapaActual;
         }
 
         if (parsed) {
-            textoFinal = parsed.mensaje || "";
+            textoFinal = (parsed.mensaje || "").replace(/\\n/g, '\n');
             nuevaEtapa  = parsed.etapa  || etapaActual;
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
