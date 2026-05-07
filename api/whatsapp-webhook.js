@@ -342,18 +342,26 @@ _Fiorella cerró esta venta automáticamente._`;
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
             }
 
-            // ─── FOTO: UNA SOLA VEZ POR ETAPA ────────────────────────
+            // ─── LÓGICA DE FOTOS ──────────────────────────────────────
+            // img_producto  → primera vez que aparece el producto (INDAGACION)
+            //                 va ENTRE el texto y la pregunta de cierre
+            // img_beneficios → cuando entra a EDUCACION
+            //                  va ENTRE el texto y la pregunta de cierre
+            // img_testimonios → cuando entra a OFERTA (antes de mostrar precios)
+            //                   va ANTES de la pregunta de cierre
+
             const mapaFotos = {
                 "INDAGACION": imgProducto,
                 "EDUCACION":  imgBeneficios,
                 "OFERTA":     imgTestimonios
             };
+
             const fotoDeEstaEtapa = mapaFotos[nuevaEtapa] || "";
             const fotoYaEnviada   = fotosEnviadas[nuevaEtapa] === true;
             const etapaCambio     = nuevaEtapa !== etapaActual;
+            const debeEnviarFoto  = fotoDeEstaEtapa && etapaCambio && !fotoYaEnviada;
 
-            // Condición: hay foto + la etapa acaba de cambiar + no fue enviada antes
-            if (fotoDeEstaEtapa && etapaCambio && !fotoYaEnviada) {
+            const enviarFoto = async () => {
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
@@ -367,12 +375,14 @@ _Fiorella cerró esta venta automáticamente._`;
                 await new Promise(r => setTimeout(r, 1500));
                 fotosEnviadas[nuevaEtapa] = true;
                 await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
-                console.log(`[FOTO] Enviada para etapa: ${nuevaEtapa}`);
-            } else {
-                console.log(`[FOTO] Omitida — etapa: ${nuevaEtapa} | cambio: ${etapaCambio} | yaEnviada: ${fotoYaEnviada}`);
-            }
+                console.log(`[FOTO] Enviada: ${nuevaEtapa}`);
+            };
 
-            // Enviar pregunta de cierre al final
+            // Foto va ENTRE el cuerpo del mensaje y la pregunta de cierre
+            if (debeEnviarFoto) await enviarFoto();
+            else console.log(`[FOTO] Omitida — etapa: ${nuevaEtapa} | cambio: ${etapaCambio} | yaEnviada: ${fotoYaEnviada}`);
+
+            // Pregunta de cierre — siempre al final
             if (preguntaCierre) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
