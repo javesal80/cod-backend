@@ -15,7 +15,31 @@ module.exports = async (req, res) => {
     if (!req.body?.data?.message || req.body.data.key?.fromMe) return res.status(200).send('OK');
 
     const data = req.body.data;
-    const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
+
+    let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
+
+// Transcribir audio si llega vacío
+if (!clienteMsg && data.message?.audioMessage?.url) {
+    try {
+        const audioUrl = data.message.audioMessage.url;
+        const audioResp = await fetch(audioUrl);
+        const audioBuffer = await audioResp.arrayBuffer();
+        const formData = new FormData();
+        formData.append('file', new Blob([audioBuffer], { type: 'audio/ogg' }), 'audio.ogg');
+        formData.append('model', 'whisper-1');
+        formData.append('language', 'es');
+        const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
+            body: formData
+        });
+        const whisperJson = await whisperResp.json();
+        clienteMsg = whisperJson.text || "";
+        console.log("[WHISPER]", clienteMsg);
+    } catch (e) {
+        console.error("[WHISPER ERROR]", e.message);
+    }
+}
 
     console.log("[BODY]", JSON.stringify(req.body?.data?.message).substring(0, 300));
     
