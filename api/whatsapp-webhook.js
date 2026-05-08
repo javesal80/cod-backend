@@ -325,6 +325,27 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             redisSetex(stageKey,   86400 * 7, nuevaEtapa)
         ]);
 
+        // ─── GUARDAR EN SUPABASE ──────────────────────────────────────
+        try {
+            await fetch(`${process.env.SUPABASE_URL}/rest/v1/conversaciones`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': process.env.SUPABASE_KEY,
+                    'Authorization': `Bearer ${process.env.SUPABASE_KEY}`,
+                    'Prefer': 'resolution=merge-duplicates'
+                },
+                body: JSON.stringify({
+                    jid: cleanJid,
+                    etapa_final: nuevaEtapa,
+                    producto: productoActivo?.nombre || null,
+                    vendido: nuevaEtapa === 'CONFIRMADO',
+                    historial: historial,
+                    updated_at: new Date().toISOString()
+                })
+            });
+        } catch (e) { console.error("[SUPABASE ERROR]", e.message); }
+
         // ─── NOTIFICACIÓN ADMIN ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
             const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*
