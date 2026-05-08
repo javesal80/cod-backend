@@ -345,6 +345,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
                 })
             });
         } catch (e) { console.error("[SUPABASE ERROR]", e.message); }
+        console.log("[SUPABASE] Guardado intento completado");
 
         // ─── NOTIFICACIÓN ADMIN ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
