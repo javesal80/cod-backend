@@ -14,47 +14,43 @@ module.exports = async (req, res) => {
 
     if (!req.body?.data?.message || req.body.data.key?.fromMe) return res.status(200).send('OK');
 
-    const data = req.body.data;
-
-
-if (!clienteMsg && data.message?.audioMessage) {
-    try {
-        const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-            body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
-        });
-        const mediaJson = await mediaResp.json();
-        const base64Audio = mediaJson.base64;
-        if (base64Audio) {
-            const buffer = Buffer.from(base64Audio, 'base64');
-            const formData = new FormData();
-            formData.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'audio.ogg');
-            formData.append('model', 'whisper-1');
-            formData.append('language', 'es');
-            const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
-                body: formData
-            });
-            const whisperJson = await whisperResp.json();
-            clienteMsg = whisperJson.text || "";
-            console.log("[WHISPER]", clienteMsg);
-        }
-    } catch (e) {
-        console.error("[WHISPER ERROR]", e.message);
-    }
-}
-    
-
-    console.log("[BODY]", JSON.stringify(req.body?.data?.message).substring(0, 300));
-    
+const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
     const instName = req.body.instance || INSTANCE_NAME || "VitaeLAB";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
+    let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
+
+    if (!clienteMsg && data.message?.audioMessage) {
+        try {
+            const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
+            });
+            const mediaJson = await mediaResp.json();
+            const base64Audio = mediaJson.base64;
+            if (base64Audio) {
+                const buffer = Buffer.from(base64Audio, 'base64');
+                const formData = new FormData();
+                formData.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'audio.ogg');
+                formData.append('model', 'whisper-1');
+                formData.append('language', 'es');
+                const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
+                    body: formData
+                });
+                const whisperJson = await whisperResp.json();
+                clienteMsg = whisperJson.text || "";
+                console.log("[WHISPER]", clienteMsg);
+            }
+        } catch (e) {
+            console.error("[WHISPER ERROR]", e.message);
+        }
+    }
     // ─── FECHA/HORA ECUADOR ───────────────────────────────────────────
     const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
     const hoy = new Date(utc + (3600000 * -5));
