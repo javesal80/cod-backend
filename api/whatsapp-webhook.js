@@ -16,6 +16,9 @@ module.exports = async (req, res) => {
 
     const data = req.body.data;
     const clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
+
+    console.log("[BODY]", JSON.stringify(req.body?.data?.message).substring(0, 300));
+    
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
