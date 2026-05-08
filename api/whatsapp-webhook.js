@@ -16,30 +16,36 @@ module.exports = async (req, res) => {
 
     const data = req.body.data;
 
-    let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
-// Transcribir audio si llega vacío
-if (!clienteMsg && data.message?.audioMessage?.url) {
+if (!clienteMsg && data.message?.audioMessage) {
     try {
-        const audioUrl = data.message.audioMessage.url;
-        const audioResp = await fetch(audioUrl);
-        const audioBuffer = await audioResp.arrayBuffer();
-        const formData = new FormData();
-        formData.append('file', new Blob([audioBuffer], { type: 'audio/ogg' }), 'audio.ogg');
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'es');
-        const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+        const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
-            body: formData
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+            body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
         });
-        const whisperJson = await whisperResp.json();
-        clienteMsg = whisperJson.text || "";
-        console.log("[WHISPER]", clienteMsg);
+        const mediaJson = await mediaResp.json();
+        const base64Audio = mediaJson.base64;
+        if (base64Audio) {
+            const buffer = Buffer.from(base64Audio, 'base64');
+            const formData = new FormData();
+            formData.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'audio.ogg');
+            formData.append('model', 'whisper-1');
+            formData.append('language', 'es');
+            const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
+                body: formData
+            });
+            const whisperJson = await whisperResp.json();
+            clienteMsg = whisperJson.text || "";
+            console.log("[WHISPER]", clienteMsg);
+        }
     } catch (e) {
         console.error("[WHISPER ERROR]", e.message);
     }
 }
+    
 
     console.log("[BODY]", JSON.stringify(req.body?.data?.message).substring(0, 300));
     
