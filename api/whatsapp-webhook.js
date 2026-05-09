@@ -446,7 +446,7 @@ _Fiorella cerró esta venta automáticamente._`;
 
             // Pregunta de cierre — siempre al final
             if (preguntaCierre) {
-    await fetch(`${baseUrl}/chat/sendPresence/${instName}`, {
+    await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
         body: JSON.stringify({ number: remoteJid, presence: "composing", delay: Math.min(preguntaCierre.length * 35, 4000) })
