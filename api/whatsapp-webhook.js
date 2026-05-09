@@ -27,7 +27,7 @@ const data = req.body.data;
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                 body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
             });
             const mediaJson = await mediaResp.json();
