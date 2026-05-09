@@ -216,7 +216,7 @@ ${esPrimerMensaje ? 'Es el primer mensaje — saluda: "Hola, muy buenas... Un gu
 
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
 
-INICIO: Cliente llegó. Salúdalo y entiende qué busca. IMPORTANTE — si desde el primer mensaje el cliente indica intención de compra clara ('quiero comprar', 'quiero pedir', 'me puede enviar', 'cuánto cuesta', 'quiero uno'), salta directo a OFERTA o CIERRE según corresponda. No lo trates como cliente frío si ya llegó convencido.
+INICIO: Cliente llegó. Saluda al cliente y entiende que busca. Si en el primer mensaje ya mencionó un producto o malestar, responde con INDAGACION directamente — no te quedes en INICIO. IMPORTANTE — si desde el primer mensaje el cliente indica intención de compra clara ('quiero comprar', 'quiero pedir', 'me puede enviar', 'cuánto cuesta', 'quiero uno'), salta directo a OFERTA o CIERRE según corresponda. No lo trates como cliente frío si ya llegó convencido.
 INDAGACION: Ya sabes el producto. IMPORTANTE — si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta abierta que invite al cliente a contarte SU situación — sin asumir que ya tiene síntomas. Por ejemplo: '¿Hay algo en particular que le llamó la atención del producto?' o '¿Tiene algún malestar específico que quisiera mejorar?'. La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
 EDUCACION: Ya sabes su dolor. Úrgalo con empatía y presenta el producto como la solución a ESE dolor.
 OFERTA: Presenta opciones y precios. Recomienda la más adecuada para su caso. Si el cliente rechaza las opciones o duda, NO te despidas — ya conoces su dolor, úsalo. Recuérdale lo que te contó (sus síntomas, su situación) y hazle ver el costo de seguir sin resolver ese problema. La persuasión aquí se basa en lo que el cliente mismo ya te reveló durante la conversación.
@@ -412,6 +412,7 @@ _Fiorella cerró esta venta automáticamente._`;
             //                   va ANTES de la pregunta de cierre
 
             const mapaFotos = {
+                 "INICIO": imgProducto,
                 "INDAGACION": imgProducto,
                 "EDUCACION":  imgBeneficios,
                 "OFERTA":     imgTestimonios
