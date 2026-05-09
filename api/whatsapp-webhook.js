@@ -360,7 +360,7 @@ _Fiorella cerró esta venta automáticamente._`;
 
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             });
             console.log(`[ADMIN] Notificación de venta enviada`);
@@ -390,7 +390,7 @@ _Fiorella cerró esta venta automáticamente._`;
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
@@ -418,7 +418,7 @@ _Fiorella cerró esta venta automáticamente._`;
             const enviarFoto = async () => {
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                     body: JSON.stringify({
                         number: remoteJid,
                         media: fotoDeEstaEtapa,
@@ -440,7 +440,7 @@ _Fiorella cerró esta venta automáticamente._`;
             if (preguntaCierre) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                     body: JSON.stringify({ number: remoteJid, text: preguntaCierre })
                 });
             }
