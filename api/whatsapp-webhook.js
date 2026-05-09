@@ -388,12 +388,19 @@ _Fiorella cerró esta venta automáticamente._`;
 
             // Enviar párrafos
             for (const parte of partes) {
-                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+    await fetch(`${baseUrl}/chat/sendPresence/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+        body: JSON.stringify({ number: remoteJid, presence: "composing", delay: Math.min(parte.length * 35, 5000) })
+    });
+    await new Promise(r => setTimeout(r, Math.min(parte.length * 35, 5000) + Math.floor(Math.random() * 1000)));
+    await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
-                if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
+
+                             
             }
 
             // ─── LÓGICA DE FOTOS ──────────────────────────────────────
@@ -438,7 +445,13 @@ _Fiorella cerró esta venta automáticamente._`;
 
             // Pregunta de cierre — siempre al final
             if (preguntaCierre) {
-                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+    await fetch(`${baseUrl}/chat/sendPresence/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+        body: JSON.stringify({ number: remoteJid, presence: "composing", delay: Math.min(preguntaCierre.length * 35, 4000) })
+    });
+    await new Promise(r => setTimeout(r, Math.min(preguntaCierre.length * 35, 4000) + Math.floor(Math.random() * 800)));
+    await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: preguntaCierre })
