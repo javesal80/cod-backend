@@ -388,7 +388,7 @@ _Fiorella cerró esta venta automáticamente._`;
 
             // Enviar párrafos
             for (const parte of partes) {
-    await fetch(`${baseUrl}/chat/sendPresence/${instName}`, {
+    await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
         body: JSON.stringify({ number: remoteJid, presence: "composing", delay: Math.min(parte.length * 35, 5000) })
