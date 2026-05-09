@@ -420,7 +420,8 @@ _Fiorella cerró esta venta automáticamente._`;
             const fotoDeEstaEtapa = mapaFotos[nuevaEtapa] || "";
             const fotoYaEnviada   = fotosEnviadas[nuevaEtapa] === true;
             const etapaCambio     = nuevaEtapa !== etapaActual;
-            const debeEnviarFoto  = fotoDeEstaEtapa && etapaCambio && !fotoYaEnviada;
+            const esNuevoProducto = !fotosEnviadas["INDAGACION"];
+            const debeEnviarFoto  = fotoDeEstaEtapa && (etapaCambio || (nuevaEtapa === "INDAGACION" && esNuevoProducto)) && !fotoYaEnviada;
 
             const enviarFoto = async () => {
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
