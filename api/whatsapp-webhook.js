@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
+        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_DESPACHO,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
