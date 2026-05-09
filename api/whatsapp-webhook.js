@@ -18,7 +18,7 @@ const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName = req.body.instance || INSTANCE_NAME || "Despacho_JRJ";
+    const instName = req.body.instance || INSTANCE_DESPACHO || "Despacho_JRJ";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
