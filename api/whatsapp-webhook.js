@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN_DESPACHO, INSTANCE_DESPACHO,
+        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
@@ -18,7 +18,7 @@ const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName = req.body.instance || INSTANCE_DESPACHO || "Despacho_JRJ";
+    const instName = req.body.instance || INSTANCE_WHATSAPI || "WHATSAPI";
     const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
@@ -27,7 +27,7 @@ const data = req.body.data;
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                 body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
             });
             const mediaJson = await mediaResp.json();
@@ -360,7 +360,7 @@ _Fiorella cerró esta venta automáticamente._`;
 
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             });
             console.log(`[ADMIN] Notificación de venta enviada`);
@@ -390,7 +390,7 @@ _Fiorella cerró esta venta automáticamente._`;
             for (const parte of partes) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
                 if (partes.length > 1) await new Promise(r => setTimeout(r, 1200));
@@ -418,7 +418,7 @@ _Fiorella cerró esta venta automáticamente._`;
             const enviarFoto = async () => {
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({
                         number: remoteJid,
                         media: fotoDeEstaEtapa,
@@ -440,7 +440,7 @@ _Fiorella cerró esta venta automáticamente._`;
             if (preguntaCierre) {
                 await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: preguntaCierre })
                 });
             }
