@@ -211,7 +211,7 @@ Descubre qué le duele o qué busca. Una sola pregunta abierta y natural.`}
 
 ---
 ETAPA ACTUAL DE LA CONVERSACIÓN: ${etapaActual}
-${esPrimerMensaje ? 'Es el primer mensaje — saluda: "Hola, muy buenas... Un gusto saludarle 😊"' : ''}
+${esPrimerMensaje ? 'Es el primer mensaje — saluda con calidez pero varía el saludo cada vez. Algunas opciones: 'Hola, muy buenas... Un gusto saludarle 😊', 'Buenas, bienvenido/a... con gusto le atiendo 😊', 'Hola, qué gusto saludarle... estoy aquí para ayudarle 🌿', 'Buenas, gracias por escribirnos... seré la encargada de ayudarle 😊'. No uses siempre la misma — elige según la hora o el contexto.' : ''}
 ---
 
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
