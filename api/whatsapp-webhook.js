@@ -443,6 +443,7 @@ _Fiorella cerró esta venta automáticamente._`;
             const debeEnviarFoto  = fotoDeEstaEtapa && (etapaCambio || (nuevaEtapa === "INDAGACION" && esNuevoProducto)) && !fotoYaEnviada;
 
             const enviarFoto = async () => {
+                await new Promise(r => setTimeout(r, Math.floor(Math.random() * 2000) + 2000));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
