@@ -51,6 +51,23 @@ const data = req.body.data;
             console.error("[WHISPER ERROR]", e.message);
         }
     }
+
+    // ─── SALUDO INMEDIATO (máx 3 segundos) ───────────────────────
+if (historial.length === 0) {
+    const saludos = [
+        "Hola, muy buenas... Un gusto saludarle 😊",
+        "Buenas, bienvenido/a... con gusto le atiendo 😊",
+        "Hola, qué gusto saludarle 🌿",
+        "Buenas, gracias por escribirnos 😊"
+    ];
+    const saludo = saludos[Math.floor(Math.random() * saludos.length)];
+    await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+        body: JSON.stringify({ number: remoteJid, text: saludo })
+    });
+}
+    
     // ─── FECHA/HORA ECUADOR ───────────────────────────────────────────
     const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
     const hoy = new Date(utc + (3600000 * -5));
@@ -211,7 +228,7 @@ Descubre qué le duele o qué busca. Una sola pregunta abierta y natural.`}
 
 ---
 ETAPA ACTUAL DE LA CONVERSACIÓN: ${etapaActual}
-${esPrimerMensaje ? 'Es el primer mensaje — saluda con calidez pero varía el saludo cada vez. Algunas opciones: 'Hola, muy buenas... Un gusto saludarle 😊', 'Buenas, bienvenido/a... con gusto le atiendo 😊', 'Hola, qué gusto saludarle... estoy aquí para ayudarle 🌿', 'Buenas, gracias por escribirnos... seré la encargada de ayudarle 😊'. No uses siempre la misma — elige según la hora o el contexto.' : ''}
+${esPrimerMensaje ? 'Es el primer mensaje — el saludo ya fue enviado automáticamente. NO lo repitas. Ve directo a entender qué busca el cliente y responder con contenido.' : ''}
 ---
 
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
