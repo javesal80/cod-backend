@@ -51,23 +51,7 @@ const data = req.body.data;
             console.error("[WHISPER ERROR]", e.message);
         }
     }
-
-    // ─── SALUDO INMEDIATO (máx 3 segundos) ───────────────────────
-if (historial.length === 0) {
-    const saludos = [
-        "Hola, muy buenas... Un gusto saludarle 😊",
-        "Buenas, bienvenido/a... con gusto le atiendo 😊",
-        "Hola, qué gusto saludarle 🌿",
-        "Buenas, gracias por escribirnos 😊"
-    ];
-    const saludo = saludos[Math.floor(Math.random() * saludos.length)];
-    await fetch(`${baseUrl}/message/sendText/${instName}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-        body: JSON.stringify({ number: remoteJid, text: saludo })
-    });
-}
-    
+   
     // ─── FECHA/HORA ECUADOR ───────────────────────────────────────────
     const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
     const hoy = new Date(utc + (3600000 * -5));
@@ -133,6 +117,22 @@ if (historial.length === 0) {
         if (fotosGuardadas) { try { fotosEnviadas  = JSON.parse(decodeURIComponent(fotosGuardadas)); } catch { fotosEnviadas  = JSON.parse(fotosGuardadas); } }
     } catch (e) { console.error("Error leyendo Redis:", e.message); }
 
+      // ─── SALUDO INMEDIATO (máx 3 segundos) ───────────────────────
+if (historial.length === 0) {
+    const saludos = [
+        "Hola, muy buenas... Un gusto saludarle 😊",
+        "Buenas, bienvenido/a... con gusto le atiendo 😊",
+        "Hola, qué gusto saludarle 🌿",
+        "Buenas, gracias por escribirnos 😊"
+    ];
+    const saludo = saludos[Math.floor(Math.random() * saludos.length)];
+    await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+        body: JSON.stringify({ number: remoteJid, text: saludo })
+    });
+}
+    
     // ─── CARGAR CATÁLOGO ──────────────────────────────────────────────
     let catalogo = [];
     let resumenCatalogo = "";
