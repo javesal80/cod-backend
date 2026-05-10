@@ -314,6 +314,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
 
         if (parsed) {
             textoFinal = (parsed.mensaje || "").replace(/\\n\\n/g, '\n\n').replace(/\\n/g, '\n');
+            console.log("[TEXTO PROCESADO]", JSON.stringify(textoFinal).substring(0, 300));
             nuevaEtapa  = parsed.etapa  || etapaActual;
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
