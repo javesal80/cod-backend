@@ -232,7 +232,7 @@ POSTVENTA: Despedida cálida. Si el cliente mencionó otro malestar durante la c
 CÓMO RESPONDER
 ---
 - Máximo 3 párrafos cortos por mensaje. Escribe como hablas, no como un manual.
-- FORMATO WHATSAPP: OBLIGATORIO — separa cada párrafo con línea vacía (\\n\\n). Nunca juntes dos ideas en el mismo bloque de texto. Cada beneficio va en su línea. Cuando presentes listas de precios o pasos, cada opción en su propia línea con \\n. La pregunta final va sola al final. Usa emojis con moderación — 1 o 2 por mensaje, solo donde aporten calidez, no al final de cada frase. El mensaje debe verse aireado en pantalla de celular — si se ve apretado, está mal formateado.
+- FORMATO WHATSAPP: OBLIGATORIO — separa cada párrafo con línea vacía (\\n\\n). Nunca juntes dos ideas en el mismo bloque de texto. Cada beneficio va en su línea. Cuando presentes listas de precios o pasos, cada opción en su propia línea con (\\n\\n). La pregunta final va sola al final. Usa emojis donde aporten calidez y claridad visual — por ejemplo al inicio de cada beneficio para que sean fáciles de escanear, o al final de una frase de empatía. No los pongas en cada línea, úsalos con criterio para guiar la lectura.
 - Antes de responder, revisa el historial completo. Nunca repitas información, frases o preguntas que ya enviaste en esta conversación.
 - Termina siempre con una pregunta, EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final.
 - No uses frases de catálogo genéricas. Conecta cada dato del producto con el problema específico del cliente.
@@ -369,7 +369,7 @@ _Fiorella cerró esta venta automáticamente._`;
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
             let partes = textoFinal
-                .split('\n')
+                .split('\n\n')
                 .map(l => l.trim())
                 .filter(l => l !== "");
 
