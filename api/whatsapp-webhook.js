@@ -12,7 +12,33 @@ module.exports = async (req, res) => {
 
     const NUMERO_ADMIN = "593992668002";
 
-    if (!req.body?.data?.message || req.body.data.key?.fromMe) return res.status(200).send('OK');
+     if (!req.body?.data?.message) return res.status(200).send('OK');
+
+// Si el mensaje lo envió el admin (fromMe), verificar si es comando de pausa
+if (req.body.data.key?.fromMe) {
+    const msgAdmin = (req.body.data.message?.conversation || "").trim().toLowerCase();
+    const cleanJidAdmin = req.body.data.key?.remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
+    console.log("[ADMIN CMD]", msgAdmin, "| JID guardado:", `pausa:${cleanJidAdmin}`);
+    if (msgAdmin === '#pausa') {
+        await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["SETEX", `pausa:${cleanJidAdmin}`, 86400, "1"])
+        });
+        return res.status(200).send('OK');
+    }
+    if (msgAdmin === '#activar') {
+        await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["DEL", `pausa:${cleanJidAdmin}`])
+        });
+        return res.status(200).send('OK');
+    }
+    return res.status(200).send('OK');
+}
+
+    
 
 const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
@@ -94,6 +120,15 @@ const data = req.body.data;
 
     // ─── CARGAR ESTADO DESDE REDIS ────────────────────────────────────
     const cleanJid    = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+
+     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
+    await new Promise(r => setTimeout(r, 500));
+    try {
+        const pausado = await redisGet(`pausa:${cleanJid}`);
+        if (pausado) return res.status(200).send('OK');
+    } catch (e) {}
+
+    
     const memoriaKey  = `chat:${cleanJid}`;
     const stageKey    = `stage:${cleanJid}`;
     const productoKey = `prod:${cleanJid}`;
@@ -234,14 +269,16 @@ ${esPrimerMensaje ? 'Es el primer mensaje — el saludo ya fue enviado automáti
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
 
 INICIO: Cliente llegó. Saluda al cliente y entiende que busca. Si en el primer mensaje ya mencionó un producto o malestar, responde con INDAGACION directamente — no te quedes en INICIO. IMPORTANTE — si desde el primer mensaje el cliente indica intención de compra clara ('quiero comprar', 'quiero pedir', 'me puede enviar', 'cuánto cuesta', 'quiero uno'), salta directo a OFERTA o CIERRE según corresponda. No lo trates como cliente frío si ya llegó convencido.
-INDAGACION: Ya sabes el producto. IMPORTANTE — si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta abierta que invite al cliente a contarte SU situación — sin asumir que ya tiene síntomas. Por ejemplo: '¿Hay algo en particular que le llamó la atención del producto?' o '¿Tiene algún malestar específico que quisiera mejorar?'. La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
+INDAGACION: Ya sabes el producto. IMPORTANTE — NO empieces el mensaje dudando o pidiendo confirmación sobre lo que el cliente busca.. Si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta abierta que invite al cliente a contarte SU situación — sin asumir que ya tiene síntomas. La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
 EDUCACION: Ya sabes su dolor. Úrgalo con empatía y presenta el producto como la solución a ESE dolor.
 OFERTA: Presenta opciones y precios. Recomienda la más adecuada para su caso. Si el cliente rechaza las opciones o duda, NO te despidas — ya conoces su dolor, úsalo. Recuérdale lo que te contó (sus síntomas, su situación) y hazle ver el costo de seguir sin resolver ese problema. La persuasión aquí se basa en lo que el cliente mismo ya te reveló durante la conversación.
+       REGLA ESTRICTA: NO pases a CIERRE ni pidas datos de envío hasta que el cliente elija explícitamente qué promoción quiere (ej. 1 o 2 unidades). Si el cliente pregunta otra cosa, respóndele pero oblígalo sutilmnte a elegir una promoción antes de avanzar.
 CIERRE: Antes de pedir los datos, confirma en una línea lo que el cliente eligió: producto y cantidad. Luego pide los datos con el formulario.
         Recopila datos de envío con este formulario exacto, sin cambiar una sola palabra:
-  "Listo, ayúdeme con los siguientes datos por favor:\\n*Nombre y Apellido:*\\n*Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
+  "Listo, ayúdeme con los siguientes datos por favor:\\n*Nombre y Apellido:*\\n*Provincia-Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
   No pidas cédula ni correo. No aceptes direcciones vagas. Si faltan datos, pide solo lo que falta.
-CONFIRMADO: Cuando tengas nombre, ciudad y dirección completa, confirma con este mensaje exacto:
+REGLA CRÍTICA: NO pases a CONFIRMADO si el cliente dice 'ya le envío' o si da datos a medias (ej. solo da el nombre y la ciudad pero no las calles). Si la dirección no tiene dos calles, QUÉDATE EN LA ETAPA CIERRE y dile: 'Gracias, ayúdeme también con su dirección exacta con calles y refrencia para el envío por favor'. Solo avanza cuando tengas los 3 datos.
+CONFIRMADO: Cuando tengas nombre, provincia-ciudad y dirección completa, confirma con este mensaje exacto:
   "Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracom, Veloces, Urbano o Laar). Las entregas son de 9am a 5pm — si tiene inconvenientes en ese horario, podemos coordinar entrega en una oficina Servientrega cercana. Su primera compra tiene envío GRATIS. 🛡️"
 POSTVENTA: Despedida cálida. Si el cliente mencionó otro malestar durante la conversación, ofrece el producto correspondiente antes de despedirte.
 
@@ -251,10 +288,14 @@ CÓMO RESPONDER
 - REGLA DE ORO DE BREVEDAD: Máximo 2 párrafos cortos por mensaje. Sin exclamaciones de apertura ("¡Claro!", "¡Perfecto!", "¡Genial!"). Sin repetir el dolor que ya mencionaste en mensajes anteriores. Habla como una persona real, no como un vendedor de televisión.
 - FORMATO WHATSAPP: OBLIGATORIO — separa cada párrafo con línea vacía (\\n\\n). Nunca juntes dos ideas en el mismo bloque de texto. Para listas de beneficios, usa este formato exacto: el título con emoji en su línea, luego \\n y la descripción en la siguiente línea, dentro del mismo párrafo separado por \\n\\n del siguiente beneficio. Cuando presentes listas de precios o pasos, cada opción en su propia línea con (\\n\\n). La pregunta final va sola al final. Usa emojis donde aporten calidez y claridad visual — por ejemplo al inicio de cada beneficio para que sean fáciles de escanear, o al final de una frase de empatía. No los pongas en cada línea, úsalos con criterio para guiar la lectura.
 - Antes de responder, revisa el historial completo. Nunca repitas información, frases o preguntas que ya enviaste en esta conversación.
-- Termina siempre con una pregunta, EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final.
+- HILO CONVERSACIONAL Y PREGUNTA FINAL: Termina siempre con una pregunta (EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final), pero esta pregunta DEBE conectar lógicamente con lo que el cliente acaba de decir. Si el cliente te hace una pregunta logística o técnica (ej. porciones, sabor, precio), responde su duda y cierra con una pregunta relacionada que lo invite a avanzar (ej. '¿Le gustaría conocer las promociones?' o '¿Qué le parece?'). 
+  ESTRICTAMENTE PROHIBIDO lanzar preguntas de diagnóstico o buscar síntomas de la nada si rompen el contexto actual de la charla.
 - No uses frases de catálogo genéricas. Conecta cada dato del producto con el problema específico del cliente.
 - Si el cliente pregunta por otro producto del catálogo o menciona un malestar que corresponde a otro producto, ofrécelo con naturalidad.
+- MODO EXPERTA: Eres humana, sabes cuándo ser empática y cuándo ser técnica. Si un cliente te pide componentes, tabla nutricional, registro sanitario, certificaciones o avales, pausa la persuasión emocional. Si piden la tabla, la tabla esta en el repositorio de fotos busca en el productos.json (si no existe foto entonces en el txt del producto estas sus ingredientes enumera los mismos), tú solo acompáñala explicando los componentes clave. Si piden el registro sanitario, dales el número exacto o la certificación (ej. FDA / ARCSA) que aparece en el archivo del producto. Sé transparente y da datos puros para generar confianza.
 - En cualquier momento de la conversación, si el contexto te indica que el cliente quiere retirarse sin haber comprado, no lo dejes ir sin antes recordarle su propio dolor — lo que él mismo te contó. Hazle ver con empatía y convicción qué pasará si no resuelve ese problema. La persuasión más poderosa es devolverle sus propias palabras: su síntoma, su situación, su miedo. Usa eso. Solo cuando el contexto deje claro que el cliente no quiere continuar después de varios intentos genuinos, despídete con calidez.
+REGLA ANTI-ALUCINACIÓN (PRECIOS E INFORMACIÓN):
+- Tienes ESTRICTAMENTE PROHIBIDO usar tus conocimientos de internet para dar precios que no estén en el texto que te paso.
 
 ---
 FORMATO DE RESPUESTA — OBLIGATORIO
@@ -290,6 +331,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             temperature: 0.5,
             max_tokens: 1000
         };
+   // ─── SELECCIONAR IA ──────────────────────────────────────────────
 
    let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
@@ -486,6 +528,29 @@ _Fiorella cerró esta venta automáticamente._`;
                         caption: ""
                     })
                 });
+             // 2. VALIDACIÓN Y ENVÍO DE TABLA (Solo si existe y estamos al inicio)
+                const esEtapaInicial = (nuevaEtapa === "INICIO" || nuevaEtapa === "INDAGACION");
+                const tieneTabla = productoActivo && productoActivo.img_tabla && productoActivo.img_tabla.trim() !== "";
+
+                if (esEtapaInicial && tieneTabla) {
+                    await new Promise(r => setTimeout(r, 2000)); // Pausa para separar los mensajes
+                    try {
+                        await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                            body: JSON.stringify({
+                                number: remoteJid,
+                                media: productoActivo.img_tabla,
+                                mediatype: "image",
+                                caption: "" 
+                            })
+                        });
+                        console.log(`[FOTO] Tabla enviada exitosamente.`);
+                    } catch (errFoto) {
+                        console.log(`[FOTO ERROR] Falló tabla, continuando flujo...`, errFoto.message);
+                    }
+                }
+               
                 await new Promise(r => setTimeout(r, 1500));
                 fotosEnviadas[nuevaEtapa] = true;
                 await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
