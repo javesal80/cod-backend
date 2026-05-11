@@ -282,7 +282,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         ];
 
         const bodyIA = {
-            model: provider === 'grok' ? "grok-2-latest" : "gpt-4o",
+            model: provider === 'grok' ? "grok-4.20-reasoning" : "gpt-4o",
             messages: [
                 { role: "system", content: masterPrompt },
                 ...mensajesFinales
@@ -291,18 +291,35 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-        let respuestaRaw = "";
+      let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
-        
+
         if (provider === 'grok') {
-            const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
+            const resp = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyIA)
+                // Añadimos mensajesFinales para que la IA sepa qué le dijo el cliente
+                body: JSON.stringify({ 
+                    model: "grok-4.20-reasoning", 
+                    input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) 
+                })
             });
-            const jsonIA = await respIA.json();
-            console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
-            respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
+            const resJson = await resp.json();
+            console.log("[GROK STATUS]", resp.status);
+            
+            let textoFinal = "";
+            
+            if (Array.isArray(resJson)) {
+                const msg = resJson.find(i => i.type === "message");
+                textoFinal = msg?.content?.[0]?.text;
+            }
+            if (!textoFinal) {
+                // Tu bloque de rescate con Regex
+                const match = JSON.stringify(resJson).match(/"output_text","text":"([^"]+)"/);
+                if (match) textoFinal = match[1].replace(/\\n/g, '\n');
+            }
+            
+            respuestaRaw = textoFinal || "";
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
