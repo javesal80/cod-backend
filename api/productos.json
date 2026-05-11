@@ -25,7 +25,8 @@
       "archivo": "nubest-tall.txt",
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nubest.jpeg",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/benenubest.png",
-      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/testnubest.png"
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/testnubest.png",
+      "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/tabla_nubest.jpeg"
     },
     {
       "nombre": "Selerb NAD+ Men's Complex",
