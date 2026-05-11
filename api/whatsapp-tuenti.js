@@ -120,6 +120,8 @@ const data = req.body.data;
     const cleanJid    = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
     console.log("[CLIENTE JID]", `pausa:${cleanJid}`);
      // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
+    // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
+    await new Promise(r => setTimeout(r, 500));
     try {
         const pausado = await redisGet(`pausa:${cleanJid}`);
         if (pausado) return res.status(200).send('OK');
