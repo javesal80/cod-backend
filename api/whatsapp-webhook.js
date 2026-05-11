@@ -291,7 +291,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-     let respuestaRaw = "";
+   let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
 
         if (provider === 'grok') {
@@ -300,38 +300,59 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     model: "grok-4.20-reasoning",
-                    // Mantenemos tus variables del bot grande para no perder el historial
                     input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) 
                 })
             });
             const resJson = await resp.json();
             console.log("[GROK STATUS]", resp.status);
             
-            let textoFinal = "";
+            let textoCrudo = "";
 
-            // --- 1. LA EXTRACCIÓN IDÉNTICA A TU CÓDIGO ---
             if (Array.isArray(resJson)) {
                 const mensajeObj = resJson.find(item => item.type === "message");
                 if (mensajeObj && mensajeObj.content) {
-                    textoFinal = mensajeObj.content[0].text;
+                    textoCrudo = mensajeObj.content[0].text;
                 }
             }
-
-            // --- 2. EL RESCATE DE TU CÓDIGO (Con el Regex parcheado) ---
-            if (!textoFinal) {
+            if (!textoCrudo) {
                 const stringJson = JSON.stringify(resJson);
-                // Regex mejorado: Ahora atrapa todo ignorando las comillas escapadas (\")
                 const match = stringJson.match(/"output_text","text":"((?:[^"\\]|\\.)*)"/);
                 if (match) {
-                    textoFinal = match[1]
-                        .replace(/\\"/g, '"')   // Desescapamos comillas del JSON
-                        .replace(/\\\\/g, '\\') // Limpiamos barras
+                    textoCrudo = match[1]
+                        .replace(/\\"/g, '"')   
+                        .replace(/\\\\/g, '\\') 
                         .replace(/\\n/g, '\n')
                         .replace(/\\u[0-9a-fA-F]{4}/g, (m) => String.fromCharCode(parseInt(m.substr(2), 16)));
                 }
             }
 
-            respuestaRaw = textoFinal || "";
+            // ─── BLINDAJE PARA QUE AL CLIENTE LE LLEGUE LIMPIO ──────────────
+            let etapaDetectada = "INDAGACION";
+            let mensajeLimpio = textoCrudo || "";
+
+            // Quitamos basura de markdown si la hay
+            mensajeLimpio = mensajeLimpio.replace(/```json/gi, '').replace(/```/gi, '').trim();
+
+            try {
+                // Intentamos leerlo como JSON
+                const parsed = JSON.parse(mensajeLimpio);
+                etapaDetectada = parsed.etapa || etapaDetectada;
+                mensajeLimpio = parsed.mensaje || mensajeLimpio;
+            } catch (e) {
+                // Si falla (por los enters), extraemos a la fuerza solo el texto del mensaje
+                const matchEtapa = mensajeLimpio.match(/"etapa"\s*:\s*"([^"]+)"/i);
+                if (matchEtapa) etapaDetectada = matchEtapa[1];
+
+                const matchMensaje = mensajeLimpio.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*\}?\s*$/i);
+                if (matchMensaje) mensajeLimpio = matchMensaje[1];
+            }
+
+            // Reconstruimos un JSON PERFECTO que el resto de tu código no podrá romper
+            respuestaRaw = JSON.stringify({
+                etapa: etapaDetectada,
+                mensaje: mensajeLimpio.trim()
+            });
+            // ────────────────────────────────────────────────────────────────
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
