@@ -291,7 +291,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-  let respuestaRaw = "";
+ let respuestaRaw = "";
 
         console.log("[DEBUG] Proveedor detectado:", provider);
 
@@ -311,17 +311,19 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status);
             
-            let outputText = "";
-            // Extraemos solo el mensaje final para que no llegue el razonamiento al WhatsApp
+            // EXTRACCIÓN ULTRA-SEGURA
+            let tempRes = "";
             if (jsonIA && jsonIA.message && Array.isArray(jsonIA.message.content)) {
-                const contentObj = jsonIA.message.content.find(c => c.type === 'output_text');
-                outputText = contentObj?.text || "";
-            } else if (jsonIA.choices && jsonIA.choices[0] && jsonIA.choices[0].message) {
-                outputText = jsonIA.choices[0].message.content;
-            } else if (jsonIA.output) {
-                outputText = jsonIA.output;
+                const found = jsonIA.message.content.find(c => c.type === 'output_text');
+                tempRes = found ? found.text : JSON.stringify(jsonIA.message.content);
+            } else if (jsonIA && jsonIA.output) {
+                tempRes = jsonIA.output;
+            } else {
+                tempRes = JSON.stringify(jsonIA); // Si no entendemos el formato, lo tiramos como texto
             }
-            respuestaRaw = outputText || "";
+            
+            // ESTO ES LO QUE EVITA EL ERROR DE SUBSTRING
+            respuestaRaw = String(tempRes || "");
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
