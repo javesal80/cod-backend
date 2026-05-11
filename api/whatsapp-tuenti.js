@@ -311,17 +311,20 @@ let respuestaRaw = "";
             const dataIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status);
             
-            // Si es el modelo reasoning, viene como una lista de pasos.
-            // Buscamos el objeto que tiene el mensaje final (output_text).
-            if (Array.isArray(dataIA)) {
-                const mensajeFinal = dataIA.find(item => item.type === 'message');
-                if (mensajeFinal && mensajeFinal.content) {
-                    const textoLimpio = mensajeFinal.content.find(c => c.type === 'output_text');
-                    respuestaRaw = textoLimpio ? textoLimpio.text : "";
+            // EXTRACCIÓN DIRECTA DEL MODELO REASONING
+            try {
+                if (Array.isArray(dataIA)) {
+                    // Buscamos el mensaje final en la lista de pasos
+                    const msg = dataIA.find(i => i.type === 'message');
+                    const content = msg?.content?.find(c => c.type === 'output_text');
+                    respuestaRaw = content?.text || "";
+                } else if (dataIA.message?.content) {
+                    const content = dataIA.message.content.find(c => c.type === 'output_text');
+                    respuestaRaw = content?.text || "";
+                } else {
+                    respuestaRaw = dataIA.output || JSON.stringify(dataIA);
                 }
-            } else if (dataIA.output) {
-                respuestaRaw = dataIA.output;
-            } else {
+            } catch (e) {
                 respuestaRaw = JSON.stringify(dataIA);
             }
         } else if (provider === 'openai') {
