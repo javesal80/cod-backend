@@ -291,14 +291,13 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-      let respuestaRaw = "";
+     let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
 
         if (provider === 'grok') {
             const resp = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                // Añadimos mensajesFinales para que la IA sepa qué le dijo el cliente
                 body: JSON.stringify({ 
                     model: "grok-4.20-reasoning", 
                     input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) 
@@ -309,14 +308,16 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             
             let textoFinal = "";
             
+            // NAVEGACIÓN EXACTA DEL OBJETO (Evita que el Regex corte las comillas)
             if (Array.isArray(resJson)) {
                 const msg = resJson.find(i => i.type === "message");
-                textoFinal = msg?.content?.[0]?.text;
-            }
-            if (!textoFinal) {
-                // Tu bloque de rescate con Regex
-                const match = JSON.stringify(resJson).match(/"output_text","text":"([^"]+)"/);
-                if (match) textoFinal = match[1].replace(/\\n/g, '\n');
+                if (msg && Array.isArray(msg.content)) {
+                    // Buscamos específicamente el bloque que tiene la respuesta final
+                    const txtObj = msg.content.find(c => c.type === "output_text");
+                    if (txtObj && txtObj.text) {
+                        textoFinal = txtObj.text;
+                    }
+                }
             }
             
             respuestaRaw = textoFinal || "";
