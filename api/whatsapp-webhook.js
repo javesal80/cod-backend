@@ -354,7 +354,11 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         }
 
         if (parsed) {
-            textoFinal = (parsed.mensaje || "").replace(/\\n\\n/g, '\n\n').replace(/\\n/g, '\n');
+            textoFinal = (parsed.mensaje || "")
+    .replace(/\\n\\n/g, '\n\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\*\*(.*?)\*\*/g, '*$1*');  // convierte **negrita** a *negrita* de WhatsApp
+            
             console.log("[TEXTO PROCESADO]", JSON.stringify(textoFinal).substring(0, 300));
             nuevaEtapa  = parsed.etapa  || etapaActual;
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
