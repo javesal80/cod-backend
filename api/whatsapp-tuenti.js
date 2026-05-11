@@ -295,8 +295,8 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             temperature: 0.75,
             max_tokens: 1000
         };
-
-let respuestaRaw = "";
+     // ─── SELECCIONAR IA ──────────────────────────────────────────────
+    let respuestaRaw = "";
 
         console.log("[DEBUG] Proveedor detectado:", provider);
 
@@ -483,8 +483,10 @@ _Fiorella cerró esta venta automáticamente._`;
             const esNuevoProducto = !fotosEnviadas["INDAGACION"];
             const debeEnviarFoto  = fotoDeEstaEtapa && (etapaCambio || (nuevaEtapa === "INDAGACION" && esNuevoProducto)) && !fotoYaEnviada;
 
-            const enviarFoto = async () => {
+           const enviarFoto = async () => {
                 await new Promise(r => setTimeout(r, Math.floor(Math.random() * 2000) + 2000));
+                
+                // 1. Envía la foto principal de la etapa
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
@@ -495,6 +497,30 @@ _Fiorella cerró esta venta automáticamente._`;
                         caption: ""
                     })
                 });
+
+                // 2. VALIDACIÓN Y ENVÍO DE TABLA (Solo si existe y estamos al inicio)
+                const esEtapaInicial = (nuevaEtapa === "INICIO" || nuevaEtapa === "INDAGACION");
+                const tieneTabla = productoActivo && productoActivo.img_tabla && productoActivo.img_tabla.trim() !== "";
+
+                if (esEtapaInicial && tieneTabla) {
+                    await new Promise(r => setTimeout(r, 2000)); // Pausa para separar los mensajes
+                    try {
+                        await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                            body: JSON.stringify({
+                                number: remoteJid,
+                                media: productoActivo.img_tabla,
+                                mediatype: "image",
+                                caption: "" 
+                            })
+                        });
+                        console.log(`[FOTO] Tabla enviada exitosamente.`);
+                    } catch (errFoto) {
+                        console.log(`[FOTO ERROR] Falló tabla, continuando flujo...`, errFoto.message);
+                    }
+                }
+
                 await new Promise(r => setTimeout(r, 1500));
                 fotosEnviadas[nuevaEtapa] = true;
                 await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
