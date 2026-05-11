@@ -298,8 +298,9 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const resp = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    model: "grok-4.20-reasoning", 
+                body: JSON.stringify({
+                    model: "grok-4.20-reasoning",
+                    // Mantenemos tus variables del bot grande para no perder el historial
                     input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) 
                 })
             });
@@ -307,19 +308,29 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             console.log("[GROK STATUS]", resp.status);
             
             let textoFinal = "";
-            
-            // NAVEGACIÓN EXACTA DEL OBJETO (Evita que el Regex corte las comillas)
+
+            // --- 1. LA EXTRACCIÓN IDÉNTICA A TU CÓDIGO ---
             if (Array.isArray(resJson)) {
-                const msg = resJson.find(i => i.type === "message");
-                if (msg && Array.isArray(msg.content)) {
-                    // Buscamos específicamente el bloque que tiene la respuesta final
-                    const txtObj = msg.content.find(c => c.type === "output_text");
-                    if (txtObj && txtObj.text) {
-                        textoFinal = txtObj.text;
-                    }
+                const mensajeObj = resJson.find(item => item.type === "message");
+                if (mensajeObj && mensajeObj.content) {
+                    textoFinal = mensajeObj.content[0].text;
                 }
             }
-            
+
+            // --- 2. EL RESCATE DE TU CÓDIGO (Con el Regex parcheado) ---
+            if (!textoFinal) {
+                const stringJson = JSON.stringify(resJson);
+                // Regex mejorado: Ahora atrapa todo ignorando las comillas escapadas (\")
+                const match = stringJson.match(/"output_text","text":"((?:[^"\\]|\\.)*)"/);
+                if (match) {
+                    textoFinal = match[1]
+                        .replace(/\\"/g, '"')   // Desescapamos comillas del JSON
+                        .replace(/\\\\/g, '\\') // Limpiamos barras
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\u[0-9a-fA-F]{4}/g, (m) => String.fromCharCode(parseInt(m.substr(2), 16)));
+                }
+            }
+
             respuestaRaw = textoFinal || "";
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
