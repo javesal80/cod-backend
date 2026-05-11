@@ -1,4 +1,4 @@
-{
+r{
   "PRODUCTOS": [
     {
       "nombre": "Combo Regeneración Total (Aceite de Orégano + Multicolágeno)",
@@ -21,7 +21,7 @@
     {
       "nombre": "NuBest Tall",
       "descripcion_corta": "Batido de proteína para crecer en estatura. Ideal para adolescentes y adultos jóvenes que quieren ganar altura.",
-      "keywords": ["nubest", "nubestall", "proteina para crecer", "batido para estatura", "nubest tall", "crecimiento vegano", "proteina niños", "ganar estatura", "masa muscular niños", "crecer de estatura", "suplemento vainilla", "proteina crecimiento", "batido", "vainilla", "proteína"],
+      "keywords": ["nubest", "nubestall", "crecimiento", "proteina para crecer", "batido para estatura", "nubest tall", "crecimiento vegano", "proteina niños", "ganar estatura", "masa muscular niños", "crecer de estatura", "suplemento vainilla", "proteina crecimiento", "batido", "vainilla", "proteína"],
       "archivo": "nubest-tall.txt",
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nubest.jpeg",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/benenubest.png",
