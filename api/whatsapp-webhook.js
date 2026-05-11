@@ -446,43 +446,87 @@ _Fiorella cerró esta venta automáticamente._`;
             console.log(`[ADMIN] Notificación de venta enviada`);
         }
 
-        // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
+        // ─── ENVÍO DE MENSAJES UNIVERSAL (FILTRO DE CALIDAD Y DUPLICADOS) ───
         if (textoFinal) {
-            let partes = textoFinal
-                .split('\n\n')
+            // 1. Limpieza de párrafos duplicados y vacíos
+            let partes = [...new Set(textoFinal.split('\n\n'))]
                 .map(l => l.trim())
-                .filter(l => l !== "");
+                .filter(l => l !== "" && l.length > 5);
 
-            if (partes.length > 8) {
-                const ultima = partes.pop();
-                partes = partes.slice(0, 7);
-                partes.push(ultima);
-            }
-
-            if (partes.length > 1 && partes[0].length < 30) {
-                partes[1] = partes[0] + " " + partes[1];
-                partes.shift();
+            // 2. Control de longitud para evitar testamentos (especialmente con Grok)
+            if (partes.length > 4) {
+                const intro = partes[0];
+                const desarrollo = partes.slice(1, 3); 
+                const cierre = partes[partes.length - 1];
+                partes = [intro, ...desarrollo, cierre];
             }
 
             const preguntaCierre = partes.length > 1 ? partes.pop() : "";
 
-            // Enviar párrafos
+            // 3. Enviar párrafos con pausas naturales
             for (const parte of partes) {
-    await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-        body: JSON.stringify({ number: remoteJid, presence: "composing", delay: Math.min(parte.length * 35, 5000) })
-    });
-    await new Promise(r => setTimeout(r, Math.min(parte.length * 35, 5000) + Math.floor(Math.random() * 1000)));
-    await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                    body: JSON.stringify({ number: remoteJid, presence: "composing", delay: 2000 })
+                });
+                await new Promise(r => setTimeout(r, 2500));
+                await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: parte })
                 });
-
-                             
             }
 
+            // 4. Lógica de fotos (con candado inmediato para evitar duplicados)
+            const mapaFotos = { 
+                "INICIO": imgProducto, 
+                "INDAGACION": imgProducto, 
+                "EDUCACION": imgBeneficios, 
+                "OFERTA": imgTestimonios 
+            };
+            const fotoDeEstaEtapa = mapaFotos[nuevaEtapa] || "";
+
+            if (fotoDeEstaEtapa && !fotosEnviadas[nuevaEtapa]) {
+                // Bloqueo inmediato en base de datos para evitar que re-entre por lentitud de red
+                fotosEnviadas[nuevaEtapa] = true;
+                await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+
+                await new Promise(r => setTimeout(r, 1000));
+                await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                    body: JSON.stringify({ number: remoteJid, media: fotoDeEstaEtapa, mediatype: "image", caption: "" })
+                });
+
+                // Envío automático de Tabla Nutricional (solo al inicio)
+                if ((nuevaEtapa === "INICIO" || nuevaEtapa === "INDAGACION") && productoActivo?.img_tabla) {
+                    await new Promise(r => setTimeout(r, 1500));
+                    await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        body: JSON.stringify({ number: remoteJid, media: productoActivo.img_tabla, mediatype: "image", caption: "" })
+                    });
+                }
+            }
+
+            // 5. Pregunta de cierre (siempre al final de todo)
+            if (preguntaCierre) {
+                await new Promise(r => setTimeout(r, 1200));
+                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                    body: JSON.stringify({ number: remoteJid, text: preguntaCierre })
+                });
+            }
+        }
+
+    } catch (error) {
+        console.error("Error flujo general:", error.message);
+    }
+
+    return res.status(200).send('OK');
+};
             // ─── LÓGICA DE FOTOS ──────────────────────────────────────
             // img_producto  → primera vez que aparece el producto (INDAGACION)
             //                 va ENTRE el texto y la pregunta de cierre
