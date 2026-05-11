@@ -282,7 +282,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         ];
 
         const bodyIA = {
-            model: provider === 'grok' ? "grok-2-latest" : "gpt-4o",
+            model: provider === 'grok' ? "grok-4.20-reasoning" : "gpt-4o",
             messages: [
                 { role: "system", content: masterPrompt },
                 ...mensajesFinales
