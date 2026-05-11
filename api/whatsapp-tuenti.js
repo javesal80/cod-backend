@@ -291,18 +291,29 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-        let respuestaRaw = "";
+       let respuestaRaw = "";
+
         console.log("[DEBUG] Proveedor detectado:", provider);
-        
+
         if (provider === 'grok') {
-            const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
+            // Siguiendo exactamente tu imagen: endpoint /responses y modelo grok-4.20-reasoning
+            const respIA = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
-                headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify(bodyIA)
+                headers: { 
+                    'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    model: "grok-4.20-reasoning",
+                    input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales)
+                })
             });
+            
             const jsonIA = await respIA.json();
-            console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
-            respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
+            console.log("[GROK STATUS]", respIA.status);
+            
+            // Según el formato de /responses, la respuesta suele venir directamente o en un campo text
+            respuestaRaw = jsonIA.output || jsonIA.message || "";
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
