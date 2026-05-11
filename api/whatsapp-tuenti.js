@@ -108,6 +108,12 @@ const data = req.body.data;
         });
     };
 
+    // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
+    try {
+        const pausado = await redisGet(`pausa:${cleanJid}`);
+        if (pausado) return res.status(200).send('OK');
+    } catch (e) {}
+    
     // ─── ANTI-DUPLICADOS ──────────────────────────────────────────────
     try {
         const existe = await redisGet(`dd:${msgId}`);
