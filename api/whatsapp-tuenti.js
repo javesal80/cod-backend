@@ -311,18 +311,22 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status);
             
-            // Buscamos específicamente el texto final dentro de la estructura de /responses
-            // Filtramos los objetos para encontrar el que tiene el "output_text"
-            const messageObj = jsonIA.find(item => item.type === 'message');
-            const finalContent = messageObj?.content?.find(c => c.type === 'output_text');
+            // Extracción segura del JSON de respuesta de Grok
+            // Primero intentamos la ruta larga del mensaje final, si no, probamos la corta
+            let outputText = "";
             
-            respuestaRaw = finalContent?.text || "";
-            
-            // Si por alguna razón la estructura falla, intentamos un fallback al último elemento
-            if (!respuestaRaw && jsonIA.length > 0) {
-                const lastItem = jsonIA[jsonIA.length - 1];
-                respuestaRaw = lastItem.content?.[0]?.text || "";
+            if (jsonIA.message?.content) {
+                // Buscamos el objeto de tipo 'output_text' dentro de content
+                const contentObj = jsonIA.message.content.find(c => c.type === 'output_text');
+                outputText = contentObj?.text || "";
+            } else if (jsonIA.choices?.[0]?.message?.content) {
+                outputText = jsonIA.choices[0].message.content;
+            } else if (jsonIA.output) {
+                outputText = jsonIA.output;
             }
+
+            respuestaRaw = outputText || "";
+        }
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
