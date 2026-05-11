@@ -291,7 +291,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
- let respuestaRaw = "";
+let respuestaRaw = "";
 
         console.log("[DEBUG] Proveedor detectado:", provider);
 
@@ -308,22 +308,22 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
                 })
             });
             
-            const jsonIA = await respIA.json();
+            const dataIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status);
             
-            // EXTRACCIÓN ULTRA-SEGURA
-            let tempRes = "";
-            if (jsonIA && jsonIA.message && Array.isArray(jsonIA.message.content)) {
-                const found = jsonIA.message.content.find(c => c.type === 'output_text');
-                tempRes = found ? found.text : JSON.stringify(jsonIA.message.content);
-            } else if (jsonIA && jsonIA.output) {
-                tempRes = jsonIA.output;
+            // Si es el modelo reasoning, viene como una lista de pasos.
+            // Buscamos el objeto que tiene el mensaje final (output_text).
+            if (Array.isArray(dataIA)) {
+                const mensajeFinal = dataIA.find(item => item.type === 'message');
+                if (mensajeFinal && mensajeFinal.content) {
+                    const textoLimpio = mensajeFinal.content.find(c => c.type === 'output_text');
+                    respuestaRaw = textoLimpio ? textoLimpio.text : "";
+                }
+            } else if (dataIA.output) {
+                respuestaRaw = dataIA.output;
             } else {
-                tempRes = JSON.stringify(jsonIA); // Si no entendemos el formato, lo tiramos como texto
+                respuestaRaw = JSON.stringify(dataIA);
             }
-            
-            // ESTO ES LO QUE EVITA EL ERROR DE SUBSTRING
-            respuestaRaw = String(tempRes || "");
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
