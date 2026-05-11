@@ -19,7 +19,7 @@ const data = req.body.data;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
     const instName = req.body.instance || INSTANCE_WHATSAPI || "WHATSAPI";
-    const provider = (IA_PROVIDER || 'grok').trim().toLowerCase();
+    const provider = (IA_PROVIDER1 || 'grok').trim().toLowerCase();
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
