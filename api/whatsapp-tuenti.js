@@ -12,7 +12,30 @@ module.exports = async (req, res) => {
 
     const NUMERO_ADMIN = "593992668002";
 
-    if (!req.body?.data?.message || req.body.data.key?.fromMe) return res.status(200).send('OK');
+    if (!req.body?.data?.message) return res.status(200).send('OK');
+
+// Si el mensaje lo envió el admin (fromMe), verificar si es comando de pausa
+if (req.body.data.key?.fromMe) {
+    const msgAdmin = (req.body.data.message?.conversation || "").trim().toLowerCase();
+    const cleanJidAdmin = req.body.data.key?.remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
+    if (msgAdmin === '#pausa') {
+        await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["SETEX", `pausa:${cleanJidAdmin}`, 86400, "1"])
+        });
+        return res.status(200).send('OK');
+    }
+    if (msgAdmin === '#activar') {
+        await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["DEL", `pausa:${cleanJidAdmin}`])
+        });
+        return res.status(200).send('OK');
+    }
+    return res.status(200).send('OK');
+}
 
 const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
