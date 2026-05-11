@@ -291,38 +291,37 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             max_tokens: 1000
         };
 
-       let respuestaRaw = "";
+  let respuestaRaw = "";
 
         console.log("[DEBUG] Proveedor detectado:", provider);
 
-        try {
-            if (provider === 'grok') {
-                const respIA = await fetch('https://api.x.ai/v1/responses', {
-                    method: 'POST',
-                    headers: { 
-                        'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
-                        'Content-Type': 'application/json' 
-                    },
-                    body: JSON.stringify({
-                        model: "grok-4.20-reasoning",
-                        input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales)
-                    })
-                });
-                
-                const jsonIA = await respIA.json();
-                console.log("[GROK STATUS]", respIA.status);
-                
-                let outputText = "";
-                // Manejo de respuesta tipo Objeto para evitar errores de .find
-                if (jsonIA && jsonIA.message && Array.isArray(jsonIA.message.content)) {
-                    const contentObj = jsonIA.message.content.find(c => c.type === 'output_text');
-                    outputText = contentObj?.text || "";
-                } else if (jsonIA.choices && jsonIA.choices[0] && jsonIA.choices[0].message) {
-                    outputText = jsonIA.choices[0].message.content;
-                } else if (jsonIA.output) {
-                    outputText = jsonIA.output;
-                }
-                respuestaRaw = outputText || "";
+        if (provider === 'grok') {
+            const respIA = await fetch('https://api.x.ai/v1/responses', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    model: "grok-4.20-reasoning",
+                    input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales)
+                })
+            });
+            
+            const jsonIA = await respIA.json();
+            console.log("[GROK STATUS]", respIA.status);
+            
+            let outputText = "";
+            // Extraemos solo el mensaje final para que no llegue el razonamiento al WhatsApp
+            if (jsonIA && jsonIA.message && Array.isArray(jsonIA.message.content)) {
+                const contentObj = jsonIA.message.content.find(c => c.type === 'output_text');
+                outputText = contentObj?.text || "";
+            } else if (jsonIA.choices && jsonIA.choices[0] && jsonIA.choices[0].message) {
+                outputText = jsonIA.choices[0].message.content;
+            } else if (jsonIA.output) {
+                outputText = jsonIA.output;
+            }
+            respuestaRaw = outputText || "";
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
