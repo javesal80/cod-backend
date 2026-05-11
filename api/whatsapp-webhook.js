@@ -248,9 +248,7 @@ POSTVENTA: Despedida cálida. Si el cliente mencionó otro malestar durante la c
 ---
 CÓMO RESPONDER
 ---
-- REGLA DE ORO DE BREVEDAD: Sé extremadamente conciso. Tu respuesta total no puede superar los 3 párrafos cortos.
-- PROHIBIDO REPETIR: No repitas datos que el cliente ya te dio (como la edad o el nombre) más de una vez. No repitas beneficios en diferentes párrafos.
-- ESTRUCTURA DIRECTA: Ve al grano. Si el cliente pregunta algo técnico, responde en 1 párrafo y pasa a la siguiente etapa de venta. No "razones" en voz alta con el cliente.
+- Máximo 3 párrafos cortos por mensaje. Escribe como hablas, no como un manual.
 - FORMATO WHATSAPP: OBLIGATORIO — separa cada párrafo con línea vacía (\\n\\n). Nunca juntes dos ideas en el mismo bloque de texto. Para listas de beneficios, usa este formato exacto: el título con emoji en su línea, luego \\n y la descripción en la siguiente línea, dentro del mismo párrafo separado por \\n\\n del siguiente beneficio. Cuando presentes listas de precios o pasos, cada opción en su propia línea con (\\n\\n). La pregunta final va sola al final. Usa emojis donde aporten calidez y claridad visual — por ejemplo al inicio de cada beneficio para que sean fáciles de escanear, o al final de una frase de empatía. No los pongas en cada línea, úsalos con criterio para guiar la lectura.
 - Antes de responder, revisa el historial completo. Nunca repitas información, frases o preguntas que ya enviaste en esta conversación.
 - Termina siempre con una pregunta, EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final.
@@ -270,7 +268,30 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
 `;
 
     // ─── LLAMADA A LA IA ──────────────────────────────────────────────
-    let respuestaRaw = "";
+    let textoFinal = "";
+    let nuevaEtapa  = etapaActual;
+
+    try {
+        // Historial sin el último mensaje del usuario
+        const historialParaIA = historial.slice(0, -1);
+        const mensajesFinales = [
+            ...historialParaIA,
+            { role: "user", content: clienteMsg },
+            // Recordatorio de formato justo antes de la respuesta
+            { role: "system", content: 'RECUERDA: Responde ÚNICAMENTE con JSON puro, sin texto adicional. Formato exacto: {"etapa":"ETAPA","mensaje":"tu respuesta"}. CRÍTICO: Si el cliente no ha confirmado su compra y el contexto sugiere que quiere retirarse, NO te despidas — usa lo que el cliente te contó sobre su problema para persuadirlo con empatía. Devuélvele sus propias palabras y hazle ver qué pasará si no actúa. Mínimo 3 intentos genuinos antes de despedirte.' }
+        ];
+
+        const bodyIA = {
+            model: provider === 'grok' ? "grok-4.20-reasoning" : "gpt-4o",
+            messages: [
+                { role: "system", content: masterPrompt },
+                ...mensajesFinales
+            ],
+            temperature: 0.75,
+            max_tokens: 1000
+        };
+
+   let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
 
         if (provider === 'grok') {
@@ -293,6 +314,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
+       
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -314,6 +336,8 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             console.log("[GEMINI STATUS]", respIA.status);
             respuestaRaw = jsonIA.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
+
+        console.log("[IA RAW]", respuestaRaw.substring(0, 400));
 
         // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
