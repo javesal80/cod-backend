@@ -270,53 +270,29 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
 `;
 
     // ─── LLAMADA A LA IA ──────────────────────────────────────────────
-    let textoFinal = "";
-    let nuevaEtapa  = etapaActual;
-
-    try {
-        // Historial sin el último mensaje del usuario
-        const historialParaIA = historial.slice(0, -1);
-        const mensajesFinales = [
-            ...historialParaIA,
-            { role: "user", content: clienteMsg },
-            // Recordatorio de formato justo antes de la respuesta
-            { role: "system", content: 'RECUERDA: Responde ÚNICAMENTE con JSON puro, sin texto adicional. Formato exacto: {"etapa":"ETAPA","mensaje":"tu respuesta"}. CRÍTICO: Si el cliente no ha confirmado su compra y el contexto sugiere que quiere retirarse, NO te despidas — usa lo que el cliente te contó sobre su problema para persuadirlo con empatía. Devuélvele sus propias palabras y hazle ver qué pasará si no actúa. Mínimo 3 intentos genuinos antes de despedirte.' }
-        ];
-
-        const bodyIA = {
-            model: provider === 'grok' ? "grok-4.20-reasoning" : "gpt-4o",
-            messages: [
-                { role: "system", content: masterPrompt },
-                ...mensajesFinales
-            ],
-            temperature: 0.75,
-            max_tokens: 1000
-        };
-
-   let respuestaRaw = "";
+    let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
 
-       if (provider === 'grok') {
-    const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 
-            'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
-            'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-            model: "grok-4-1-fast-non-reasoning",
-            messages: [
-                { role: "system", content: masterPrompt },
-                ...mensajesFinales
-            ],
-            temperature: 0.75,
-            max_tokens: 1000
-        })
-    });
-    const jsonIA = await respIA.json();
-    console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
-    respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
-}
+        if (provider === 'grok') {
+            const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 
+                    'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    model: "grok-4-1-fast-non-reasoning",
+                    messages: [
+                        { role: "system", content: masterPrompt },
+                        ...mensajesFinales
+                    ],
+                    temperature: 0.75,
+                    max_tokens: 1000
+                })
+            });
+            const jsonIA = await respIA.json();
+            console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
+            respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -338,8 +314,6 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             console.log("[GEMINI STATUS]", respIA.status);
             respuestaRaw = jsonIA.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
-
-        console.log("[IA RAW]", respuestaRaw.substring(0, 400));
 
         // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
