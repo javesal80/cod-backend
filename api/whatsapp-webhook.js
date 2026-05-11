@@ -302,7 +302,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
-        } else {
+        } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
@@ -311,6 +311,17 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[OPENAI STATUS]", respIA.status, JSON.stringify(jsonIA).substring(0, 200));
             respuestaRaw = jsonIA.choices?.[0]?.message?.content || "";
+        } else if (provider === 'gemini') {
+            const respIA = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) }] }]
+                })
+            });
+            const jsonIA = await respIA.json();
+            console.log("[GEMINI STATUS]", respIA.status);
+            respuestaRaw = jsonIA.candidates?.[0]?.content?.parts?.[0]?.text || "";
         }
 
         console.log("[IA RAW]", respuestaRaw.substring(0, 400));
