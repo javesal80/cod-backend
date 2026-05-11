@@ -5,7 +5,7 @@ module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_NAME_WHATSAPI,
+        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER1,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
@@ -18,7 +18,7 @@ const data = req.body.data;
     const remoteJid = data.key?.remoteJid;
     const msgId = data.key?.id;
     const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName = req.body.instance || INSTANCE_NAME_WHATSAPI || "VWHATSAPI";
+    const instName = req.body.instance || INSTANCE_WHATSAPI || "WHATSAPI";
     const provider = (IA_PROVIDER1 || 'grok').trim().toLowerCase();
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
@@ -234,17 +234,14 @@ ${esPrimerMensaje ? 'Es el primer mensaje — el saludo ya fue enviado automáti
 Las etapas son una orientación del punto donde está la conversación, no un guión a seguir paso a paso:
 
 INICIO: Cliente llegó. Saluda al cliente y entiende que busca. Si en el primer mensaje ya mencionó un producto o malestar, responde con INDAGACION directamente — no te quedes en INICIO. IMPORTANTE — si desde el primer mensaje el cliente indica intención de compra clara ('quiero comprar', 'quiero pedir', 'me puede enviar', 'cuánto cuesta', 'quiero uno'), salta directo a OFERTA o CIERRE según corresponda. No lo trates como cliente frío si ya llegó convencido.
-INDAGACION: Ya sabes el producto. IMPORTANTE — O empieces el mensaje dudando o pidiendo confirmación sobre lo que el cliente busca.. Si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta abierta que invite al cliente a contarte SU situación — sin asumir que ya tiene síntomas. La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
+INDAGACION: Ya sabes el producto. IMPORTANTE — si el cliente llegó pidiendo 'información', 'beneficios', 'qué hace' o simplemente mencionó el producto, NO le preguntes qué aspecto le interesa conocer. Preséntale directamente los beneficios principales usando el ángulo principal del archivo del producto, y termina con una pregunta abierta que invite al cliente a contarte SU situación — sin asumir que ya tiene síntomas. Por ejemplo: '¿Hay algo en particular que le llamó la atención del producto?' o '¿Tiene algún malestar específico que quisiera mejorar?'. La exploración de ángulos específicos viene después, cuando el cliente responde y te da más contexto.
 EDUCACION: Ya sabes su dolor. Úrgalo con empatía y presenta el producto como la solución a ESE dolor.
 OFERTA: Presenta opciones y precios. Recomienda la más adecuada para su caso. Si el cliente rechaza las opciones o duda, NO te despidas — ya conoces su dolor, úsalo. Recuérdale lo que te contó (sus síntomas, su situación) y hazle ver el costo de seguir sin resolver ese problema. La persuasión aquí se basa en lo que el cliente mismo ya te reveló durante la conversación.
-        REGLA ESTRICTA: NO pases a CIERRE ni pidas datos de envío hasta que el cliente elija explícitamente qué promoción quiere (ej. 1 o 2 unidades). Si el cliente pregunta otra cosa, respóndele pero oblígalo sutilmnte a elegir una promoción antes de avanzar.
 CIERRE: Antes de pedir los datos, confirma en una línea lo que el cliente eligió: producto y cantidad. Luego pide los datos con el formulario.
         Recopila datos de envío con este formulario exacto, sin cambiar una sola palabra:
-  "Listo, ayúdeme con los siguientes datos por favor:\\n*Nombre y Apellido:*\\n*Provincia-Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
+  "Listo, ayúdeme con los siguientes datos por favor:\\n*Nombre y Apellido:*\\n*Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
   No pidas cédula ni correo. No aceptes direcciones vagas. Si faltan datos, pide solo lo que falta.
-  REGLA CRÍTICA: NO pases a CONFIRMADO si el cliente dice 'ya le envío' o si da datos a medias (ej. solo da el nombre y la ciudad pero no las calles). Si la dirección no tiene dos calles, QUÉDATE EN LA ETAPA CIERRE y dile: 'Gracias, ayúdeme también con su dirección exacta con calles y refrencia para el envío por favor'. Solo avanza cuando tengas los 3 datos.
-CONFIRMADO: 
-REGLA ESTRICTA - Pasa a esta etapa ÚNICAMENTE si ya tienes escritos en la conversación el Nombre, la Provincia-Ciudad Y las calles y referencia exactas. Si tienes todo, envía este mensaje exacto:
+CONFIRMADO: Cuando tengas nombre, ciudad y dirección completa, confirma con este mensaje exacto:
   "Datos registrados con éxito! Su pedido llegará entre ${mañana} o ${pasado}. Se enviará por transportadoras conocidas (Servientrega, Gintracom, Veloces, Urbano o Laar). Las entregas son de 9am a 5pm — si tiene inconvenientes en ese horario, podemos coordinar entrega en una oficina Servientrega cercana. Su primera compra tiene envío GRATIS. 🛡️"
 POSTVENTA: Despedida cálida. Si el cliente mencionó otro malestar durante la conversación, ofrece el producto correspondiente antes de despedirte.
 
@@ -254,14 +251,11 @@ CÓMO RESPONDER
 - Máximo 3 párrafos cortos por mensaje. Escribe como hablas, no como un manual.
 - FORMATO WHATSAPP: OBLIGATORIO — separa cada párrafo con línea vacía (\\n\\n). Nunca juntes dos ideas en el mismo bloque de texto. Para listas de beneficios, usa este formato exacto: el título con emoji en su línea, luego \\n y la descripción en la siguiente línea, dentro del mismo párrafo separado por \\n\\n del siguiente beneficio. Cuando presentes listas de precios o pasos, cada opción en su propia línea con (\\n\\n). La pregunta final va sola al final. Usa emojis donde aporten calidez y claridad visual — por ejemplo al inicio de cada beneficio para que sean fáciles de escanear, o al final de una frase de empatía. No los pongas en cada línea, úsalos con criterio para guiar la lectura.
 - Antes de responder, revisa el historial completo. Nunca repitas información, frases o preguntas que ya enviaste en esta conversación.
-- HILO CONVERSACIONAL Y PREGUNTA FINAL: Termina siempre con una pregunta (EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final), pero esta pregunta DEBE conectar lógicamente con lo que el cliente acaba de decir. Si el cliente te hace una pregunta logística o técnica (ej. porciones, sabor, precio), responde su duda y cierra con una pregunta relacionada que lo invite a avanzar (ej. '¿Le gustaría conocer las promociones?' o '¿Qué le parece?'). ESTRICTAMENTE PROHIBIDO lanzar preguntas de diagnóstico o buscar síntomas de la nada si rompen el contexto actual de la charla.
+- Termina siempre con una pregunta, EXCEPTO en el formulario de datos, la confirmación del pedido y la despedida final.
 - No uses frases de catálogo genéricas. Conecta cada dato del producto con el problema específico del cliente.
 - Si el cliente pregunta por otro producto del catálogo o menciona un malestar que corresponde a otro producto, ofrécelo con naturalidad.
-- MODO EXPERTA: Eres humana, sabes cuándo ser empática y cuándo ser técnica. Si un cliente te pide componentes, tabla nutricional, registro sanitario, certificaciones o avales, pausa la persuasión emocional. Si piden la tabla, la tabla esta en el repositorio de fotos busca en el productos.json (si no existe foto entonces en el txt del producto estas sus ingredientes enumera los mismos), tú solo acompáñala explicando los componentes clave. Si piden el registro sanitario, dales el número exacto o la certificación (ej. FDA / ARCSA) que aparece en el archivo del producto. Sé transparente y da datos puros para generar confianza.
 - En cualquier momento de la conversación, si el contexto te indica que el cliente quiere retirarse sin haber comprado, no lo dejes ir sin antes recordarle su propio dolor — lo que él mismo te contó. Hazle ver con empatía y convicción qué pasará si no resuelve ese problema. La persuasión más poderosa es devolverle sus propias palabras: su síntoma, su situación, su miedo. Usa eso. Solo cuando el contexto deje claro que el cliente no quiere continuar después de varios intentos genuinos, despídete con calidez.
 
-REGLA ANTI-ALUCINACIÓN (PRECIOS E INFORMACIÓN):
-- Tienes ESTRICTAMENTE PROHIBIDO usar tus conocimientos de internet para dar precios que no estén en el texto que te paso.
 ---
 FORMATO DE RESPUESTA — OBLIGATORIO
 ---
@@ -296,43 +290,69 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             temperature: 0.75,
             max_tokens: 1000
         };
-     // ─── SELECCIONAR IA ──────────────────────────────────────────────
-    let respuestaRaw = "";
 
+   let respuestaRaw = "";
         console.log("[DEBUG] Proveedor detectado:", provider);
 
         if (provider === 'grok') {
-            const respIA = await fetch('https://api.x.ai/v1/responses', {
+            const resp = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 
-                    'Content-Type': 'application/json' 
-                },
+                headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     model: "grok-4.20-reasoning",
-                    input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales)
+                    input: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) 
                 })
             });
+            const resJson = await resp.json();
+            console.log("[GROK STATUS]", resp.status);
             
-            const dataIA = await respIA.json();
-            console.log("[GROK STATUS]", respIA.status);
-            
-            // EXTRACCIÓN DIRECTA DEL MODELO REASONING
-            try {
-                if (Array.isArray(dataIA)) {
-                    // Buscamos el mensaje final en la lista de pasos
-                    const msg = dataIA.find(i => i.type === 'message');
-                    const content = msg?.content?.find(c => c.type === 'output_text');
-                    respuestaRaw = content?.text || "";
-                } else if (dataIA.message?.content) {
-                    const content = dataIA.message.content.find(c => c.type === 'output_text');
-                    respuestaRaw = content?.text || "";
-                } else {
-                    respuestaRaw = dataIA.output || JSON.stringify(dataIA);
+            let textoCrudo = "";
+
+            if (Array.isArray(resJson)) {
+                const mensajeObj = resJson.find(item => item.type === "message");
+                if (mensajeObj && mensajeObj.content) {
+                    textoCrudo = mensajeObj.content[0].text;
                 }
-            } catch (e) {
-                respuestaRaw = JSON.stringify(dataIA);
             }
+            if (!textoCrudo) {
+                const stringJson = JSON.stringify(resJson);
+                const match = stringJson.match(/"output_text","text":"((?:[^"\\]|\\.)*)"/);
+                if (match) {
+                    textoCrudo = match[1]
+                        .replace(/\\"/g, '"')   
+                        .replace(/\\\\/g, '\\') 
+                        .replace(/\\n/g, '\n')
+                        .replace(/\\u[0-9a-fA-F]{4}/g, (m) => String.fromCharCode(parseInt(m.substr(2), 16)));
+                }
+            }
+
+            // ─── BLINDAJE PARA QUE AL CLIENTE LE LLEGUE LIMPIO ──────────────
+            let etapaDetectada = "INDAGACION";
+            let mensajeLimpio = textoCrudo || "";
+
+            // Quitamos basura de markdown si la hay
+            mensajeLimpio = mensajeLimpio.replace(/```json/gi, '').replace(/```/gi, '').trim();
+
+            try {
+                // Intentamos leerlo como JSON
+                const parsed = JSON.parse(mensajeLimpio);
+                etapaDetectada = parsed.etapa || etapaDetectada;
+                mensajeLimpio = parsed.mensaje || mensajeLimpio;
+            } catch (e) {
+                // Si falla (por los enters), extraemos a la fuerza solo el texto del mensaje
+                const matchEtapa = mensajeLimpio.match(/"etapa"\s*:\s*"([^"]+)"/i);
+                if (matchEtapa) etapaDetectada = matchEtapa[1];
+
+                const matchMensaje = mensajeLimpio.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*\}?\s*$/i);
+                if (matchMensaje) mensajeLimpio = matchMensaje[1];
+            }
+
+            // Reconstruimos un JSON PERFECTO que el resto de tu código no podrá romper
+            respuestaRaw = JSON.stringify({
+                etapa: etapaDetectada,
+                mensaje: mensajeLimpio.trim()
+            });
+            // ────────────────────────────────────────────────────────────────
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -356,7 +376,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         }
 
         console.log("[IA RAW]", respuestaRaw.substring(0, 400));
-        
+
         // ─── PARSEAR JSON ─────────────────────────────────────────────
         let parsed = null;
         try {
@@ -484,10 +504,8 @@ _Fiorella cerró esta venta automáticamente._`;
             const esNuevoProducto = !fotosEnviadas["INDAGACION"];
             const debeEnviarFoto  = fotoDeEstaEtapa && (etapaCambio || (nuevaEtapa === "INDAGACION" && esNuevoProducto)) && !fotoYaEnviada;
 
-           const enviarFoto = async () => {
+            const enviarFoto = async () => {
                 await new Promise(r => setTimeout(r, Math.floor(Math.random() * 2000) + 2000));
-                
-                // 1. Envía la foto principal de la etapa
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
@@ -498,30 +516,6 @@ _Fiorella cerró esta venta automáticamente._`;
                         caption: ""
                     })
                 });
-
-                // 2. VALIDACIÓN Y ENVÍO DE TABLA (Solo si existe y estamos al inicio)
-                const esEtapaInicial = (nuevaEtapa === "INICIO" || nuevaEtapa === "INDAGACION");
-                const tieneTabla = productoActivo && productoActivo.img_tabla && productoActivo.img_tabla.trim() !== "";
-
-                if (esEtapaInicial && tieneTabla) {
-                    await new Promise(r => setTimeout(r, 2000)); // Pausa para separar los mensajes
-                    try {
-                        await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-                            body: JSON.stringify({
-                                number: remoteJid,
-                                media: productoActivo.img_tabla,
-                                mediatype: "image",
-                                caption: "" 
-                            })
-                        });
-                        console.log(`[FOTO] Tabla enviada exitosamente.`);
-                    } catch (errFoto) {
-                        console.log(`[FOTO ERROR] Falló tabla, continuando flujo...`, errFoto.message);
-                    }
-                }
-
                 await new Promise(r => setTimeout(r, 1500));
                 fotosEnviadas[nuevaEtapa] = true;
                 await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
