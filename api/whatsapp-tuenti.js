@@ -296,7 +296,6 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         console.log("[DEBUG] Proveedor detectado:", provider);
 
         if (provider === 'grok') {
-            // Siguiendo exactamente tu imagen: endpoint /responses y modelo grok-4.20-reasoning
             const respIA = await fetch('https://api.x.ai/v1/responses', {
                 method: 'POST',
                 headers: { 
@@ -312,8 +311,12 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
             const jsonIA = await respIA.json();
             console.log("[GROK STATUS]", respIA.status);
             
-            // Según el formato de /responses, la respuesta suele venir directamente o en un campo text
-            respuestaRaw = jsonIA.output || jsonIA.message || "";
+            // AJUSTE AQUÍ: Extraemos el contenido del campo 'message' o 'output'
+            // y nos aseguramos de que sea un String para que no de error el substring
+            let contenido = jsonIA.message || jsonIA.output || jsonIA.choices?.[0]?.message?.content || "";
+            
+            // Si por alguna razón devuelve un objeto, lo convertimos a texto
+            respuestaRaw = (typeof contenido === 'object') ? JSON.stringify(contenido) : contenido.toString();
         } else if (provider === 'openai') {
             const respIA = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
