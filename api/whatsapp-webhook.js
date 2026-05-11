@@ -292,7 +292,8 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         };
 
         let respuestaRaw = "";
-
+        console.log("[DEBUG] Proveedor detectado:", provider);
+        
         if (provider === 'grok') {
             const respIA = await fetch('https://api.x.ai/v1/chat/completions', {
                 method: 'POST',
