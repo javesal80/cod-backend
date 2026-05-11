@@ -287,7 +287,7 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
                 { role: "system", content: masterPrompt },
                 ...mensajesFinales
             ],
-            temperature: 0.3,
+            temperature: 0.5,
             max_tokens: 1000
         };
 
