@@ -18,6 +18,7 @@ module.exports = async (req, res) => {
 if (req.body.data.key?.fromMe) {
     const msgAdmin = (req.body.data.message?.conversation || "").trim().toLowerCase();
     const cleanJidAdmin = req.body.data.key?.remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
+    console.log("[ADMIN CMD]", msgAdmin, "| JID guardado:", `pausa:${cleanJidAdmin}`);
     if (msgAdmin === '#pausa') {
         await fetch(`${KV_REST_API_URL}`, {
             method: 'POST',
@@ -108,12 +109,6 @@ const data = req.body.data;
         });
     };
 
-    // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
-    try {
-        const pausado = await redisGet(`pausa:${cleanJid}`);
-        if (pausado) return res.status(200).send('OK');
-    } catch (e) {}
-    
     // ─── ANTI-DUPLICADOS ──────────────────────────────────────────────
     try {
         const existe = await redisGet(`dd:${msgId}`);
@@ -123,6 +118,13 @@ const data = req.body.data;
 
     // ─── CARGAR ESTADO DESDE REDIS ────────────────────────────────────
     const cleanJid    = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+    console.log("[CLIENTE JID]", `pausa:${cleanJid}`);
+     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
+    try {
+        const pausado = await redisGet(`pausa:${cleanJid}`);
+        if (pausado) return res.status(200).send('OK');
+    } catch (e) {}
+    
     const memoriaKey  = `chat:${cleanJid}`;
     const stageKey    = `stage:${cleanJid}`;
     const productoKey = `prod:${cleanJid}`;
