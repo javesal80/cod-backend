@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
 
     const {
         EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
-        GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER,
+        GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER1,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
 
