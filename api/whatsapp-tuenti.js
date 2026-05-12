@@ -440,13 +440,19 @@ En el mensaje: usa *negrita* y \\n para saltos de línea. Usa SOLO comillas simp
         console.log("[SUPABASE] Guardado intento completado");
 
         // ─── NOTIFICACIÓN ADMIN ───────────────────────────────────────
-        if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
+       if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
+            // Extraer datos del historial completo
+            const historialTexto = historial
+                .filter(h => h.role === 'user')
+                .map(h => h.content)
+                .join(' | ');
+            
             const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*
 --------------------------------
 📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}
 📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}
-📝 *Datos del cliente:*
-${clienteMsg}
+📝 *Mensajes del cliente:*
+${historialTexto}
 --------------------------------
 _Fiorella cerró esta venta automáticamente._`;
 
