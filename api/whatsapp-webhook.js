@@ -143,11 +143,14 @@ module.exports = async (req, res) => {
             "Hola, qué gusto saludarle 🌿",
             "Buenas, gracias por escribirnos 😊"
         ];
+        const saludo = saludos[Math.floor(Math.random() * saludos.length)];
         await fetch(`${baseUrl}/message/sendText/${instName}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-            body: JSON.stringify({ number: remoteJid, text: saludos[Math.floor(Math.random() * saludos.length)] })
+            body: JSON.stringify({ number: remoteJid, text: saludo })
         });
+        // Pequeña pausa para que el saludo llegue antes que la respuesta principal
+        await new Promise(r => setTimeout(r, 1500));
     }
 
     // ─── CATÁLOGO ─────────────────────────────────────────────────────
@@ -299,9 +302,14 @@ Si el cliente directo no necesita esto, omítela o dila en una línea.
 Vuelve aquí si el cliente duda después de ver el precio — conecta de nuevo con su situación antes de insistir.
 
 DECISIÓN — cuando el cliente está evaluando comprar
-REGLA DE PRECIOS: Presenta SIEMPRE todas las opciones disponibles del producto, con sus precios exactos del archivo. Nunca omitas una opción. Nunca inventes ni redondees precios.
-Después de listar todas las opciones, recomienda UNA — la más adecuada para su caso — y explica en una línea por qué.
-Después de presentar las opciones, ancla el valor en una línea — no te quedes en silencio.
+⚠️ REGLA DE PRECIOS OBLIGATORIA — NO NEGOCIABLE:
+Antes de recomendar cualquier opción, DEBES listar TODAS las opciones del producto con sus precios exactos del archivo, en este formato:
+"📦 *Opción 1:* X unidad — $XX.XX
+📦 *Opción 2:* X unidades — $XX.XX
+📦 *Opción 3:* X unidades — $XX.XX"
+Solo DESPUÉS de listar todas, agrega en una línea cuál recomiendas y por qué.
+Jamás presentes solo la opción recomendada. Jamás omitas una opción. Jamás inventes ni redondees precios. Los precios son exactamente los que están en el archivo del producto — ni un centavo diferente.
+Después de las opciones, ancla el valor en una línea conectando con la situación del cliente.
 Si duda → pregunta específicamente qué le frena. Responde ESA objeción.
 Si rechaza → regresa a SOLUCIÓN, recuérdale su situación UNA vez con empatía.
 REGLA: No pases a CIERRE hasta que elija explícitamente una opción.
@@ -359,7 +367,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
         const mensajesFinales  = [
             ...historialParaIA,
             { role: "user", content: clienteMsg },
-            { role: "system", content: 'Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. Si retoma la compra → CIERRE. El flujo es del cliente, no tuyo. Nunca repitas información ya dada en el historial.' }
+            { role: "system", content: 'Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada en el historial.' }
         ];
 
         let respuestaRaw = "";
