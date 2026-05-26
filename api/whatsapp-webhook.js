@@ -172,13 +172,25 @@ module.exports = async (req, res) => {
     );
 
 
-  // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS (RASTREO PROFUNDO CORREGIDO) ───
-    // Buscamos incluyendo la raíz absoluta del body por si Evolution API v3 lo envía directo
-    const referral = data?.referral 
-        || data?.message?.referral 
-        || data?.message?.extendedTextMessage?.contextInfo?.externalAdReply 
-        || req.body?.referral // <- Esto asegura capturar el Ad cuando no viene dentro de "data"
+  // ─── EXTRACCIÓN DE META ADS SEGÚN EL JSON DE EVOLUTION API ───
+    const msgObj = data?.message;
+    const referral = msgObj?.referral 
+        || msgObj?.extendedTextMessage?.contextInfo?.externalAdReply 
         || null;
+
+    // Log para auditar en tu consola la llegada exacta del objeto Meta
+    console.log("[META DEBUG] Estructura referral recuperada:", JSON.stringify(referral));
+
+    let metaContextText = "";
+    if (referral) {
+        // En Evolution API, el ID del anuncio puede venir como 'adId' o como 'sourceId'
+        const adId = referral.adId || referral.sourceId || referral.videoUrl || "";
+        const adTitle = referral.headline || referral.title || "";
+        const adBody = referral.body || referral.description || "";
+        
+        metaContextText = `${adId} ${adTitle} ${adBody}`.toLowerCase();
+        console.log(`[META DEBUG] Datos del Ad -> ID: ${adId} | Texto: ${adTitle}`);
+    }
     
     // LOG COMPLETO para diagnóstico — ver qué trae el webhook de Meta
     console.log("[META DEBUG] data.referral:", JSON.stringify(data.referral || null));
