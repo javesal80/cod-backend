@@ -2,14 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
-   //1
-    console.log(`[EVOLUTION DETECTADO] Método: ${req.method} | Body completo:`, JSON.stringify(req.body, null, 2));
-    //1
-    if (req.method !== 'POST') {
-        console.log(`[ALERTA GET/OTRO] Se rechazó petición método: ${req.method}`);
-        return res.status(200).send('OK');
-    }    
-    //if (req.method !== 'POST') return res.status(200).send('OK');
+  if (req.method !== 'POST') return res.status(200).send('OK');
 
  
     const {
