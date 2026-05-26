@@ -2,6 +2,13 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
+// ─── CAPTURA TOTAL ABSOLUTA (NO BORRAR) ───
+    console.log("[EVOLUTION_CRUDA_ENTRANTE]:", JSON.stringify({
+        method: req.method,
+        headers: req.headers,
+        body: req.body
+    }, null, 2));
+  
   if (req.method !== 'POST') return res.status(200).send('OK');
 
  
