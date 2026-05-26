@@ -172,44 +172,14 @@ module.exports = async (req, res) => {
     );
 
 
-    // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS (RASTREO PROFUNDO) ───
-    // Buscamos en todas las ubicaciones posibles donde Evolution API inyecta los datos del anuncio
-    const referral = data.referral 
-        || data.message?.referral 
-        || data.message?.extendedTextMessage?.contextInfo?.externalAdReply 
-        || req.body?.referral
+  // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS (RASTREO PROFUNDO CORREGIDO) ───
+    // Buscamos incluyendo la raíz absoluta del body por si Evolution API v3 lo envía directo
+    const referral = data?.referral 
+        || data?.message?.referral 
+        || data?.message?.extendedTextMessage?.contextInfo?.externalAdReply 
+        || req.body?.referral // <- Esto asegura capturar el Ad cuando no viene dentro de "data"
         || null;
-
-    // LOG COMPLETO corregido para ver la estructura exacta si viene de Meta Ads
-    console.log("[META DEBUG] Objeto referral encontrado:", JSON.stringify(referral));
     
-    // Capturamos variables clave de Meta Ads (Headline, Body, ID de Ad)
-    let metaContextText = "";
-    if (referral) {
-        const adId = referral.videoUrl || referral.sourceId || referral.adId || "";
-        const adTitle = referral.title || referral.headline || "";
-        const adBody = referral.body || referral.description || "";
-        metaContextText = `${adId} ${adTitle} ${adBody}`.toLowerCase();
-        console.log("[META DEBUG] Texto del anuncio procesado para búsqueda:", metaContextText);
-    }
-
-    // Intento de emparejamiento por ID o Keywords del anuncio
-    if (!productoDetectado && referral) {
-        const productoDesdeRef = catalogo.find(p =>
-            p.keywords?.some(k => metaContextText.includes(k.toLowerCase())) ||
-            (p.ad_ids && p.ad_ids.some(id => metaContextText.includes(id.toLowerCase())))
-        );
-        
-        if (productoDesdeRef) {
-            if (!productoActivo || productoActivo.nombre !== productoDesdeRef.nombre) fotosEnviadas = {};
-            productoActivo = productoDesdeRef;
-            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-            console.log(`[PRODUCTO VIA REFERRAL ÉXITO] Detectado: ${productoActivo.nombre}`);
-        } else {
-            console.log("[META DEBUG] Se recibió data de Meta Ads, pero no coincidió con ninguna keyword o ad_id de tu productos.json");
-        }
-    }
-
     // LOG COMPLETO para diagnóstico — ver qué trae el webhook de Meta
     console.log("[META DEBUG] data.referral:", JSON.stringify(data.referral || null));
     console.log("[META DEBUG] extendedTextMessage:", JSON.stringify(data.message?.extendedTextMessage?.contextInfo?.externalAdReply || null));
