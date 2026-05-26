@@ -12,7 +12,11 @@ module.exports = async (req, res) => {
 
     const NUMERO_ADMIN = "593992668002";
 
-    if (!req.body?.data?.message) return res.status(200).send('OK');
+    // Filtro inicial corregido: Permite continuar si viene un mensaje normal O si viene data de Meta Ads (referral)
+    if (!req.body?.data?.message && !req.body?.referral && !req.body?.data?.referral) {
+        return res.status(200).send('OK');
+    }
+    //if (!req.body?.data?.message) return res.status(200).send('OK');
 
     // ─── COMANDOS ADMIN ───────────────────────────────────────────────
     if (req.body.data.key?.fromMe) {
