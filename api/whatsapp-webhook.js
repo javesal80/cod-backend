@@ -171,11 +171,44 @@ module.exports = async (req, res) => {
         p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
     );
 
-    // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS ───────────────────
-    const referral = data.message?.extendedTextMessage?.contextInfo?.externalAdReply
-        || data.referral
-        || data.message?.referral
+
+    // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS (RASTREO PROFUNDO) ───
+    // Buscamos en todas las ubicaciones posibles donde Evolution API inyecta los datos del anuncio
+    const referral = data.referral 
+        || data.message?.referral 
+        || data.message?.extendedTextMessage?.contextInfo?.externalAdReply 
+        || req.body?.referral
         || null;
+
+    // LOG COMPLETO corregido para ver la estructura exacta si viene de Meta Ads
+    console.log("[META DEBUG] Objeto referral encontrado:", JSON.stringify(referral));
+    
+    // Capturamos variables clave de Meta Ads (Headline, Body, ID de Ad)
+    let metaContextText = "";
+    if (referral) {
+        const adId = referral.videoUrl || referral.sourceId || referral.adId || "";
+        const adTitle = referral.title || referral.headline || "";
+        const adBody = referral.body || referral.description || "";
+        metaContextText = `${adId} ${adTitle} ${adBody}`.toLowerCase();
+        console.log("[META DEBUG] Texto del anuncio procesado para búsqueda:", metaContextText);
+    }
+
+    // Intento de emparejamiento por ID o Keywords del anuncio
+    if (!productoDetectado && referral) {
+        const productoDesdeRef = catalogo.find(p =>
+            p.keywords?.some(k => metaContextText.includes(k.toLowerCase())) ||
+            (p.ad_ids && p.ad_ids.some(id => metaContextText.includes(id.toLowerCase())))
+        );
+        
+        if (productoDesdeRef) {
+            if (!productoActivo || productoActivo.nombre !== productoDesdeRef.nombre) fotosEnviadas = {};
+            productoActivo = productoDesdeRef;
+            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+            console.log(`[PRODUCTO VIA REFERRAL ÉXITO] Detectado: ${productoActivo.nombre}`);
+        } else {
+            console.log("[META DEBUG] Se recibió data de Meta Ads, pero no coincidió con ninguna keyword o ad_id de tu productos.json");
+        }
+    }
 
     // LOG COMPLETO para diagnóstico — ver qué trae el webhook de Meta
     console.log("[META DEBUG] data.referral:", JSON.stringify(data.referral || null));
