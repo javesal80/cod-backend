@@ -2,11 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
-    if (req.method !== 'POST') return res.status(200).send('OK');
+   //1
+    console.log(`[EVOLUTION DETECTADO] Método: ${req.method} | Body completo:`, JSON.stringify(req.body, null, 2));
+    //1
+    if (req.method !== 'POST') {
+        console.log(`[ALERTA GET/OTRO] Se rechazó petición método: ${req.method}`);
+        return res.status(200).send('OK');
+    }    
+    //if (req.method !== 'POST') return res.status(200).send('OK');
 
-    // ─── DIAGNÓSTICO EN VIVO: CAPTURA DE PAYLOAD EVOLUTION ───
-console.log("[EVOLUTION CRUDO] req.body recibido:", JSON.stringify(req.body, null, 2));
-    
+ 
     const {
         EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER1,
