@@ -4,6 +4,9 @@ const path = require('path');
 module.exports = async (req, res) => {
     if (req.method !== 'POST') return res.status(200).send('OK');
 
+    // ─── DIAGNÓSTICO EN VIVO: CAPTURA DE PAYLOAD EVOLUTION ───
+console.log("[EVOLUTION CRUDO] req.body recibido:", JSON.stringify(req.body, null, 2));
+    
     const {
         EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER1,
