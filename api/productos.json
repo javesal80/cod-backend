@@ -31,6 +31,7 @@
     },
     {
       "nombre": "Selerb NAD+ Men's Complex",
+      "ad_ids": ["120245498771130751", "120245499228200751", "120245499228190751"],
       "descripcion_corta": "Complejo masculino avanzado para próstata, energía celular, vitalidad y rendimiento. Para hombres de 35 en adelante.",
       "keywords": ["nad", "complex", "envejecimiento", "prostata", "próstata", "vitalidad", "masculina", "sexual", "energia masculina", "fuerza", "estres", "estrés", "hormonas", "orina", "baño noche", "cansancio", "fatiga", "niebla mental", "testosterona", "selerb", "hombre", "virilidad", "circulacion", "circulación"],
       "archivo": "nad.txt",
