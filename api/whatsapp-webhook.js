@@ -172,12 +172,17 @@ module.exports = async (req, res) => {
     );
 
     // ─── DETECTAR PRODUCTO POR REFERRAL DE META ADS ───────────────────
-    // Cuando el cliente borra el mensaje predeterminado, el producto
-    // se puede identificar por el ad_id o source_url que viene de Meta
     const referral = data.message?.extendedTextMessage?.contextInfo?.externalAdReply
         || data.referral
         || data.message?.referral
         || null;
+
+    // LOG COMPLETO para diagnóstico — ver qué trae el webhook de Meta
+    console.log("[META DEBUG] data.referral:", JSON.stringify(data.referral || null));
+    console.log("[META DEBUG] extendedTextMessage:", JSON.stringify(data.message?.extendedTextMessage?.contextInfo?.externalAdReply || null));
+    console.log("[META DEBUG] message keys:", Object.keys(data.message || {}));
+    console.log("[META DEBUG] data keys:", Object.keys(data || {}));
+    console.log("[META DEBUG] referral found:", JSON.stringify(referral || null).substring(0, 500));
 
     if (!productoDetectado && referral) {
         const refText = JSON.stringify(referral).toLowerCase();
