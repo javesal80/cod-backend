@@ -173,8 +173,7 @@ module.exports = async (req, res) => {
         p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
     );
 
-
-  // ─── EXTRACCIÓN DE META ADS SEGÚN EL JSON DE EVOLUTION API ───
+    // ─── EXTRACCIÓN DE META ADS SEGÚN EL JSON DE EVOLUTION API ───
     const msgObj = data?.message;
     const referral = msgObj?.referral 
         || msgObj?.extendedTextMessage?.contextInfo?.externalAdReply 
@@ -185,7 +184,6 @@ module.exports = async (req, res) => {
 
     let metaContextText = "";
     if (referral) {
-        // En Evolution API, el ID del anuncio puede venir como 'adId' o como 'sourceId'
         const adId = referral.adId || referral.sourceId || referral.videoUrl || "";
         const adTitle = referral.headline || referral.title || "";
         const adBody = referral.body || referral.description || "";
@@ -521,7 +519,10 @@ Solo comillas simples dentro del mensaje — nunca dobles.
             // ANTI-DUPLICADO DE CONTENIDO
             const textoHash = Buffer.from(textoFinal.substring(0, 100)).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
             const hashKey   = `msghash:${cleanJid}:${textoHash}`;
-            if (await redisGet(hashKey).catch(() => null)) {
+            console.log("[ANTI-DUP CHECK] hash:", textoHash, "| key:", hashKey); // ← LOG AGREGADO
+            const antidupExiste = await redisGet(hashKey).catch(() => null);
+            console.log("[ANTI-DUP CHECK] existe en Redis:", antidupExiste); // ← LOG AGREGADO
+            if (antidupExiste) {
                 console.log("[ANTI-DUP] Mismo mensaje, omitiendo");
                 return res.status(200).send('OK');
             }
