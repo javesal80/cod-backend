@@ -209,27 +209,41 @@ module.exports = async (req, res) => {
     console.log("[META DEBUG] data keys:", Object.keys(data || {}));
     console.log("[META DEBUG] referral found:", JSON.stringify(referral || null).substring(0, 500));
 
-    if (!productoDetectado && referral) {
-        const refText = JSON.stringify(referral).toLowerCase();
-        const productoDesdeRef = catalogo.find(p =>
-            p.keywords?.some(k => refText.includes(k.toLowerCase())) ||
-            (p.ad_ids && p.ad_ids.some(id => refText.includes(id.toLowerCase())))
-        );
-        if (productoDesdeRef) {
-            if (!productoActivo || productoActivo.nombre !== productoDesdeRef.nombre) fotosEnviadas = {};
-            productoActivo = productoDesdeRef;
-            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-            console.log(`[PRODUCTO VIA REFERRAL] ${productoActivo.nombre}`, JSON.stringify(referral).substring(0, 200));
-        }
-    }
-
+    // ─── ASOCIACIÓN DE PRODUCTO DEFINITIVA: TEXTO DEL CLIENTE MANDA, ID DE ADS RESPALDA ───
+    
+    // CASO 1: El cliente SÍ escribió una keyword directa en su mensaje de WhatsApp (Manda sobre todo)
     if (productoDetectado) {
         if (!productoActivo || productoActivo.nombre !== productoDetectado.nombre) fotosEnviadas = {};
         productoActivo = productoDetectado;
         await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-        console.log(`[PRODUCTO] ${productoActivo.nombre}`);
-    }
+        console.log(`[PRODUCTO ENCONTRADO] Keyword directa en el mensaje del cliente: ${productoActivo.nombre}`);
+    } 
+    // CASO 2: El cliente escribió algo genérico ("Hola", un punto, etc.) pero viene de un anuncio de Meta
+    else if (!productoDetectado && referral) {
+        const adIdCapturado = (referral.adId || referral.sourceId || "").toString().trim();
+        let productoDesdeRef = null;
 
+        // Intentamos rescatar el producto usando el ID exacto del anuncio guardado en el JSON
+        if (adIdCapturado) {
+            productoDesdeRef = catalogo.find(p =>
+                p.ad_ids && p.ad_ids.some(id => id.toString().trim() === adIdCapturado)
+            );
+        }
+
+        if (productoDesdeRef) {
+            if (!productoActivo || productoActivo.nombre !== productoDesdeRef.nombre) fotosEnviadas = {};
+            productoActivo = productoDesdeRef;
+            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+            console.log(`[PRODUCTO ENCONTRADO] Mensaje genérico, asignado por ID de Anuncio: ${productoActivo.nombre}`);
+        } else {
+            console.log("[PRODUCTO EN BLANCO] Mensaje genérico de Meta pero el ID no está registrado en el JSON.");
+        }
+    } 
+    // CASO 3: No hay keyword en el texto y tampoco hay ID de anuncio (Tráfico frío u orgánico)
+    else {
+        console.log("[PRODUCTO EN BLANCO] Tráfico frío orgánico sin keyword ni ID de anuncio. La IA indagará.");
+    }
+  
     // ─── ALTA INTENCIÓN — solo hint para el prompt, la IA decide la etapa
     const altaIntencion = /quiero (realizar |hacer )?(una )?compra|quiero (pedir|comprarlo|uno|pedirlo)|me lo llevo|d[oó]nde pago|c[oó]mo pago|quiero (el |los )?(\d+ )?(tarros?|unidades?|paquetes?)/i.test(clienteMsg);
     console.log("[ALTA INTENCIÓN]", altaIntencion);
