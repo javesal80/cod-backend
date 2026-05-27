@@ -146,11 +146,14 @@ module.exports = async (req, res) => {
             "Buenas, gracias por escribirnos 😊"
         ];
         const saludo = saludos[Math.floor(Math.random() * saludos.length)];
-        await fetch(`${baseUrl}/message/sendText/${instName}`, {
+        console.log("[SALUDO] Enviando a:", remoteJid, "| texto:", saludo);
+        const saludoRes = await fetch(`${baseUrl}/message/sendText/${instName}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
             body: JSON.stringify({ number: remoteJid, text: saludo })
         });
+        const saludoJson = await saludoRes.json();
+        console.log("[SALUDO] Status:", saludoRes.status, "| response:", JSON.stringify(saludoJson).substring(0, 200));
         // Pequeña pausa para que el saludo llegue antes que la respuesta principal
         await new Promise(r => setTimeout(r, 1500));
     }
@@ -535,18 +538,30 @@ Solo comillas simples dentro del mensaje — nunca dobles.
 
             const enviar = async (texto) => {
                 const delay = Math.min(texto.length * 35, 5000);
-                await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-                    body: JSON.stringify({ number: remoteJid, presence: "composing", delay })
-                });
+                console.log("[ENVIO] Intentando enviar a:", remoteJid, "| texto:", texto.substring(0, 50));
+                try {
+                    const typingRes = await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        body: JSON.stringify({ number: remoteJid, presence: "composing", delay })
+                    });
+                    console.log("[ENVIO] Typing status:", typingRes.status);
+                } catch(te) { console.error("[ENVIO] Typing error:", te.message); }
                 await new Promise(r => setTimeout(r, delay + Math.floor(Math.random() * 1000)));
-                await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
-                    body: JSON.stringify({ number: remoteJid, text: texto })
-                });
+                try {
+                    const sendRes = await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        body: JSON.stringify({ number: remoteJid, text: texto })
+                    });
+                    const sendJson = await sendRes.json();
+                    console.log("[ENVIO] Send status:", sendRes.status, "| response:", JSON.stringify(sendJson).substring(0, 200));
+                } catch(se) { console.error("[ENVIO] Send error:", se.message); }
             };
+
+            console.log("[ENVIO] partes:", partes.length, JSON.stringify(partes.map(p => p.substring(0,30))));
+            console.log("[ENVIO] preguntaCierre:", preguntaCierre.substring(0, 50));
+            console.log("[ENVIO] baseUrl:", baseUrl, "| instName:", instName);
 
             for (const parte of partes) await enviar(parte);
 
