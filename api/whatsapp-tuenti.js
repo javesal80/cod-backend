@@ -7,8 +7,8 @@ module.exports = async (req, res) => {
 
  
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
-        GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER1,
+        EVOLUTION_URL, EVOLUTION_TOKEN_VitaeLAB, INSTANCE_VitaeLAB,
+        GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
 
@@ -41,8 +41,8 @@ module.exports = async (req, res) => {
     const remoteJid  = data.key?.remoteJid;
     const msgId      = data.key?.id;
     const baseUrl    = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName   = req.body.instance || INSTANCE_WHATSAPI || "WHATSAPI";
-    const provider   = (IA_PROVIDER1 || 'grok').trim().toLowerCase();
+    const instName   = req.body.instance || INSTANCE_VitaeLAB || "WHATSAPI";
+    const provider   = (IA_PROVIDER || 'grok').trim().toLowerCase();
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                 body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
             });
             const mediaJson  = await mediaResp.json();
@@ -149,7 +149,7 @@ module.exports = async (req, res) => {
         console.log("[SALUDO] Enviando a:", remoteJid, "| texto:", saludo);
         const saludoRes = await fetch(`${baseUrl}/message/sendText/${instName}`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
             body: JSON.stringify({ number: remoteJid, text: saludo })
         });
         const saludoJson = await saludoRes.json();
@@ -511,7 +511,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
             const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n📝 *Mensajes del cliente:*\n${historial.filter(h => h.role === 'user').map(h => h.content).join(' | ')}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             });
         }
@@ -542,7 +542,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
                 try {
                     const typingRes = await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                         body: JSON.stringify({ number: remoteJid, presence: "composing", delay })
                     });
                     console.log("[ENVIO] Typing status:", typingRes.status);
@@ -551,7 +551,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
                 try {
                     const sendRes = await fetch(`${baseUrl}/message/sendText/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                         body: JSON.stringify({ number: remoteJid, text: texto })
                     });
                     const sendJson = await sendRes.json();
@@ -580,7 +580,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
                 await new Promise(r => setTimeout(r, 2000 + Math.floor(Math.random() * 2000)));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                     body: JSON.stringify({ number: remoteJid, media: fotoEtapa, mediatype: "image", caption: "" })
                 });
                 const esInicial = ["BIENVENIDA","ESCUCHA"].includes(nuevaEtapa);
@@ -588,7 +588,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
                     await new Promise(r => setTimeout(r, 2000));
                     await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_VitaeLAB },
                         body: JSON.stringify({ number: remoteJid, media: productoActivo.img_tabla, mediatype: "image", caption: "" })
                     });
                 }
