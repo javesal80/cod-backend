@@ -176,11 +176,18 @@ module.exports = async (req, res) => {
         p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
     );
 
-    // ─── EXTRACCIÓN DE META ADS SEGÚN EL JSON DE EVOLUTION API ───
-    const msgObj = data?.message;
-    const referral = msgObj?.referral 
-        || msgObj?.extendedTextMessage?.contextInfo?.externalAdReply 
+    // ─── EXTRACCIÓN DE META ADS CORREGIDA (RUTA REAL EVOLUTION API) ───
+    const referral = data?.contextInfo?.externalAdReply 
+        || data?.contextInfo 
+        || data?.message?.referral 
         || null;
+
+    // Log definitivo para ver el ID capturado en tu consola
+    if (referral) {
+        const adId = referral.adId || referral.sourceId || referral.videoUrl || "";
+        const adTitle = referral.headline || referral.title || "";
+        console.log(`[META ADS CAPTURADO] ID: ${adId} | Título del Anuncio: ${adTitle}`);
+    }
 
     // Log para auditar en tu consola la llegada exacta del objeto Meta
     console.log("[META DEBUG] Estructura referral recuperada:", JSON.stringify(referral));
