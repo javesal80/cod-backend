@@ -519,18 +519,19 @@ Solo comillas simples dentro del mensaje — nunca dobles.
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
 
-            // ANTI-DUPLICADO DE CONTENIDO
-            const textoHash = Buffer.from(textoFinal.substring(0, 100)).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 20);
+           // ANTI-DUPLICADO DE CONTENIDO (CORREGIDO: EVALÚA TEXTO COMPLETO + ETAPA)
+            const textoUnico = `${nuevaEtapa}_${textoFinal}`;
+            const textoHash = Buffer.from(textoUnico).toString('base64').replace(/[^a-zA-Z0-9]/g, '').substring(0, 24);
             const hashKey   = `msghash:${cleanJid}:${textoHash}`;
-            console.log("[ANTI-DUP CHECK] hash:", textoHash, "| key:", hashKey); // ← LOG AGREGADO
+            console.log("[ANTI-DUP CHECK] hash:", textoHash, "| key:", hashKey);
             const antidupExiste = await redisGet(hashKey).catch(() => null);
-            console.log("[ANTI-DUP CHECK] existe en Redis:", antidupExiste); // ← LOG AGREGADO
+            console.log("[ANTI-DUP CHECK] existe en Redis:", antidupExiste);
             if (antidupExiste) {
-                console.log("[ANTI-DUP] Mismo mensaje, omitiendo");
+                console.log("[ANTI-DUP] Mismo mensaje detectado con certeza, omitiendo envío.");
                 return res.status(200).send('OK');
             }
-            await redisSetex(hashKey, 300, "1");
-
+            await redisSetex(hashKey, 180, "1");
+          
             let partes = textoFinal.split('\n\n').map(l => l.trim()).filter(l => l !== "");
             if (partes.length > 8) { const u = partes.pop(); partes = partes.slice(0, 7); partes.push(u); }
             if (partes.length > 1 && partes[0].length < 30) { partes[1] = partes[0] + " " + partes[1]; partes.shift(); }
