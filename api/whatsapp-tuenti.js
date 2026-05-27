@@ -7,7 +7,7 @@ module.exports = async (req, res) => {
 
  
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
+        EVOLUTION_URL, EVOLUTION_TOKEN1, INSTANCE_NAME1,
         GROK_API_KEY, OPENAI_API_KEY, IA_PROVIDER,
         KV_REST_API_URL, KV_REST_API_TOKEN
     } = process.env;
