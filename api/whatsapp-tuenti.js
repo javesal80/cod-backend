@@ -270,7 +270,7 @@ module.exports = async (req, res) => {
     // ─── HISTORIAL ────────────────────────────────────────────────────
     const esPrimerMensaje = historial.length === 0;
     historial.push({ role: "user", content: clienteMsg });
-    if (historial.length > 24) historial = historial.slice(-24);
+    if (historial.length > 60) historial = historial.slice(-60);
 
     // ─── MASTER PROMPT ────────────────────────────────────────────────
     const masterPrompt = `
