@@ -172,76 +172,50 @@ module.exports = async (req, res) => {
 
     // ─── DETECTAR PRODUCTO POR KEYWORDS ──────────────────────────────
     const msgLower = clienteMsg.toLowerCase().trim();
-    const productoDetectado = catalogo.find(p =>
+    const productoDetectadoPorKeyword = catalogo.find(p =>
         p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
     );
 
-    // ─── EXTRACCIÓN DE META ADS CORREGIDA (RUTA REAL EVOLUTION API) ───
     const referral = data?.contextInfo?.externalAdReply 
         || data?.contextInfo 
         || data?.message?.referral 
         || null;
 
-    // Log definitivo para ver el ID capturado en tu consola
+    const adIdCapturado = referral ? (referral.sourceId || referral.adId || "").toString().trim() : "";
+
     if (referral) {
-        const adId = referral.adId || referral.sourceId || referral.videoUrl || "";
-        const adTitle = referral.headline || referral.title || "";
-        console.log(`[META ADS CAPTURADO] ID: ${adId} | Título del Anuncio: ${adTitle}`);
+        console.log(`[META ADS CAPTURADO] ID original: ${adIdCapturado}`);
     }
 
-    // Log para auditar en tu consola la llegada exacta del objeto Meta
-    console.log("[META DEBUG] Estructura referral recuperada:", JSON.stringify(referral));
-
-    let metaContextText = "";
-    if (referral) {
-        const adId = referral.adId || referral.sourceId || referral.videoUrl || "";
-        const adTitle = referral.headline || referral.title || "";
-        const adBody = referral.body || referral.description || "";
-        
-        metaContextText = `${adId} ${adTitle} ${adBody}`.toLowerCase();
-        console.log(`[META DEBUG] Datos del Ad -> ID: ${adId} | Texto: ${adTitle}`);
-    }
-    
-    // LOG COMPLETO para diagnóstico — ver qué trae el webhook de Meta
-    console.log("[META DEBUG] data.referral:", JSON.stringify(data.referral || null));
-    console.log("[META DEBUG] extendedTextMessage:", JSON.stringify(data.message?.extendedTextMessage?.contextInfo?.externalAdReply || null));
-    console.log("[META DEBUG] message keys:", Object.keys(data.message || {}));
-    console.log("[META DEBUG] data keys:", Object.keys(data || {}));
-    console.log("[META DEBUG] referral found:", JSON.stringify(referral || null).substring(0, 500));
-
-    // ─── ASOCIACIÓN DE PRODUCTO DEFINITIVA: TEXTO DEL CLIENTE MANDA, ID DE ADS RESPALDA ───
-    
-    // CASO 1: El cliente SÍ escribió una keyword directa en su mensaje de WhatsApp (Manda sobre todo)
-    if (productoDetectado) {
-        if (!productoActivo || productoActivo.nombre !== productoDetectado.nombre) fotosEnviadas = {};
-        productoActivo = productoDetectado;
-        await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-        console.log(`[PRODUCTO ENCONTRADO] Keyword directa en el mensaje del cliente: ${productoActivo.nombre}`);
-    } 
-    // CASO 2: El cliente escribió algo genérico ("Hola", un punto, etc.) pero viene de un anuncio de Meta
-    else if (!productoDetectado && referral) {
-        const adIdCapturado = (referral.adId || referral.sourceId || "").toString().trim();
-        let productoDesdeRef = null;
-
-        // Intentamos rescatar el producto usando el ID exacto del anuncio guardado en el JSON
-        if (adIdCapturado) {
-            productoDesdeRef = catalogo.find(p =>
+    // Escenario A: No hay producto activo previo en Redis -> Se identifica por primera vez
+    if (!productoActivo) {
+        if (productoDetectadoPorKeyword) {
+            productoActivo = productoDetectadoPorKeyword;
+            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+            if (!fotosEnviadas) fotosEnviadas = {};
+            console.log(`[PRIMER CONTACTO] Producto fijado por KEYWORD inicial: ${productoActivo.nombre}`);
+        } 
+        else if (adIdCapturado) {
+            const productoDesdeRef = catalogo.find(p =>
                 p.ad_ids && p.ad_ids.some(id => id.toString().trim() === adIdCapturado)
             );
-        }
-
-        if (productoDesdeRef) {
-            if (!productoActivo || productoActivo.nombre !== productoDesdeRef.nombre) fotosEnviadas = {};
-            productoActivo = productoDesdeRef;
-            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-            console.log(`[PRODUCTO ENCONTRADO] Mensaje genérico, asignado por ID de Anuncio: ${productoActivo.nombre}`);
-        } else {
-            console.log("[PRODUCTO EN BLANCO] Mensaje genérico de Meta pero el ID no está registrado en el JSON.");
+            if (productoDesdeRef) {
+                productoActivo = productoDesdeRef;
+                await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+                if (!fotosEnviadas) fotosEnviadas = {};
+                console.log(`[PRIMER CONTACTO] Producto fijado por ID de ADS inicial: ${productoActivo.nombre}`);
+            }
         }
     } 
-    // CASO 3: No hay keyword en el texto y tampoco hay ID de anuncio (Tráfico frío u orgánico)
-    else {
-        console.log("[PRODUCTO EN BLANCO] Tráfico frío orgánico sin keyword ni ID de anuncio. La IA indagará.");
+    // Escenario B: YA HAY UN PRODUCTO ACTIVO -> Se bloquea, SALVO que el cliente cambie de dolor hacia un producto diferente
+    else if (productoActivo && productoDetectadoPorKeyword) {
+        if (productoDetectadoPorKeyword.nombre !== productoActivo.nombre) {
+            console.log(`[CAMBIO DE RUMBO] Transición de producto detectada: ${productoActivo.nombre} -> ${productoDetectadoPorKeyword.nombre}`);
+            productoActivo = productoDetectadoPorKeyword;
+            fotosEnviadas = {}; 
+            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+            await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+        }
     }
   
     // ─── ALTA INTENCIÓN — solo hint para el prompt, la IA decide la etapa
@@ -519,11 +493,12 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
 
-        // ─── GUARDAR REDIS ────────────────────────────────────────────
+       // ─── GUARDAR REDIS ────────────────────────────────────────────
         historial.push({ role: "assistant", content: textoFinal });
         await Promise.all([
             redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
-            redisSetex(stageKey,   86400 * 7, nuevaEtapa)
+            redisSetex(stageKey,   86400 * 7, nuevaEtapa),
+            productoActivo ? redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo)) : Promise.resolve()
         ]);
 
         // ─── SUPABASE ─────────────────────────────────────────────────
