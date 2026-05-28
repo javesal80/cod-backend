@@ -447,21 +447,12 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
-        // ─── REFUERZO DE CONTEXTO DINÁMICO PARA LA IA (CORREGIDO) ───
-        const historialParaIA  = historial.slice(0, -1);
-        
-        // Creamos un recordatorio dinámico basado en el producto que el backend seleccionó (sea por Keyword o por ID)
-        let contextoProducto = " SIN PRODUCTO IDENTIFICADO CLARAMENTE. El cliente llegó de forma orgánica o sin un anuncio específico.";
-        if (productoActivo) {
-            contextoProducto = ` PRODUCTO ACTIVO: ${productoActivo.nombre}. El cliente está interesado en este producto específico (detectado por su mensaje o por el ID del anuncio de Meta). Adapta tu respuesta usando la información de su archivo .txt correspondiente.`;
-        }
-
+       const historialParaIA  = historial.slice(0, -1);
         const mensajesFinales  = [
             ...historialParaIA,
             { role: "user", content: clienteMsg },
-            { role: "system", content: `Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada en el historial.${contextoProducto}` }
+            { role: "system", content: 'Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada in el historial.' }
         ];
-
         let respuestaRaw = "";
 
         if (provider === 'grok') {
