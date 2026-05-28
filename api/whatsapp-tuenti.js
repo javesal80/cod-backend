@@ -438,18 +438,28 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
 
 2. OBLIGATORIEDAD DE PREGUNTA EN EL CIERRE: A menos que el cliente ya haya entregado su formulario completo con dirección de entrega y la venta esté cerrada, TODO mensaje que generes debe terminar OBLIGATORIAMENTE con UNA sola pregunta directa, corta y humana utilizando signos de interrogación (¿?). Nunca termines con un enunciado afirmativo o descriptivo.
 
-3. MANEJO DE CHATS EN FRÍO: Si el cliente saluda de forma genérica (ej: "Hola", "Buenas") y el sistema indica "SIN PRODUCTO IDENTIFICADO", no menciones catálogos ni preguntes robóticamente por productos. Saluda con naturalidad humana: "¡Hola! Qué gusto saludarle. 😊 Cuéntame, ¿qué malestar o cambio positivo está buscando mejorar en su salud el día de hoy para poder asesorarle?".
+3. PROTOCOLO DE CONVERSACIÓN SEGÚN EL CONTEXTO (3 ESCENARIOS):
+- Escenario A (Por ID de Ads o Keyword Directa): Si el sistema te indica que hay un PRODUCTO ACTIVO (ej: NuBest Tall o Selerb), queda estrictamente prohibido preguntar qué producto busca o usar saludos fríos. Abre la conversación con calidez hablando directamente sobre los beneficios de ese producto específico o indagando sobre el dolor que resuelve (ej: "¡Hola! Qué gusto saludarle. Veo que le interesó nuestro suplemento para el crecimiento y estirón de los niños... Cuéntame, ¿qué edad tiene su hijo para poder asesorarle mejor?").
+- Escenario B (Tráfico Orgánico / Sin Producto): Si el sistema indica "SIN PRODUCTO IDENTIFICADO" y el cliente escribe un saludo genérico ("Hola", "Buenas"), responde con máxima calidez humana preguntando en qué le puedes asesorar hoy respecto a su salud para descubrir qué busca o en que producto estaria interesado.
 `;
 
     // ─── LLAMADA IA ───────────────────────────────────────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
+        // ─── REFUERZO DE CONTEXTO DINÁMICO PARA LA IA (CORREGIDO) ───
         const historialParaIA  = historial.slice(0, -1);
+        
+        // Creamos un recordatorio dinámico basado en el producto que el backend seleccionó (sea por Keyword o por ID)
+        let contextoProducto = " SIN PRODUCTO IDENTIFICADO CLARAMENTE. El cliente llegó de forma orgánica o sin un anuncio específico.";
+        if (productoActivo) {
+            contextoProducto = ` PRODUCTO ACTIVO: ${productoActivo.nombre}. El cliente está interesado en este producto específico (detectado por su mensaje o por el ID del anuncio de Meta). Adapta tu respuesta usando la información de su archivo .txt correspondiente.`;
+        }
+
         const mensajesFinales  = [
             ...historialParaIA,
             { role: "user", content: clienteMsg },
-            { role: "system", content: 'Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada en el historial.' }
+            { role: "system", content: `Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada en el historial.${contextoProducto}` }
         ];
 
         let respuestaRaw = "";
