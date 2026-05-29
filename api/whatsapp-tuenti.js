@@ -508,17 +508,17 @@ if (parsed) {
  // ─── NOTIFICACIÓN VENTA ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
             
-            // Compilamos el resumen jalando las variables estructuradas directamente de tu base de datos
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* ${datosCliente?.opcion || "No especificada"}\n\n📋 *DATOS DE DESPACHO:*\n*Nombre:* ${datosCliente?.nombre || "No especificado"}\n*Provincia/Ciudad:* ${datosCliente?.provincia || "No especificada"}\n*Dirección:* ${datosCliente?.direccion || "No especificada"}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+            // Armamos el resumen jalando directo las variables estructuradas de tu Redis
+            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍 *Plan Elegido:* ${datosCliente?.opcion || datosCliente?.plan || "Revisar chat"}\n\n📋 *DATOS DE DESPACHO:*\n*Nombre:* ${datosCliente?.nombre || "No especificado"}\n*Provincia/Ciudad:* ${datosCliente?.provincia || datosCliente?.ciudad || "No especificada"}\n*Dirección:* ${datosCliente?.direccion || "No especificada"}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
 
-            // Tu motor de envío por HTTP original (No toca ninguna variable del servidor)
+            // Tu motor de envío por HTTP original intacto que tú sabes que sí envía
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             });
         }
-
+      
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
 
