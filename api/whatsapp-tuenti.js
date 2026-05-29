@@ -385,7 +385,7 @@ FORMATO WHATSAPP (ESTILO COMERCIAL ELEGANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Párrafos separados estrictamente con \\n\\n para que el sistema los fragmente de forma limpia en la pantalla del cliente.
 - NEGRITAS COMERCIALES: Tienes la OBLIGACIÓN de usar negritas con *asteriscos* en cada mensaje para capturar la atención del cliente. Resalta siempre: 1) El nombre del producto activo en ese chat, 2) Datos clave numéricos (como la edad o cantidades), y 3) Los 2 o 3 conceptos o beneficios de mayor impacto de tu respuesta. No satures, pero usa la negrita estratégicamente en cada párrafo para que la lectura no sea plana.
-- EMOJIS PERSUASIVOS: Cada mensaje que generes debe llevar OBLIGATORIAMENTE entre 1 y 2 emojis distribuidos de forma natural y elegante a lo largo del texto para dar calidez y dinamismo visual. Usa emojis que conecten directamente con salud, bienestar, éxito o empatía según el contexto del producto actual. Queda prohibido enviar bloques de texto puro sin ningún emoji.
+- EMOJIS PERSUASIVOS: Cada mensaje que generes debe llevar OBLIGATORIAMENTE entre 1 y 3 emojis distribuidos de forma natural y elegante a lo largo del texto para dar calidez y dinamismo visual. Usa emojis que conecten directamente con salud, bienestar, éxito o empatía según el contexto del producto actual. Queda prohibido enviar bloques de texto puro sin ningún emoji.
 - Listas: cada ítem en su propia línea con un emoji formal al inicio.
 - Precios: cada opción en su propia línea limpia.
 - La pregunta final debe ir completamente sola al final del mensaje.
@@ -505,15 +505,35 @@ if (parsed) {
             });
         } catch (e) { console.error("[SUPABASE ERROR]", e.message); }
 
-        // ─── NOTIFICACIÓN VENTA ───────────────────────────────────────
-        if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n📝 *Mensajes del cliente:*\n${historial.filter(h => h.role === 'user').map(h => h.content).join(' | ')}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
-            await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
-            });
-        }
+       // ─── EXTRACTOR INTELIGENTE DE DATOS PARA EL ADMINISTRADOR ───
+if (nuevaEtapa === "CONFIRMADO") {
+    // 1. Buscamos en el historial el último mensaje del cliente (donde están la dirección y nombre)
+    const mensajesCliente = historial.filter(m => m.role === "user");
+    const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
+    
+    // 2. Buscamos hacia atrás qué opción de compra fue la que mencionó el cliente
+    let opcionComprada = "Opción no detectada";
+    for (let i = mensajesCliente.length - 1; i >= 0; i--) {
+        const txt = mensajesCliente[i].content.toLowerCase();
+        if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("prueba inicial")) { opcionComprada = "Opción 1 — Prueba Inicial ($27.99)"; break; }
+        if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("plan crecimiento") || txt.includes("de 38")) { opcionComprada = "Opción 2 — Plan Crecimiento ($38.00)"; break; }
+        if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("tratamiento garantizado") || txt.includes("de 59") || txt.includes("opción 4")) { opcionComprada = "Opción 3 — Tratamiento Garantizado ($59.99)"; break; }
+    }
+
+    // 3. Armamos el reporte ultra-limpio para el Administrador
+    const mensajeAdmin = `📦 NUEVA VENTA FINALIZADA
+--------------------------------
+📦 Producto: ${productoActivo?.nombre || 'NuBest Tall'}
+📱 WhatsApp: https://wa.me/${remitente.replace('@s.whatsapp.net', '')}
+🛍️ Plan Elegido: *${opcionComprada}*
+
+📋 DATOS DE DESPACHO:
+${ultimoMensajeDatos}
+--------------------------------`;
+
+    // Aquí mantienes tu función actual para enviar 'mensajeAdmin' a tu número de WhatsApp
+    await enviarMensajeWhatsApp(numeroAdmin, mensajeAdmin);
+}
 
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
