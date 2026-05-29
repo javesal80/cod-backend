@@ -437,7 +437,7 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: [{ role: "system", content: masterPrompt }, ...mensajesFinales],
-                    temperature: 0.5, max_tokens: 1000
+                    temperature: 0.82, max_tokens: 1000
                 })
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
@@ -464,14 +464,15 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
             nuevaEtapa = etapaActual;
         }
 
-        if (parsed) {
+if (parsed) {
             textoFinal = (parsed.mensaje || "")
                 .replace(/\\n\\n/g, '\n\n')
                 .replace(/\\n/g, '\n')
                 .replace(/\*\*(.*?)\*\*/g, '*$1*')
-                .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1')
                 .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
             nuevaEtapa = parsed.etapa || etapaActual;
+
+        
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
 
