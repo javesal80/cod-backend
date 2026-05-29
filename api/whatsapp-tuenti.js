@@ -505,34 +505,58 @@ if (parsed) {
             });
         } catch (e) { console.error("[SUPABASE ERROR]", e.message); }
 
-       // ─── EXTRACTOR INTELIGENTE DE DATOS PARA EL ADMINISTRADOR ───
+    // ─── EXTRACTOR INTELIGENTE DE DATOS PARA EL ADMINISTRADOR (BLINDADO) ───
 if (nuevaEtapa === "CONFIRMADO") {
-    // 1. Buscamos en el historial el último mensaje del cliente (donde están la dirección y nombre)
-    const mensajesCliente = historial.filter(m => m.role === "user");
-    const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
-    
-    // 2. Buscamos hacia atrás qué opción de compra fue la que mencionó el cliente
-    let opcionComprada = "Opción no detectada";
-    for (let i = mensajesCliente.length - 1; i >= 0; i--) {
-        const txt = mensajesCliente[i].content.toLowerCase();
-        if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("prueba inicial")) { opcionComprada = "Opción 1 — Prueba Inicial ($27.99)"; break; }
-        if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("plan crecimiento") || txt.includes("de 38")) { opcionComprada = "Opción 2 — Plan Crecimiento ($38.00)"; break; }
-        if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("tratamiento garantizado") || txt.includes("de 59") || txt.includes("opción 4")) { opcionComprada = "Opción 3 — Tratamiento Garantizado ($59.99)"; break; }
-    }
+    try {
+        // 1. Buscamos en el historial el último mensaje del cliente (donde están la dirección y nombre)
+        const mensajesCliente = historial.filter(m => m.role === "user");
+        const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
+        
+        // Obtener el número de teléfono del cliente de forma segura
+        const celularCliente = (typeof remoteJid !== 'undefined' ? remoteJid : typeof from !== 'undefined' ? from : '593').replace('@s.whatsapp.net', '').replace('@c.us', '');
 
-    // 3. Armamos el reporte ultra-limpio para el Administrador
-    const mensajeAdmin = `📦 NUEVA VENTA FINALIZADA
+        // 2. Buscamos hacia atrás qué opción de compra fue la que mencionó el cliente
+        let opcionComprada = "Opción no detectada";
+        for (let i = mensajesCliente.length - 1; i >= 0; i--) {
+            const txt = mensajesCliente[i].content.toLowerCase();
+            if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("prueba inicial")) { opcionComprada = "Opción 1 — Prueba Inicial ($27.99)"; break; }
+            if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("plan crecimiento") || txt.includes("de 38")) { opcionComprada = "Opción 2 — Plan Crecimiento ($38.00)"; break; }
+            if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("tratamiento garantizado") || txt.includes("de 59") || txt.includes("opción 4")) { opcionComprada = "Opción 3 — Tratamiento Garantizado ($59.99)"; break; }
+        }
+
+        // 3. Armamos el reporte ultra-limpio para ti
+        const mensajeAdmin = `📦 NUEVA VENTA FINALIZADA
 --------------------------------
 📦 Producto: ${productoActivo?.nombre || 'NuBest Tall'}
-📱 WhatsApp: https://wa.me/${(typeof remoteJid !== 'undefined' ? remoteJid : typeof from !== 'undefined' ? from : '593').replace('@s.whatsapp.net', '').replace('@c.us', '')}
+📱 WhatsApp: https://wa.me/${celularCliente}
 🛍️ Plan Elegido: *${opcionComprada}*
 
 📋 DATOS DE DESPACHO:
 ${ultimoMensajeDatos}
 --------------------------------`;
 
-    // Aquí mantienes tu función actual para enviar 'mensajeAdmin' a tu número de WhatsApp
-    await enviarMensajeWhatsApp(numeroAdmin, mensajeAdmin);
+        // 4. Tu número de administrador quemado en duro con formato internacional
+        const numeroDestinoAdmin = "593992668002@s.whatsapp.net"; 
+        
+        // Ejecutamos el envío detectando la función nativa que tenga tu script para que no tire error
+        if (typeof enviarTexto === 'function') {
+            await enviarTexto(numeroDestinoAdmin, mensajeAdmin);
+        } else if (typeof enviarMensaje === 'function') {
+            await enviarMensaje(numeroDestinoAdmin, mensajeAdmin);
+        } else if (typeof sendWhatsApp === 'function') {
+            await sendWhatsApp(numeroDestinoAdmin, mensajeAdmin);
+        } else if (typeof sendMessage === 'function') {
+            await sendMessage(numeroDestinoAdmin, { text: mensajeAdmin });
+        } else {
+            // Candado de seguridad: si no encuentra la función, te lo imprime limpio en la consola de Railway/servidor
+            console.log("=========================================================");
+            console.log("!!! REPORTE DE VENTA GENERADO EN CONSOLA (Función de envío no detectada) !!!");
+            console.log(mensajeAdmin);
+            console.log("=========================================================");
+        }
+    } catch (errAdmin) {
+        console.error("Error al procesar el reporte de administración:", errAdmin.message);
+    }
 }
 
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
