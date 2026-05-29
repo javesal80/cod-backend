@@ -392,8 +392,7 @@ Pregunta final sola al final.
 FORMATO DE RESPUESTA — OBLIGATORIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí"}
-
-Etapas válidas: BIENVENIDA, ESCUCHA, SOLUCIÓN, DECISIÓN, CIERRE, CONFIRMADO, POSTVENTA
+Etapas válidas escritas exactamente así (RESPETA LA ORTOGRAFÍA): BIENVENIDA, ESCUCHA, SOLUCIÓN, DECISIÓN, CIERRE, CONFIRMADO, POSTVENTA
 Solo comillas simples dentro del mensaje — nunca dobles.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
