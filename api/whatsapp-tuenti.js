@@ -524,7 +524,7 @@ if (nuevaEtapa === "CONFIRMADO") {
     const mensajeAdmin = `📦 NUEVA VENTA FINALIZADA
 --------------------------------
 📦 Producto: ${productoActivo?.nombre || 'NuBest Tall'}
-📱 WhatsApp: https://wa.me/${remitente.replace('@s.whatsapp.net', '')}
+📱 WhatsApp: https://wa.me/${(typeof remoteJid !== 'undefined' ? remoteJid : typeof from !== 'undefined' ? from : '593').replace('@s.whatsapp.net', '').replace('@c.us', '')}
 🛍️ Plan Elegido: *${opcionComprada}*
 
 📋 DATOS DE DESPACHO:
