@@ -505,18 +505,30 @@ if (parsed) {
             });
         } catch (e) { console.error("[SUPABASE ERROR]", e.message); }
 
- // ─── NOTIFICACIÓN VENTA ───────────────────────────────────────
+// ─── NOTIFICACIÓN VENTA ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
-            
-            // Armamos el resumen jalando directo las variables estructuradas de tu Redis
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍 *Plan Elegido:* ${datosCliente?.opcion || datosCliente?.plan || "Revisar chat"}\n\n📋 *DATOS DE DESPACHO:*\n*Nombre:* ${datosCliente?.nombre || "No especificado"}\n*Provincia/Ciudad:* ${datosCliente?.provincia || datosCliente?.ciudad || "No especificada"}\n*Dirección:* ${datosCliente?.direccion || "No especificada"}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+            // 1. Extraemos de forma segura el texto del formulario que el cliente acaba de enviar
+            const mensajesCliente = historial.filter(h => h.role === 'user');
+            const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
 
-            // Tu motor de envío por HTTP original intacto que tú sabes que sí envía
+            // 2. Buscamos en el texto del cliente qué opción seleccionó
+            let opcionComprada = "Revisar en chat";
+            for (let i = mensajesCliente.length - 1; i >= 0; i--) {
+                const txt = mensajesCliente[i].content.toLowerCase();
+                if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("prueba")) { opcionComprada = "Opción 1"; break; }
+                if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("38")) { opcionComprada = "Opción 2"; break; }
+                if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("59") || txt.includes("opción 4")) { opcionComprada = "Opción 3"; break; }
+            }
+
+            // 3. Armamos el resumen limpio usando únicamente el texto seguro del log
+            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* ${opcionComprada}\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+
+            // 4. Tu fetch nativo original (Inmune a fallos)
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
-            });
+            }).catch(e => console.log("Error al enviar reporte al admin:", e.message));
         }
       
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
