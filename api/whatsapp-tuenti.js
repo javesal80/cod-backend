@@ -507,30 +507,42 @@ if (parsed) {
 
 // ─── NOTIFICACIÓN VENTA ───────────────────────────────────────
         if (nuevaEtapa === "CONFIRMADO" && etapaActual !== "CONFIRMADO") {
-            // 1. Extraemos de forma segura el texto del formulario que el cliente acaba de enviar
+            // 1. Extraemos el formulario final del cliente
             const mensajesCliente = historial.filter(h => h.role === 'user');
             const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
 
-            // 2. Buscamos en el texto del cliente qué opción seleccionó
+            // 2. EXTRACTOR ROBUSTO DE PLAN: Buscamos en todo el historial (cliente e IA)
             let opcionComprada = "Revisar en chat";
-            for (let i = mensajesCliente.length - 1; i >= 0; i--) {
-                const txt = mensajesCliente[i].content.toLowerCase();
-                if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("prueba")) { opcionComprada = "Opción 1"; break; }
-                if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("38")) { opcionComprada = "Opción 2"; break; }
-                if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("59") || txt.includes("opción 4")) { opcionComprada = "Opción 3"; break; }
+            
+            // Recorremos los mensajes al revés (del más reciente al más viejo)
+            for (let i = historial.length - 1; i >= 0; i--) {
+                const txt = historial[i].content.toLowerCase();
+                
+                // Si el cliente o la IA mencionaron explícitamente una opción o precio
+                if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("59.99") || txt.includes("garantizado")) { 
+                    opcionComprada = "Opción 3 — Tratamiento Garantizado"; 
+                    break; 
+                }
+                if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("38.00") || txt.includes("crecimiento")) { 
+                    opcionComprada = "Opción 2 — Plan Crecimiento"; 
+                    break; 
+                }
+                if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("27.99") || txt.includes("inicial")) { 
+                    opcionComprada = "Opción 1 — Prueba Inicial"; 
+                    break; 
+                }
             }
 
-            // 3. Armamos el resumen limpio usando únicamente el texto seguro del log
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* ${opcionComprada}\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+            // 3. Armamos el resumen limpio con el plan detectado
+            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
 
-            // 4. Tu fetch nativo original (Inmune a fallos)
+            // 4. Tu fetch nativo original intacto
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             }).catch(e => console.log("Error al enviar reporte al admin:", e.message));
-        }
-      
+        }      
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
 
