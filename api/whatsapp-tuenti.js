@@ -452,7 +452,7 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
                 body: JSON.stringify({
                     model: "gpt-4o",
                     messages: [{ role: "system", content: masterPrompt }, ...mensajesFinales],
-                    temperature: 0.75, max_tokens: 1000
+                    temperature: 0.5, max_tokens: 1000
                 })
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
