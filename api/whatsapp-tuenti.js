@@ -400,7 +400,15 @@ FORMATO WHATSAPP (ESTILO COMERCIAL ELEGANTE)
 FORMATO DE RESPUESTA — OBLIGATORIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí"}
-Etapas válidas escritas exactamente así (RESPETA LA ORTOGRAFÍA): BIENVENIDA, ESCUCHA, SOLUCIÓN, DECISIÓN, CIERRE, CONFIRMADO, POSTVENTA
+⚠️ REGLA ESTRICTA DE ORTOGRAFÍA PARA LAS ETAPAS:
+El campo "etapa" debe coincidir EXACTAMENTE con una de estas opciones en mayúsculas. Queda prohibido alterar su escritura:
+- BIENVENIDA
+- ESCUCHA (Escríbelo siempre así, en mayúsculas y SIN tilde)
+- SOLUCIÓN
+- DECISIÓN
+- CIERRE
+- CONFIRMADO
+- POSTVENTA
 Solo comillas simples dentro del mensaje — nunca dobles.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
