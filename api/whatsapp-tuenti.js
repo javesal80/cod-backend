@@ -511,11 +511,11 @@ if (parsed) {
             const mensajesCliente = historial.filter(h => h.role === 'user');
             const ultimoMensajeDatos = mensajesCliente.length > 0 ? mensajesCliente[mensajesCliente.length - 1].content : "No especificado";
 
-            // 2. DETECTOR MAESTRO UNIVERSAL DE OPCIÓN (Lee directo del historial de Redis)
+            // 2. DETECTOR MAESTRO UNIVERSAL DE OPCIÓN (Lee directo de Redis)
             let opcionComprada = "Revisar en chat";
             let numeroOpcion = "";
 
-            // Primero: Identificamos qué número de opción eligió el cliente en sus últimos mensajes
+            // Identificamos qué número de opción eligió el cliente
             for (let i = mensajesCliente.length - 1; i >= 0; i--) {
                 const txt = mensajesCliente[i].content.toLowerCase();
                 if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("la 3") || txt.includes("la tercera")) { numeroOpcion = "opción 3"; break; }
@@ -523,22 +523,23 @@ if (parsed) {
                 if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("la 1") || txt.includes("la primera")) { numeroOpcion = "opción 1"; break; }
             }
 
-            // Segundo: Buscamos en los mensajes de la IA la línea exacta que contiene ese número de opción
+            // Buscamos en el historial de la IA la línea exacta
             if (numeroOpcion !== "") {
                 const mensajesIA = historial.filter(h => h.role === 'assistant');
+                let lineaEncontrada = false;
                 for (let i = mensajesIA.length - 1; i >= 0; i--) {
                     const textoIA = mensajesIA[i].content;
-                    // Buscamos la línea exacta que tiene la opción dentro del texto de la IA
                     const lineas = textoIA.split('\n');
                     const lineaOpcion = lineas.find(l => l.toLowerCase().includes(numeroOpcion));
                     if (lineaOpcion) {
-                        opcionComprada = lineaOpcion.trim().replace(/[*✅]/g, ''); // Limpiamos asteriscos o checks visuales
+                        opcionComprada = lineaOpcion.trim().replace(/[*✅]/g, '');
+                        lineaEncontrada = true;
                         break;
                     }
                 }
             }
 
-            // 3. Armamos el resumen limpio con los datos puros extraídos dinámicamente
+            // 3. Armamos el resumen limpio
             const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Catálogo General"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
 
             // 4. Tu fetch nativo original intacto
@@ -548,39 +549,7 @@ if (parsed) {
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             }).catch(e => console.log("Error al enviar reporte al admin:", e.message));
         }
-
-            // 3. Armamos el resumen limpio con los datos puros extraídos dinámicamente
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Catálogo General"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
-
-            // 4. Tu fetch nativo original intacto
-            await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
-            }).catch(e => console.log("Error al enviar reporte al admin:", e.message));
-        }
-
-
-
-
-
-
-
-
-
-
-
-          
-            // 3. Armamos el resumen limpio con el plan detectado
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Ver historial"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
-
-            // 4. Tu fetch nativo original intacto
-            await fetch(`${baseUrl}/message/sendText/${instName}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
-            }).catch(e => console.log("Error al enviar reporte al admin:", e.message));
-        }      
+      
         // ─── ENVÍO DE MENSAJES ────────────────────────────────────────
         if (textoFinal) {
 
