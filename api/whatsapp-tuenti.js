@@ -170,12 +170,7 @@ module.exports = async (req, res) => {
         }
     } catch (e) { console.error("Error catálogo:", e.message); }
 
-    // ─── DETECTAR PRODUCTO POR KEYWORDS ──────────────────────────────
-    const msgLower = clienteMsg.toLowerCase().trim();
-    const productoDetectadoPorKeyword = catalogo.find(p =>
-        p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
-    );
-
+// ─── EXTRAER AD ID DE META ADS ────────────────────────────────────
     const referral = data?.contextInfo?.externalAdReply 
         || data?.contextInfo 
         || data?.message?.referral 
@@ -187,15 +182,18 @@ module.exports = async (req, res) => {
         console.log(`[META ADS CAPTURADO] ID original: ${adIdCapturado}`);
     }
 
+    // ─── ANALIZAR KEYWORD DEL TEXTO ───────────────────────────────────
+    const msgLower = clienteMsg.toLowerCase().trim();
+    const productoDetectadoPorKeyword = catalogo.find(p =>
+        p.keywords?.some(k => msgLower.includes(k.toLowerCase()))
+    );
+
+    // ─── ASIGNACIÓN DE PRODUCTO POR PRIORIDAD ABSOLUTA ──────────────────
+    
     // Escenario A: No hay producto activo previo en Redis -> Se identifica por primera vez
     if (!productoActivo) {
-        if (productoDetectadoPorKeyword) {
-            productoActivo = productoDetectadoPorKeyword;
-            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-            if (!fotosEnviadas) fotosEnviadas = {};
-            console.log(`[PRIMER CONTACTO] Producto fijado por KEYWORD inicial: ${productoActivo.nombre}`);
-        } 
-        else if (adIdCapturado) {
+        // 1. PRIORIDAD 1: Identificación técnica por ID de Meta Ads
+        if (adIdCapturado) {
             const productoDesdeRef = catalogo.find(p =>
                 p.ad_ids && p.ad_ids.some(id => id.toString().trim() === adIdCapturado)
             );
@@ -203,11 +201,19 @@ module.exports = async (req, res) => {
                 productoActivo = productoDesdeRef;
                 await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
                 if (!fotosEnviadas) fotosEnviadas = {};
-                console.log(`[PRIMER CONTACTO] Producto fijado por ID de ADS inicial: ${productoActivo.nombre}`);
+                console.log(`[PRIMER CONTACTO] Producto fijado por ID de ADS (Prioridad 1): ${productoActivo.nombre}`);
             }
         }
+        
+        // 2. PRIORIDAD 2: Si no hubo match por Ads, buscamos por Keyword en el texto
+        if (!productoActivo && productoDetectadoPorKeyword) {
+            productoActivo = productoDetectadoPorKeyword;
+            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+            if (!fotosEnviadas) fotosEnviadas = {};
+            console.log(`[PRIMER CONTACTO] Producto fijado por KEYWORD (Plan de Respaldo): ${productoActivo.nombre}`);
+        }
     } 
-    // Escenario B: YA HAY UN PRODUCTO ACTIVO -> Se bloquea, SALVO que el cliente cambie de dolor hacia un producto diferente
+    // Escenario B: YA HAY UN PRODUCTO ACTIVO -> Se bloquea, SALVO que cambie de dolor
     else if (productoActivo && productoDetectadoPorKeyword) {
         if (productoDetectadoPorKeyword.nombre !== productoActivo.nombre) {
             console.log(`[CAMBIO DE RUMBO] Transición de producto detectada: ${productoActivo.nombre} -> ${productoDetectadoPorKeyword.nombre}`);
