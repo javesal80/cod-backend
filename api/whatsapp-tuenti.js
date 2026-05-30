@@ -294,7 +294,12 @@ Usa SOLO la información de este archivo. Complementa con conocimiento general s
 ${infoProducto}` : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SIN PRODUCTO IDENTIFICADO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Descubre qué busca el cliente con UNA pregunta abierta y natural.`}
+Descubre qué busca el cliente con UNA pregunta abierta y natural.
+Si las variables de producto, precio o archivo vienen vacías, o si el cliente llegó por un anuncio que el sistema no pudo registrar en negro, queda ESTRICTAMENTE PROHIBIDO listar productos aleatorios del catálogo general, inventar opciones de compra o poner códigos rotos como $[Precio]. 
+Tu única instrucción obligatoria es aplicar el Escenario B de control de formato: saluda con calidez y amabilidad, explica de forma natural que el sistema no cargó la imagen o el anuncio desde el que escribe, y pídele que te indique qué producto le interesa para poder asesorarle correctamente.
+Ejemplo de tono humano obligatorio:
+"¡Hola, muy buenas! Un gusto saludarle. 😊 Disculpe la molestia, pero nuestro sistema no pudo cargar el anuncio desde el que nos escribe en este momento. ¿Me podría ayudar indicándome en qué producto está interesado o qué necesidad le gustaría tratar? Así podré asesorarle de la mejor forma, disculpe."`}
+
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXTO ACTUAL
