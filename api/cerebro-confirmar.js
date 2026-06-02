@@ -13,7 +13,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando mensajes fragmentados con IA");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando mensajes fragmentados con desglose de productos");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -35,9 +35,8 @@ module.exports = async (request, response) => {
         const mañana = dias[d1.getDay()];
         const pasado  = dias[d2.getDay()];
 
-        // Formatear Lista de Productos
+        // Tomar los productos tal cual vienen del Sheet para que la IA los procese libremente
         let productosRaw = orderData["Productos"] || "";
-        let listaProductos = productosRaw.split(',').map(item => item.trim()).join(' - ');
 
         // ─── MASTER PROMPT DE COMPORTAMIENTO PARA LA IA ─────────────────────────
         const masterPrompt = `
@@ -46,16 +45,19 @@ Eres Fiorella, asesora de salud y bienestar de VitaeLAB. Tratas de USTED. Eres u
 CONTEXTO: El cliente acaba de comprar en la landing page. Debes armar el primer contacto para iniciar la CONFIRMACIÓN del pedido.
 
 ⚠️ REGLA CRUCIAL DE FORMATO (TRES MENSAJES SEPARADOS):
-Para evitar que el texto vaya amontonado, debes separar obligatoriamente tu respuesta en 3 bloques independientes usando el separador exacto "|||". Tu propiedad "mensaje" debe estructurarse exactamente con esta plantilla:
+Para evitar que el texto vaya amontonado, debes separar obligatoriamente tu respuesta en 3 bloques independientes usando el separador exacto "|||". 
+
+⚠️ REGLA CRUCIAL DE PRODUCTOS (DESGLOSE VERTICAL):
+En el segundo mensaje, la sección "📦 Producto:" NO debe ir amontonada en una sola línea. Debes listar CADA producto que el cliente compró en su propia línea de forma ordenada y desglosada con su respectivo precio (ejemplo si aplica: "1 KIDGROW CRECIMIENTO por $35"). Sigue esta plantilla exacta para estructurar tu propiedad "mensaje":
 
 Hola, muy buenas... Un gusto saludarle 😊
 |||
-Nos comunicamos para confirmar el siguiente pedido:
+Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:
 
 👤 *Cliente:* ${orderData["Cliente"] || ""}
 📍 *Ciudad:* ${orderData["Ciudad"] || ""}
 🏠 *Dirección:* ${orderData["Dirección"] || ""}
-📦 *Producto:* ${listaProductos}
+📦 *Producto:* [Aquí debes listar los productos de forma vertical uno por uno con sus cantidades y precios basados en la información recibida]
 |||
 ¿Nos confirma si todos sus datos están correctos para proceder? 😊
 
@@ -74,7 +76,7 @@ Usa solo comillas simples dentro de mensaje. Devuelve JSON puro sin bloques de c
 - Cliente: ${orderData["Cliente"]}
 - Ciudad: ${orderData["Ciudad"]}
 - Dirección: ${orderData["Dirección"]}
-- Producto: ${listaProductos}`;
+- Productos e Información Recibida: ${productosRaw}`;
 
         // ─── LLAMADA A LA IA CON FETCH DIRECTO ───────────────────────────────
         const openAiResp = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -110,7 +112,7 @@ Usa solo comillas simples dentro de mensaje. Devuelve JSON puro sin bloques de c
         }
 
         if (parsed && parsed.mensaje) {
-            // Dividimos el mensaje de la IA usando el separador definido '|||'
+            // Dividimos el mensaje usando el separador '|||'
             const bloquesMensajes = parsed.mensaje.split('|||');
 
             for (let bloque of bloquesMensajes) {
@@ -127,7 +129,7 @@ Usa solo comillas simples dentro de mensaje. Devuelve JSON puro sin bloques de c
                         body: JSON.stringify({ number: cleanPhone, text: textoMensaje })
                     });
                     
-                    // Pequeño delay de 1.5 segundos para que simule escritura natural y no lleguen golpeados
+                    // Delay para simulación de escritura humana
                     await new Promise(resolve => setTimeout(resolve, 1500));
                 }
             }
