@@ -13,7 +13,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Sincronizando IA Nativa de Evolution API");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga exacta sin intervención de OpenAI de ida");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -22,7 +22,7 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── FECHA ECUADOR ──────────────────────────────────────────────────
+        // ─── FECHA ECUADOR (Copiado exacto de tu webhook) ──────────────────
         const utc  = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
         const hoy  = new Date(utc + (3600000 * -5));
         const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -35,9 +35,12 @@ module.exports = async (request, response) => {
         const mañana = dias[d1.getDay()];
         const pasado  = dias[d2.getDay()];
 
-        // ─── MASTER PROMPT DE EVOLUTION API (Para mantener viva la IA interna) ───
+        // Procesar productos de forma vertical exacta tal cual vienen de la landing
+        let listaProductos = String(orderData["Productos"] || "").split(',').map(p => p.trim()).join('\n');
+
+        // ─── MASTER PROMPT PARA LA IA NATIVA DE EVOLUTION (Escucha de regreso) ───
         const masterPromptEvolution = `
-Eres Fiorella, asesora de salud y bienestar de VitaeLAB. Tratas de USTED. Eres una persona cálida y profesional. Usa emojis de forma natural (😊, 👋, 📦, 🚚).
+Eres Fiorella, asesora de salud y bienestar de VitaeLAB. Tratas de USTED. Eres una persona cálida y profesional. Usa emojis de forma natural (😊, 👋, 📦).
 
 Tu único objetivo es continuar la conversación que acabamos de iniciar con el cliente para CONFIRMAR su pedido de la landing page.
 
@@ -47,11 +50,10 @@ REGLAS DE INTERACCIÓN PARA LAS RESPUESTAS DEL CLIENTE:
 - En cuanto verifiques que el Nombre, Apellido, Ciudad, dirección con 2 calles y Referencia estén completos, dile exactamente: "Listo, procedemos al despacho del producto. Te estará llegando entre mañana *${mañana}* y el *${pasado}* en el horario de entrega de *9:00 am a 5:00 pm*. Nos comunicaremos contigo apenas esté cerca de la entrega. 😊 Muchas gracias por tu confianza, por favor esté atento a su número de contacto."
 - REGLA DE OBJECIÓN DE HORARIO: Si pone peros con el horario o trabaja, usa textualmente la alternativa de Servientrega: "Comprendo. Si se le dificulta el horario por tus ocupaciones, lo podemos entregar en otro lugar donde sí se encuentre en ese lapso de tiempo. O si desea, lo podemos dejar en una oficina de Servientrega cercana, en la cual usted lo podría retirar tranquilamente coordinando su tiempo y ocupaciones. ¿Cuál opción le resultaría más cómoda? 😊"
 
-Responde siempre en formato de texto natural para WhatsApp, limpio y directo.
+Responde siempre en formato de texto natural para WhatsApp, limpio, directo y sin inventar datos.
 `;
 
-        // ─── 1. ACTIVAR EL PROMPT INTERNO EN LA EVOLUTION API PARA ESTE CHAT ───
-        // (Esto deja a la IA de la instancia "despierta" y configurada para este cliente)
+        // ─── 1. CONFIGURAR E INICIAR LA IA NATIVA EN LA INSTANCIA DE EVOLUTION ───
         await fetch(`${EVOLUTION_URL}/chatIe/settings/${INSTANCE_DESPACHO}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
@@ -64,44 +66,22 @@ Responde siempre en formato de texto natural para WhatsApp, limpio y directo.
             })
         });
 
-        // ─── 2. CREAR EL MENSAJE INICIAL FRAGMENTADO (Igual que antes) ───
-        const promptInicial = `Genera un JSON con tres mensajes separados por "|||". Sigue esta plantilla exacta:\n\nHola, muy buenas... Un gusto saludarle 😊\n||\nNos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:* [Desglosa aquí verticalmente con cantidad y precio]\n||\n¿Nos confirma si todos sus datos están correctos para proceder? 😊`;
+        // ─── 2. ARMAR LOS TRES MENSAJES LITERALES DESDE EL CÓDIGO (CERO INVENTOS) ───
+        const mensajesAEnviar = [
+            `Hola, muy buenas... Un gusto saludarle 😊`,
+            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductos}`,
+            `¿Nos confirma si todos sus datos están correctos para proceder? 😊`
+        ];
 
-        const openAiResp = await fetch('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: "gpt-4o",
-                messages: [{ role: "system", content: "Devuelve solo un JSON con el formato: {\"mensaje\":\"\"}. Separa los 3 mensajes con |||" }, { role: "user", content: promptInicial }],
-                temperature: 0.3
-            })
-        });
-
-        const openAiJson = await openAiResp.json();
-        const respuestaRaw = openAiJson.choices?.[0]?.message?.content || "";
-
-        // ─── 3. PARSEAR Y ENVIAR LOS TRES MENSAJES ───────────────────────────
-        let parsed = null;
-        try {
-            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-            parsed = JSON.parse(clean);
-        } catch (e) { console.error("Error parseando"); }
-
-        if (parsed && parsed.mensaje) {
-            const bloquesMensajes = parsed.mensaje.split('|||');
-
-            for (let bloque of bloquesMensajes) {
-                let textoMensaje = bloque.trim().replace(/\\n\\n/g, '\n\n').replace(/\\n/g, '\n').replace(/\*\*(.*?)\*\*/g, '*$1*');
-
-                if (textoMensaje.length > 0) {
-                    await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
-                        body: JSON.stringify({ number: cleanPhone, text: textoMensaje })
-                    });
-                    await new Promise(resolve => setTimeout(resolve, 1500));
-                }
-            }
+        // ─── 3. ENVIAR LA RÁFAGA DIRECTA A WHATSAPP ───────────────────────────
+        for (const msgTexto of mensajesAEnviar) {
+            await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                body: JSON.stringify({ number: cleanPhone, text: msgTexto })
+            });
+            // Delay de 1.5 segundos entre mensajes para simular escritura humana
+            await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
         return response.status(200).json({ success: true });
