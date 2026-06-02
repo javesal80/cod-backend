@@ -13,7 +13,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga exacta con desglose vertical de productos y precios fijos");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Ejecutando control de calidad de datos interno con IA");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -22,22 +22,8 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── FECHA ECUADOR ──────────────────────────────────────────────────
-        const utc  = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
-        const hoy  = new Date(utc + (3600000 * -5));
-        const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
-        let d1 = new Date(hoy); d1.setDate(hoy.getDate() + 1);
-        if (d1.getDay() === 0) d1.setDate(d1.getDate() + 1);
-        if (d1.getDay() === 6) d1.setDate(d1.getDate() + 2);
-        let d2 = new Date(d1); d2.setDate(d1.getDate() + 1);
-        if (d2.getDay() === 0) d2.setDate(d2.getDate() + 1);
-        if (d2.getDay() === 6) d2.setDate(d2.getDate() + 2);
-        const mañana = dias[d1.getDay()];
-        const pasado  = dias[d2.getDay()];
-
-        // ─── PROCESAMIENTO NATIVO DE PRODUCTOS Y PRECIOS (Línea por línea) ───
+        // ─── PROCESAMIENTO NATIVO DE PRODUCTOS Y PRECIOS REVISADOS ───────────
         let productosRaw = String(orderData["Productos"] || "");
-        // Dividimos por comas en caso de que vengan varios productos juntos en la celda
         let itemsDeCompra = productosRaw.split(',');
         let lineasDesglosadas = [];
 
@@ -45,82 +31,115 @@ module.exports = async (request, response) => {
             let textoLimpio = item.trim();
             if (!textoLimpio) continue;
 
-            // Extraer la cantidad si viene en formato "1x" o "1 "
             let cantidadMatch = textoLimpio.match(/^(\d+)\s*x?|x\s*(\d+)/i);
             let cantidad = 1;
-            if (cantidadMatch) {
-                cantidad = parseInt(cantidadMatch[1] || cantidadMatch[2] || "1");
-            }
+            if (cantidadMatch) cantidad = parseInt(cantidadMatch[1] || cantidadMatch[2] || "1");
 
-            // Detectar el tipo de producto de forma limpia para asignar su precio real de catálogo
             let itemLower = textoLimpio.toLowerCase();
-            let nombreFormateado = textoLimpio;
-            let precioUnitario = 0;
+            let textoProductoLinea = textoLimpio;
 
+            // Lógica exacta para KIDGROW según cantidad
             if (itemLower.includes("kidgrow")) {
-                nombreFormateado = "KIDGROW CRECIMIENTO";
-                precioUnitario = 35.00;
-            } else if (itemLower.includes("colageno") || itemLower.includes("colágeno")) {
-                nombreFormateado = "COLAGENO";
-                precioUnitario = 14.99;
+                if (cantidad === 1) {
+                    textoProductoLinea = `1 un frasco de KIDGROW por $25,00`; // Modifica el $25 si manejas otro precio base por unidad
+                } else if (cantidad === 2) {
+                    textoProductoLinea = `2 frascos de KIDGROW por $35,00`;
+                } else {
+                    // Por si compran 3 o más, mantiene el desglose proporcional
+                    let totalMas = (17.5 * cantidad).toFixed(2).replace('.', ',');
+                    textoProductoLinea = `${cantidad} frascos de KIDGROW por $${totalMas}`;
+                }
+            } 
+            // Mapeo para otros productos de VitaeLAB
+            else if (itemLower.includes("colageno") || itemLower.includes("colágeno")) {
+                let totalColageno = (14.99 * cantidad).toFixed(2).replace('.', ',');
+                textoProductoLinea = `${cantidad} COLAGENO por $${totalColageno}`;
             } else if (itemLower.includes("oregano") || itemLower.includes("orégano")) {
-                nombreFormateado = "OIL OREGANO";
-                precioUnitario = 15.00; // O el precio exacto correspondiente a este producto
+                let totalOregano = (15.00 * cantidad).toFixed(2).replace('.', ',');
+                textoProductoLinea = `${cantidad} OIL OREGANO por $${totalOregano}`;
+            } else {
+                textoProductoLinea = `${cantidad} ${textoLimpio}`;
             }
 
-            // Calcular el precio total de esa línea basado en la cantidad
-            let precioTotalLinea = (precioUnitario * cantidad).toFixed(2).replace('.', ',');
-
-            // Añadimos el producto con el formato vertical exacto que me pediste
-            lineasDesglosadas.push(`   ${cantidad} ${nombreFormateado} por $${precioTotalLinea}`);
+            lineasDesglosadas.push(`    ${textoProductoLinea}`);
         }
 
-        // Unimos todas las líneas con un salto de página para el mensaje
         let listaProductosFinal = lineasDesglosadas.join('\n');
 
-        // ─── MASTER PROMPT PARA LA IA NATIVA DE EVOLUTION (Escucha de regreso) ───
-        const masterPromptEvolution = `
-Eres Fiorella, asesora de salud y bienestar de VitaeLAB. Tratas de USTED. Eres una persona cálida y profesional. Usa emojis de forma natural (😊, 👋, 📦).
+        // ─── MASTER PROMPT INTERNO PARA ANÁLISIS DE CALIDAD DE DIRECCIÓN ─────
+        const masterPromptAnalisis = `
+Eres un asistente de control de calidad interno para VitaeLAB. Tu tono debe ser muy cálido, educado y profesional. Tratas de USTED.
 
-Tu único objetivo es continuar la conversación que acabamos de iniciar con el cliente para CONFIRMAR su pedido de la landing page.
+Tu única misión es recibir los datos que ingresaron desde Google Sheets, verificar de forma inteligente si la dirección está completa y formatear el mensaje en 3 bloques separados por el delimitador "|||".
 
-REGLAS DE INTERACCIÓN PARA LAS RESPUESTAS DEL CLIENTE:
-- Debes evaluar que tengamos el Nombre y Apellido completo, Ciudad, y dirección con DOS CALLES PRINCIPALES y una REFERENCIA CLARA.
-- Si el cliente te responde que "Sí, está correcto" pero notas que los datos están incompletos (ej: dirección vaga que no tiene intersecciones ni referencias como 'sOLANADA'), debes pedirle amablemente: "Gracias, ayúdeme también con su dirección exacta con calles y referencia."
-- En cuanto verifiques que el Nombre, Apellido, Ciudad, dirección con 2 calles y Referencia estén completos, dile exactamente: "Listo, procedemos al despacho del producto. Te estará llegando entre mañana *${mañana}* y el *${pasado}* en el horario de entrega de *9:00 am a 5:00 pm*. Nos comunicaremos contigo apenas esté cerca de la entrega. 😊 Muchas gracias por tu confianza, por favor esté atento a su número de contacto."
-- REGLA DE OBJECIÓN DE HORARIO: Si pone peros con el horario o trabaja, usa textualmente la alternativa de Servientrega: "Comprendo. Si se le dificulta el horario por tus ocupaciones, lo podemos entregar en otro lugar donde sí se encuentre en ese lapso de tiempo. O si desea, lo podemos dejar en una oficina de Servientrega cercana, en la cual usted lo podría retirar tranquilamente coordinando su tiempo y ocupaciones. ¿Cuál opción le resultaría más cómoda? 😊"
+REGLAS DE EVALUACIÓN DE DIRECCIÓN:
+1. Evalúa si el Nombre tiene apellido, y si la Dirección cuenta con DOS CALLES PRINCIPALES (intersección clara con conectores como 'y', 'entre' o 'e') y una REFERENCIA clara para el motorizado.
+2. ESCENARIO DIRECCIÓN COMPLETA: Si consideras que la dirección ya cuenta con sus calles principales y referencia, no agregues ningún texto extra ni avisos en el bloque central. Déjalo limpio.
+3. ESCENARIO DIRECCIÓN INCOMPLETA: Si detectas que la dirección es muy vaga (ejemplo: solo dice 'sOLANADA' o le faltan por completo las calles o la referencia), muestra los datos tal cual llegaron, pero añade en una línea abajo con mucha calidez:
+"gracias por confirmar, pero ayudenos con esto que falta (por favor indíquenos sus calles principales y una referencia clara para que el motorizado pueda llegar sin problemas)."
 
-Responde siempre en formato de texto natural para WhatsApp, limpio, directo y sin inventar datos.
+ESTRUCTURA DE RESPUESTA OBLIGATORIA (Devuelve 3 bloques divididos exactamente por |||):
+Hola, ${orderData["Cliente"]} muy buenas... Un gusto saludarle 😊
+|||
+Nos comunicamos para confirmar el siguiente pedido:
+
+👤 *Cliente:* ${orderData["Cliente"] || ""}
+📍 *Ciudad:* ${orderData["Ciudad"] || ""}
+🏠 *Dirección:* ${orderData["Dirección"] || ""}
+📦 *Producto:*
+${listaProductosFinal}
+
+[Si la dirección está incompleta, inyecta AQUÍ la línea amigable pidiendo las calles/referencia. Si está completa, deja este espacio en blanco]
+|||
+¿Nos confirma si todos sus datos están correctos para proceder? 😊
+
+FORMATO DE SALIDA DE LA IA:
+Devuelve un JSON puro con la estructura: {"mensaje": "[Tus 3 bloques con los |||]"}. Usa comillas simples dentro del texto del mensaje. Sin bloques de código markdown.
 `;
 
-        // ─── 1. CONFIGURAR E INICIAR LA IA NATIVA EN LA INSTANCIA DE EVOLUTION ───
-        await fetch(`${EVOLUTION_URL}/chatIe/settings/${INSTANCE_DESPACHO}`, {
+        // ─── CONSULTA A OPENAI (Solo para analizar la dirección y armar la ráfaga) ───
+        const openAiResp = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+            headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                enabled: true,
-                botName: "Fiorella",
-                systemPrompt: masterPromptEvolution,
-                apiKey: OPENAI_API_KEY,
-                model: "gpt-4o"
+                model: "gpt-4o",
+                messages: [{ role: "system", content: masterPromptAnalisis }, { role: "user", content: `Analizar datos actuales del Sheet:\nCliente: ${orderData["Cliente"]}\nCiudad: ${orderData["Ciudad"]}\nDirección: ${orderData["Dirección"]}` }],
+                temperature: 0.1
             })
         });
 
-        // ─── 2. ARMAR LOS TRES MENSAJES LITERALES DESDE EL CÓDIGO (100% PRECISO) ───
-        const mensajesAEnviar = [
-            `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductosFinal}`,
-            `¿Nos confirma si todos sus datos están correctos para proceder? 😊`
-        ];
+        const openAiJson = await openAiResp.json();
+        const respuestaRaw = openAiJson.choices?.[0]?.message?.content || "";
+        console.log("[IA RAW VERIFICACIÓN]", respuestaRaw);
 
-        // ─── 3. ENVIAR LA RÁFAGA DIRECTA A WHATSAPP ───────────────────────────
-        for (const msgTexto of mensajesAEnviar) {
-            await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
-                body: JSON.stringify({ number: cleanPhone, text: msgTexto })
-            });
-            await new Promise(resolve => setTimeout(resolve, 1500));
+        // ─── PARSEAR Y ENVIAR LOS MENSAJES A WHATSAPP ───────────────────────
+        let parsed = null;
+        try {
+            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/
+```\s*/gi, "").trim();
+            const m = clean.match(/\{[\s\S]*\}/);
+            if (m) clean = m[0];
+            parsed = JSON.parse(clean);
+        } catch (e) { console.error("Error parseando el JSON verificado"); }
+
+        if (parsed && parsed.mensaje) {
+            const bloquesMensajes = parsed.mensaje.split('|||');
+
+            for (let bloque of bloquesMensajes) {
+                let textoMensaje = bloque.trim()
+                    .replace(/\\n\\n/g, '\n\n')
+                    .replace(/\\n/g, '\n')
+                    .replace(/\*\*(.*?)\*\*/g, '*$1*');
+
+                if (textoMensaje.length > 0) {
+                    await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                        body: JSON.stringify({ number: cleanPhone, text: textoMensaje })
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 1500));
+                }
+            }
         }
 
         return response.status(200).json({ success: true });
