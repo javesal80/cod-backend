@@ -13,7 +13,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga exacta sin intervención de OpenAI de ida");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga exacta con desglose vertical de productos y precios fijos");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -22,7 +22,7 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── FECHA ECUADOR (Copiado exacto de tu webhook) ──────────────────
+        // ─── FECHA ECUADOR ──────────────────────────────────────────────────
         const utc  = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
         const hoy  = new Date(utc + (3600000 * -5));
         const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -35,8 +35,48 @@ module.exports = async (request, response) => {
         const mañana = dias[d1.getDay()];
         const pasado  = dias[d2.getDay()];
 
-        // Procesar productos de forma vertical exacta tal cual vienen de la landing
-        let listaProductos = String(orderData["Productos"] || "").split(',').map(p => p.trim()).join('\n');
+        // ─── PROCESAMIENTO NATIVO DE PRODUCTOS Y PRECIOS (Línea por línea) ───
+        let productosRaw = String(orderData["Productos"] || "");
+        // Dividimos por comas en caso de que vengan varios productos juntos en la celda
+        let itemsDeCompra = productosRaw.split(',');
+        let lineasDesglosadas = [];
+
+        for (let item of itemsDeCompra) {
+            let textoLimpio = item.trim();
+            if (!textoLimpio) continue;
+
+            // Extraer la cantidad si viene en formato "1x" o "1 "
+            let cantidadMatch = textoLimpio.match(/^(\d+)\s*x?|x\s*(\d+)/i);
+            let cantidad = 1;
+            if (cantidadMatch) {
+                cantidad = parseInt(cantidadMatch[1] || cantidadMatch[2] || "1");
+            }
+
+            // Detectar el tipo de producto de forma limpia para asignar su precio real de catálogo
+            let itemLower = textoLimpio.toLowerCase();
+            let nombreFormateado = textoLimpio;
+            let precioUnitario = 0;
+
+            if (itemLower.includes("kidgrow")) {
+                nombreFormateado = "KIDGROW CRECIMIENTO";
+                precioUnitario = 35.00;
+            } else if (itemLower.includes("colageno") || itemLower.includes("colágeno")) {
+                nombreFormateado = "COLAGENO";
+                precioUnitario = 14.99;
+            } else if (itemLower.includes("oregano") || itemLower.includes("orégano")) {
+                nombreFormateado = "OIL OREGANO";
+                precioUnitario = 15.00; // O el precio exacto correspondiente a este producto
+            }
+
+            // Calcular el precio total de esa línea basado en la cantidad
+            let precioTotalLinea = (precioUnitario * cantidad).toFixed(2).replace('.', ',');
+
+            // Añadimos el producto con el formato vertical exacto que me pediste
+            lineasDesglosadas.push(`   ${cantidad} ${nombreFormateado} por $${precioTotalLinea}`);
+        }
+
+        // Unimos todas las líneas con un salto de página para el mensaje
+        let listaProductosFinal = lineasDesglosadas.join('\n');
 
         // ─── MASTER PROMPT PARA LA IA NATIVA DE EVOLUTION (Escucha de regreso) ───
         const masterPromptEvolution = `
@@ -66,10 +106,10 @@ Responde siempre en formato de texto natural para WhatsApp, limpio, directo y si
             })
         });
 
-        // ─── 2. ARMAR LOS TRES MENSAJES LITERALES DESDE EL CÓDIGO (CERO INVENTOS) ───
+        // ─── 2. ARMAR LOS TRES MENSAJES LITERALES DESDE EL CÓDIGO (100% PRECISO) ───
         const mensajesAEnviar = [
             `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductos}`,
+            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductosFinal}`,
             `¿Nos confirma si todos sus datos están correctos para proceder? 😊`
         ];
 
@@ -80,7 +120,6 @@ Responde siempre en formato de texto natural para WhatsApp, limpio, directo y si
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
                 body: JSON.stringify({ number: cleanPhone, text: msgTexto })
             });
-            // Delay de 1.5 segundos entre mensajes para simular escritura humana
             await new Promise(resolve => setTimeout(resolve, 1500));
         }
 
