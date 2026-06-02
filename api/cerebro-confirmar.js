@@ -1,4 +1,4 @@
-const { createClient } = require('@supabase/supabase-js');
+const { OpenAI } = require('openai'); // Usamos OpenAI como en tu webhook
 
 module.exports = async (request, response) => {
     // Manejo de CORS
@@ -10,28 +10,14 @@ module.exports = async (request, response) => {
 
     const { 
         EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN_DESPACHO, 
-        SUPABASE_URL, SUPABASE_KEY 
+        OPENAI_API_KEY 
     } = process.env;
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
     const orderData = request.body;
 
-        console.log("🚀 [CONFIRMAR] Datos recibidos");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Procesando confirmación con IA");
 
-        // --- LÓGICA DE FECHAS DINÁMICAS (ECUADOR) ---
-        const hoy = new Date();
-        
-        // Calcular Mañana
-        const manana = new Date(hoy);
-        manana.setDate(hoy.getDate() + 1);
-        const opcionesFecha = { weekday: 'long', day: 'numeric', month: 'long' };
-        const diaManana = manana.toLocaleDateString('es-EC', opcionesFecha); // Ej: "martes, 2 de junio"
-        
-        // Calcular Pasado Mañana
-        const pasadoManana = new Date(hoy);
-        pasadoManana.setDate(hoy.getDate() + 2);
-        const diaPasado = pasadoManana.toLocaleDateString('es-EC', opcionesFecha); // Ej: "miércoles, 3 de junio"
-    
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
 
@@ -39,62 +25,89 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // --- LÓGICA DE FECHAS DINÁMICAS PARA EL PROMPT ---
-        const hoy = new Date();
-        const opcionesFecha = { weekday: 'long', day: 'numeric', month: 'long' };
+        // ─── FECHA ECUADOR (Misma lógica exacta de tu webhook) ──────────────────
+        const utc = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
+        const hoy = new Date(utc + (3600000 * -5));
+        const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
         
-        const manana = new Date(hoy);
-        manana.setDate(hoy.getDate() + 1);
-        const diaManana = manana.toLocaleDateString('es-EC', opcionesFecha);
+        let d1 = new Date(hoy); d1.setDate(hoy.getDate() + 1);
+        if (d1.getDay() === 0) d1.setDate(d1.getDate() + 1);
+        if (d1.getDay() === 6) d1.setDate(d1.getDate() + 2);
         
-        const pasadoManana = new Date(hoy);
-        pasadoManana.setDate(hoy.getDate() + 2);
-        const diaPasado = pasadoManana.toLocaleDateString('es-EC', opcionesFecha);
+        let d2 = new Date(d1); d2.setDate(d1.getDate() + 1);
+        if (d2.getDay() === 0) d2.setDate(d2.getDate() + 1);
+        if (d2.getDay() === 6) d2.setDate(d2.getDate() + 2);
+        
+        const mañana = dias[d1.getDay()];
+        const pasado = dias[d2.getDay()];
 
-        
-       // Guardar en Supabase con instrucciones de flujo e instrucciones de calidez comerciales
-        await supabase.from('memoria_clientes').upsert({
-            telefono: cleanPhone,
-            nombre: orderData["Cliente"],
-            datos_excel: orderData,
-            estado_pedido: 'esperando_confirmacion',
-            ultima_interaccion: new Date(),
-            // Guardamos el Prompt de comportamiento comercial para que el bot de WhatsApp lo lea
-            instrucciones_bot: {
-                tono: "Cálido, servicial, educado y extremadamente profesional. Saluda con entusiasmo y usa emojis de forma sutil (😊, 👋, 📦, 🚚). Evita sonar robótico.",
-                fechas_entrega: `Entre mañana ${diaManana} y el ${diaPasado}.`,
-                horario_entrega: "9:00 am a 5:00 pm",
-                reglas_flujo: [
-                    "1. El cliente debe validar su Nombre, Apellido, Ciudad, y Dirección.",
-                    "2. SIEMPRE verifica que la dirección tenga 2 calles principales y una referencia clara (color de casa o negocio cercano). Si falta algo de esto, pídelo amablemente antes de confirmar el despacho.",
-                    `3. Cuando los datos estén 100% completos, responde exactamente: 'Listo, procedemos al despacho del producto. Te estará llegando entre mañana ${diaManana} y el ${diaPasado} en el horario de entrega de 9:00 am a 5:00 pm. Nos comunicaremos contigo apenas esté cerca de la entrega.'`,
-                    "4. OBJECIÓN DE HORARIO: Si el cliente dice que no pasa en casa en ese horario o trabaja, respóndele textualmente: 'Comprendo. Si se le dificulta el horario por tus ocupaciones, lo podemos entregar en otro lugar donde sí se encuentre en ese lapso de tiempo. O si desea, lo podemos dejar en una oficina de Servientrega cercana, en la cual usted lo podría retirar tranquilamente coordinando su tiempo y ocupaciones.'"
-                ]
-            }
-        });
-        
-
-       // Formatear Lista de Productos limpia (Separados por guion)
+        // Formatear Lista de Productos
         let productosRaw = orderData["Productos"] || "";
         let listaProductos = productosRaw.split(',').map(item => item.trim()).join(' - ');
 
-        // ARMAR MENSAJE ÚNICO CON LÓGICA DE NEGOCIO
-        const mensajeUnico = `¡Hola! ${orderData["Cliente"]}. ¡Qué gusto saludarle! 👋`,
-                             `Nos comunicamos por confirmar el pedido de *${listaProductos}*.\n\n` +
-                             `Por favor, ayúdanos *verificando* si sus datos son correctos:\n\n` +
-                             `👤 *Nombre:* ${orderData["Cliente"]}\n` +
-                             `📍 *Ciudad:* ${orderData["Ciudad"]}\n` +
-                             `🏠 *Dirección:* ${orderData["Dirección"]}\n` +
-                             `📌 *Referencia:* _(Respóndenos indicando una calle principal, color de casa o negocio cercano)_\n\n` +
-                            `¿Nos confirma si todo está correcto para proceder al despacho por fvor? 😊`;
+        // ─── MASTER PROMPT PARA EL CEREBRO DE CONFIRMACIÓN ─────────────────────
+        const masterPromptConfirmar = `
+Eres Fiorella, asesora de servicio al cliente de VitaeLAB. Tu tono debe ser súper cálido, sumamente educado, servicial y profesional. Usa emojis (😊, 👋, 📦, 🚚). Tratamos de USTED.
 
-       // Enviar un único mensaje de WhatsApp
-        await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
-            body: JSON.stringify({ number: cleanPhone, text: mensajeInicial })
+A diferencia del canal de ventas, AQUÍ EL CLIENTE YA COMPRÓ. Ya dejó sus datos en la landing page y están registrados en nuestra hoja de Google Sheets. Tu única misión en este mensaje inicial es revisar esos datos y armar el mensaje de confirmación correcto.
+
+REGLAS OBLIGATORIAS DE EVALUACIÓN:
+1. Revisa si el cliente proporcionó su Nombre y Apellido completo, Ciudad, y una Dirección que incluya obligatoriamente DOS CALLES PRINCIPALES (una intersección clara con la letra 'y' o 'entre') y una REFERENCIA de su casa o negocio.
+
+2. ESCENARIO DATOS CORRECTOS: Si consideras que la dirección está completa y tiene las dos calles con su referencia, confirma los datos de manera muy amable y dile EXACTAMENTE este speech de despacho:
+"Listo, procedemos al despacho del producto. Te estará llegando entre mañana *${mañana}* y el *${pasado}* en el horario de entrega de *9:00 am a 5:00 pm*. Nos comunicaremos contigo apenas esté cerca de la entrega. 😊 Muchas gracias por tu confianza, por favor dale las gracias y dile que se procederá con el despacho del pedido y que esté atento a su número de contacto."
+
+3. ESCENARIO DATOS INCOMPLETOS: Si notas que la dirección es vaga (solo puso una calle, no hay intersección clara 'y' o 'entre', o no dejó ninguna referencia), debes saludar amablemente por su pedido de *${listaProductos}*, mostrarle los datos que dejó y pedirle de favor que te ayude indicándote las 2 calles principales y una referencia clara para que el motorizado pueda llegar sin problemas.
+
+⚠️ REGLA DE HORARIO/SERVIENTREGA: Deja siempre claro el horario de 9:00 am a 5:00 pm. Si de forma preventiva quieres ofrecer la alternativa por si trabaja, o si el contexto lo requiere, recuerda que si no puede en ese horario le podemos entregar en una oficina de Servientrega cercana para que lo retire tranquilamente coordinando su tiempo.
+
+FORMATO DE RESPUESTA — OBLIGATORIO (Igual al Webhook):
+{"etapa":"CONFIRMADO","mensaje":"Tu mensaje aquí"}
+Solo devuelve JSON puro, sin introducciones ni bloques de código markdown.
+`;
+
+        const userContent = `Datos del cliente recuperados del Google Sheet:
+- Cliente: ${orderData["Cliente"]}
+- Ciudad: ${orderData["Ciudad"]}
+- Dirección: ${orderData["Dirección"]}
+- Producto pedido: ${listaProductos}`;
+
+        // ─── LLAMADA A LA IA ───────────────────────────────────────────────
+        const completion = await openai.chat.completions.create({
+            model: "gpt-4o", // Usa gpt-4o igual que tu webhook en modo openai
+            messages: [
+                { role: "system", content: masterPromptConfirmar },
+                { role: "user", content: userContent }
+            ],
+            temperature: 0.5
         });
 
+        const respuestaRaw = completion.choices[0].message.content || "";
+        console.log("[IA RAW CONFIRMAR]", respuestaRaw);
+
+        // ─── PARSEAR E INYECTAR MENSAJE (Espejo de tu Webhook) ──────────────
+        let parsed = null;
+        try {
+            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+            parsed = JSON.parse(clean);
+        } catch (e) {
+            console.error("Error parseando JSON de la IA");
+        }
+
+        if (parsed && parsed.mensaje) {
+            const textoFinal = parsed.mensaje;
+
+            // Enviar el mensaje único generado de forma inteligente por la Evolution API
+            await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
+                body: JSON.stringify({ number: cleanPhone, text: textoFinal })
+            });
+        }
+
         return response.status(200).json({ success: true });
+    } catch (error) {
+        console.error("Error general Cerebro:", error.message);
+        return response.status(200).json({ error: error.message });
     }
 };
