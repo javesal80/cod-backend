@@ -12,7 +12,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Copiando y enviando datos puros de Google Sheets (100% Obediente)");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga limpia con corrección de nombre y datos directos");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -21,21 +21,26 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── EXTRAER PRODUCTOS EXACTOS DE GOOGLE SHEETS ───────────────────
-        // Separamos por comas y dejamos cada producto con su precio tal cual viene en tu celda
+        // ─── 1. CORREGIR NOMBRE REPETIDO ─────────────────────────────────────
+        // Tomamos el valor de la celda Cliente y nos quedamos solo con el primer bloque de texto antes del espacio
+        let nombreRaw = String(orderData["Cliente"] || "").trim();
+        let primerNombre = nombreRaw.split(' ')[0] || nombreRaw;
+
+        // ─── 2. LISTAR PRODUCTOS TAL CUAL VIENEN (CON SU VALOR INCLUIDO) ──────
+        // Separamos por comas si vienen varios productos en la misma celda
         let productosRaw = String(orderData["Productos"] || "");
         let listaProductosFinal = productosRaw.split(',')
             .map(item => `    ${item.trim()}`)
             .join('\n');
 
-        // ─── ARMAR LOS TRES MENSAJES LITERALES ─────────────────────────────
+        // ─── 3. ARMAR LOS TRES MENSAJES LITERALES ─────────────────────────────
         const mensajesAEnviar = [
             `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${orderData["Cliente"] || ""}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductosFinal}`,
+            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${primerNombre}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductosFinal}`,
             `¿Nos confirma si todos sus datos están correctos para proceder? 😊`
         ];
 
-        // ─── ENVIAR LA RÁFAGA DIRECTA A WHATSAPP ───────────────────────────
+        // ─── 4. ENVIAR LA RÁFAGA DIRECTA A WHATSAPP ───────────────────────────
         for (const msgTexto of mensajesAEnviar) {
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
