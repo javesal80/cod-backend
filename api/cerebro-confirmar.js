@@ -41,11 +41,10 @@ module.exports = async (request, response) => {
             // Lógica exacta para KIDGROW según cantidad
             if (itemLower.includes("kidgrow")) {
                 if (cantidad === 1) {
-                    textoProductoLinea = `1 un frasco de KIDGROW por $25,00`; // Modifica el $25 si manejas otro precio base por unidad
+                    textoProductoLinea = `1 un frasco de KIDGROW por $25,00`;
                 } else if (cantidad === 2) {
                     textoProductoLinea = `2 frascos de KIDGROW por $35,00`;
                 } else {
-                    // Por si compran 3 o más, mantiene el desglose proporcional
                     let totalMas = (17.5 * cantidad).toFixed(2).replace('.', ',');
                     textoProductoLinea = `${cantidad} frascos de KIDGROW por $${totalMas}`;
                 }
@@ -79,9 +78,9 @@ REGLAS DE EVALUACIÓN DE DIRECCIÓN:
 "gracias por confirmar, pero ayudenos con esto que falta (por favor indíquenos sus calles principales y una referencia clara para que el motorizado pueda llegar sin problemas)."
 
 ESTRUCTURA DE RESPUESTA OBLIGATORIA (Devuelve 3 bloques divididos exactamente por |||):
-Hola, ${orderData["Cliente"]} muy buenas... Un gusto saludarle 😊
+Hola, muy buenas... Un gusto saludarle 😊
 |||
-Nos comunicamos para confirmar el siguiente pedido:
+Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:
 
 👤 *Cliente:* ${orderData["Cliente"] || ""}
 📍 *Ciudad:* ${orderData["Ciudad"] || ""}
@@ -115,12 +114,14 @@ Devuelve un JSON puro con la estructura: {"mensaje": "[Tus 3 bloques con los |||
         // ─── PARSEAR Y ENVIAR LOS MENSAJES A WHATSAPP ───────────────────────
         let parsed = null;
         try {
-            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/
-```\s*/gi, "").trim();
+            // Línea corregida en un solo bloque continuo para evitar el SyntaxError
+            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
             const m = clean.match(/\{[\s\S]*\}/);
             if (m) clean = m[0];
             parsed = JSON.parse(clean);
-        } catch (e) { console.error("Error parseando el JSON verificado"); }
+        } catch (e) { 
+            console.error("Error parseando el JSON verificado"); 
+        }
 
         if (parsed && parsed.mensaje) {
             const bloquesMensajes = parsed.mensaje.split('|||');
