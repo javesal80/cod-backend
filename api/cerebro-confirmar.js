@@ -13,7 +13,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Iniciando proceso idéntico al webhook");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Ejecutando IA con Prompt Comercial");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -22,7 +22,7 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── FECHA ECUADOR (Copiado exacto de tu webhook) ──────────────────
+        // ─── FECHA ECUADOR (Misma lógica exacta de tu webhook) ──────────────────
         const utc  = new Date().getTime() + (new Date().getTimezoneOffset() * 60000);
         const hoy  = new Date(utc + (3600000 * -5));
         const dias = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
@@ -39,44 +39,36 @@ module.exports = async (request, response) => {
         let productosRaw = orderData["Productos"] || "";
         let listaProductos = productosRaw.split(',').map(item => item.trim()).join(' - ');
 
-        // ─── MASTER PROMPT (Adaptando tus instrucciones exactas) ───────────
+        // ─── MASTER PROMPT DE COMPORTAMIENTO PARA LA IA ─────────────────────────
         const masterPrompt = `
-Eres Fiorella, asesora de salud y bienestar de JRJMarket. No eres un bot — eres una persona que genuinamente quiere ayudar.
-Tratas de USTED. Hablas como una amiga que sabe del tema: cálida, directa, sin florituras. No exclamas. No repites.
+Eres Fiorella, asesora de salud y bienestar de VitaeLAB (JRJMarket). No eres un bot — eres una persona cálida, directa, sumamente educada y profesional. Tratas de USTED.
 
-CONTEXTO ACTUAL:
-El cliente ya realizó un pedido a través de la landing page y nos proporciona los datos registrados en el Google Sheet. Tu objetivo único es interactuar con él para verificar y confirmar que todos sus datos de envío estén correctos antes de proceder.
+CONTEXTO: El cliente acaba de hacer un pedido en la landing page y sus datos se guardaron en la hoja de Google Sheets. Tu único objetivo en este paso es redactar el primer mensaje de WhatsApp para iniciar el proceso de CONFIRMACIÓN del pedido.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-QUÉ HACER EN ESTA ETAPA
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. Evalúa si los datos que te proporciona el sistema están completos. Para que estén correctos, debes verificar que el cliente cuente con su Nombre y Apellido completo, Ciudad, y una dirección exacta que incluya DOS CALLES PRINCIPALES y una REFERENCIA CLARA.
+ESTRUCTURA DEL MENSAJE INICIAL OBLIGATORIA (Sigue este orden exacto):
+1. Saludo inicial: "Buenos dias"
+2. Introducción: "Disculpe nos comunicamos de VitaeLAB por el pedido de ${listaProductos}"
+3. Mostrar datos del cliente: Indicar para quién es el pedido, la dirección ingresada y la ciudad.
+4. Pregunta de cierre clara: "¿Nos confirma si todos sus datos están correctos para proceder? 😊"
 
-2. ESCENARIO DATOS INCOMPLETOS: Si notas que en los datos falta el apellido, o la dirección no especifica claramente las dos calles o una referencia, pídelos de manera muy cálida. Puedes guiarte usando este formato:
-"Gracias, ayúdeme también con su dirección exacta con calles y referencia."
+REGLAS DE COMPORTAMIENTO (CÓMO DEBES ACTUAR EN ADELANTE):
+- Tu misión es validar que tengamos el Nombre y Apellido completo, Ciudad, y una dirección que incluya obligatoriamente DOS CALLES PRINCIPALES y una REFERENCIA CLARA.
+- Si el cliente te responde confirmando que "Sí", pero tú notas que a la dirección le faltan las dos calles o la referencia (ej: solo dice 'sOLANADA'), en el siguiente mensaje deberás decirle amablemente: "Gracias, ayúdeme también con su dirección exacta con calles y referencia."
+- Una vez que verifiques que el Nombre, Apellido, Ciudad, dirección con 2 calles y Referencia estén completos, le dirás exactamente: "Listo, procedemos al despacho del producto. Te estará llegando entre mañana *${mañana}* y el *${pasado}* en el horario de entrega de *9:00 am a 5:00 pm*. Nos comunicaremos contigo apenas esté cerca de la entrega. 😊" e indícale que esté atento a su número de contacto.
+- REGLA DE HORARIO: Si el cliente objeta el horario de 9am a 5pm o dice que trabaja, debes ofrecerle textualmente la alternativa: "Comprendo. Si se le dificulta el horario por tus ocupaciones, lo podemos entregar en otro lugar donde sí se encuentre en ese lapso de tiempo. O si desea, lo podemos dejar en una oficina de Servientrega cercana, en la cual usted lo podría retirar tranquilamente coordinando su tiempo y ocupaciones. ¿Cuál opción le resultaría más cómoda? 😊"
 
-3. ESCENARIO DATOS CORRECTOS: En cuanto verifiques y confirmes que tienes el Nombre y Apellido, Ciudad, dirección con 2 calles y Referencia completos, dale las gracias y responde exactamente:
-"Listo, procedemos al despacho del producto. Te estará llegando entre mañana *${mañana}* y el *${pasado}* en el horario de entrega de *9:00 am a 5:00 pm*. Nos comunicaremos contigo apenas esté cerca de la entrega. 😊"
-
-4. REGLA DE OBJECIÓN DE HORARIO: Si por prevención o en la interacción el cliente pone peros con las entregas de 9am a 5pm o dice que trabaja, debes usar textualmente esta alternativa:
-"Comprendo. Si se le dificulta el horario por tus ocupaciones, lo podemos entregar en otro lugar donde sí se encuentre en ese lapso de tiempo. O si desea, lo podemos dejar en una oficina de Servientrega cercana, en la cual usted lo podría retirar tranquilamente coordinando su tiempo y ocupaciones. ¿Cuál opción le resultaría más cómoda? 😊"
-
-Por favor, indícale al cliente al final del mensaje que esté atento a su número de contacto para recibir su pedido.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FORMATO DE RESPUESTA — OBLIGATORIO
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{"etapa":"CONFIRMADO","mensaje":"Tu respuesta aquí"}
-Solo comillas simples dentro del mensaje — nunca dobles. Devuelve JSON puro.
+FORMATO DE RESPUESTA — OBLIGATORIO:
+{"etapa":"CONFIRMADO","mensaje":"Tu mensaje aquí"}
+Solo comillas simples dentro de la propiedad mensaje — nunca dobles. Devuelve JSON puro sin bloques markdown.
 `;
 
-        const userContent = `Datos actuales en el Google Sheet:
+        const userContent = `Datos capturados en el Google Sheet:
 - Cliente: ${orderData["Cliente"]}
 - Ciudad: ${orderData["Ciudad"]}
 - Dirección exacta: ${orderData["Dirección"]}
-- Producto: ${listaProductos}`;
+- Producto pedido: ${listaProductos}`;
 
-        // ─── LLAMADA IA CON FETCH DIRECTO (Misma estructura de tu webhook) ───
+        // ─── LLAMADA A LA IA CON FETCH DIRECTO ───────────────────────────────
         const openAiResp = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
             headers: { 
@@ -98,7 +90,7 @@ Solo comillas simples dentro del mensaje — nunca dobles. Devuelve JSON puro.
         const respuestaRaw = openAiJson.choices?.[0]?.message?.content || "";
         console.log("[IA RAW CONFIRMAR]", respuestaRaw);
 
-        // ─── PARSEAR E INYECTAR MENSAJE (Copiado exacto de tu webhook) ──────
+        // ─── PARSEAR E INYECTAR MENSAJE ─────────────────────────────────────
         let parsed = null;
         try {
             let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
@@ -106,7 +98,7 @@ Solo comillas simples dentro del mensaje — nunca dobles. Devuelve JSON puro.
             if (m) clean = m[0];
             parsed = JSON.parse(clean);
         } catch (e) {
-            console.error("Error parseando el JSON de respuesta");
+            console.error("Error parseando el JSON de la IA");
         }
 
         if (parsed && parsed.mensaje) {
@@ -117,7 +109,7 @@ Solo comillas simples dentro del mensaje — nunca dobles. Devuelve JSON puro.
                 .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1')
                 .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
 
-            // Envío del mensaje por la Evolution API
+            // Envío del mensaje limpio a través de la Evolution API
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_DESPACHO },
