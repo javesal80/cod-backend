@@ -50,18 +50,27 @@ export default async function handler(request, response) {
     const orderId = data.draft_order?.id;
     console.log("✅ [DEBUG SHEETS] Shopify OK, ID:", orderId);
 
-  // 3. Preparar Datos para el Sheet (100% GENÉRICO - FUNCIONA PARA 1, 2 O MÁS PRODUCTOS)
-    const draftOrder = data.draft_order; // Extraemos el borrador creado
+  // 3. Preparar Datos para el Sheet (CORRECCIÓN DE FORMATO DE PRECIO XX,YY)
+    const draftOrder = data.draft_order; 
     
     const productosFormateados = draftOrder.line_items.map(item => {
       const cantidad = item.quantity;
       const nombreProducto = item.title.toUpperCase(); 
-      // Multiplica el precio real por la cantidad de ese producto específico
-      const precioTotal = parseFloat(item.price * cantidad).toFixed(2).replace('.', ',');
       
-      // Retorna el formato automático por cada artículo individual en el borrador
+      // Convertimos el precio a número flotante. Si Shopify te lo manda en centavos (ej: 1499), lo dividimos para 100.
+      let precioBase = parseFloat(item.price);
+      if (precioBase > 500) { 
+        // Salvaguarda: si el precio unitario viene como 1499 en lugar de 14.99, lo corrige
+        precioBase = precioBase / 100;
+      }
+      
+      // Multiplicamos por la cantidad, forzamos 2 decimales y cambiamos el punto por la coma
+      const precioTotal = (precioBase * cantidad).toFixed(2).replace('.', ',');
+      
+      // Retorna el formato automático por cada artículo individual
       return `${cantidad}x ${nombreProducto} por $${precioTotal}`;
     }).join(", ");
+    
 
     const sheetData = {
       "ID Pedido": String(orderId), 
