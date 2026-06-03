@@ -81,6 +81,7 @@ export default async function handler(request, response) {
       "Ciudad": orderData.shipping_address.city,
       "Productos": productosFormateados, // <-- Aquí va la lista de todos los productos con sus respectivos precios
       "Estado": "Pendiente"
+      "Total": parseFloat(draftOrder.total_price).toFixed(2).replace('.', ',') // <--- AGREGA ESTA LÍNEA
     };
 
     console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
