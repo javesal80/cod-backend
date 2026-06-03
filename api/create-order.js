@@ -50,16 +50,27 @@ export default async function handler(request, response) {
     const orderId = data.draft_order?.id;
     console.log("✅ [DEBUG SHEETS] Shopify OK, ID:", orderId);
 
-    // 3. Preparar Datos para el Sheet
-    const productos = orderData.line_items.map(i => `${i.quantity}x ${i.title}`).join(", ");
+  // 3. Preparar Datos para el Sheet (100% GENÉRICO - FUNCIONA PARA 1, 2 O MÁS PRODUCTOS)
+    const draftOrder = data.draft_order; // Extraemos el borrador creado
+    
+    const productosFormateados = draftOrder.line_items.map(item => {
+      const cantidad = item.quantity;
+      const nombreProducto = item.title.toUpperCase(); 
+      // Multiplica el precio real por la cantidad de ese producto específico
+      const precioTotal = parseFloat(item.price * cantidad).toFixed(2).replace('.', ',');
+      
+      // Retorna el formato automático por cada artículo individual en el borrador
+      return `${cantidad}x ${nombreProducto} por $${precioTotal}`;
+    }).join(", ");
+
     const sheetData = {
-      "ID Pedido": String(orderId), // Convertimos a string por seguridad
+      "ID Pedido": String(orderId), 
       "Fecha": new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" }),
       "Cliente": `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`,
       "Teléfono": String(orderData.shipping_address.phone),
       "Dirección": orderData.shipping_address.address1,
       "Ciudad": orderData.shipping_address.city,
-      "Productos": productos,
+      "Productos": productosFormateados, // <-- Aquí va la lista de todos los productos con sus respectivos precios
       "Estado": "Pendiente"
     };
 
