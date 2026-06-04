@@ -21,26 +21,36 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // ─── 1. CORREGIR NOMBRE REPETIDO ─────────────────────────────────────
-        // Tomamos el valor de la celda Cliente y nos quedamos solo con el primer bloque de texto antes del espacio
+        // 1. Limpiar nombre duplicado (Solo primera palabra)
         let nombreRaw = String(orderData["Cliente"] || "").trim();
         let primerNombre = nombreRaw.split(' ')[0] || nombreRaw;
 
-        // ─── 2. LISTAR PRODUCTOS TAL CUAL VIENEN (CON SU VALOR INCLUIDO) ──────
-        // Separamos por comas si vienen varios productos en la misma celda
+        // 2. Formatear la lista de productos de forma vertical
         let productosRaw = String(orderData["Productos"] || "");
         let listaProductosFinal = productosRaw.split(',')
-            .map(item => `    ${item.trim()}`)
+            .map(item => `▪️ ${item.trim()}`)
             .join('\n');
 
-        // ─── 3. ARMAR LOS TRES MENSAJES LITERALES ─────────────────────────────
+        // Extraer el total general enviado desde el Sheet
+        let totalGeneral = orderData["Total"] || "";
+        let textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* $${totalGeneral}` : "";
+
+        // 3. Estructura exacta de los 4 mensajes independientes que me pediste
         const mensajesAEnviar = [
+            // Mensaje 1: El saludo
             `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos de *VitaeLAB* para confirmar el siguiente pedido:\n\n👤 *Cliente:* ${primerNombre}\n📍 *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n📦 *Producto:*\n${listaProductosFinal}`,
-            `¿Nos confirma si todos sus datos están correctos para proceder? 😊`
+            
+            // Mensaje 2: Confirmación de productos y valores + Total general
+            `Nos comunicamos para confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
+            
+            // Mensaje 3: Datos de entrega del cliente
+            `📍 *Para:* ${primerNombre}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`,
+            
+            // Mensaje 4: Pregunta final de cierre
+            `¿Es correcto?`
         ];
 
-        // ─── 4. ENVIAR LA RÁFAGA DIRECTA A WHATSAPP ───────────────────────────
+        // 4. Enviar la ráfaga con espacio de 1.5 segundos entre cada mensaje
         for (const msgTexto of mensajesAEnviar) {
             await fetch(`${EVOLUTION_URL}/message/sendText/${INSTANCE_DESPACHO}`, {
                 method: 'POST',
@@ -55,4 +65,3 @@ module.exports = async (request, response) => {
         console.error("Error general Cerebro:", error.message);
         return response.status(200).json({ error: error.message });
     }
-};
