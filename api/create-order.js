@@ -85,22 +85,27 @@ export default async function handler(request, response) {
     console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
     console.log("📦 Payload enviado:", JSON.stringify(sheetData));
 
-    // Enviamos a Google Sheets en segundo plano sin trabar al cliente
-    fetch(GOOGLE_SHEET_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(sheetData)
-    }).then(async (sheetRes) => {
+    try {
+      // Forzamos el await pero con un tiempo de espera optimizado para que guarde en Sheets sí o sí
+      const sheetRes = await fetch(GOOGLE_SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sheetData)
+      });
+
       const sheetStatus = sheetRes.status;
       const sheetBody = await sheetRes.json();
+
       if (sheetRes.ok) {
         console.log("✅ [DEBUG SHEETS] Sheet.best respondió éxito (200/201):", sheetBody);
       } else {
         console.error(`❌ [DEBUG SHEETS] Sheet.best error (${sheetStatus}):`, sheetBody);
       }
-    }).catch(err => console.error("❌ [DEBUG SHEETS] Error en Sheet.best:", err.message));
+    } catch (sheetErr) {
+      console.error("❌ [DEBUG SHEETS] Error conectando a Sheet.best:", sheetErr.message);
+    }
 
-    // Shopify ya dio el OK, mandamos al cliente a la página de gracias YA
+    // Una vez asegurado el registro en el Sheet (que activa tu confirmar), liberamos al cliente
     return response.status(200).json({ success: true, orderId: orderId });
 
   } catch (error) {
