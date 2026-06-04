@@ -50,14 +50,22 @@ module.exports = async function handler(request, response) {
     const orderId = draftOrder?.id;
     console.log("✅ Shopify OK, ID:", orderId);
 
-    // 3. Formatear datos esenciales para pasárselos al Script 2
+   // 3. Cálculo matemático manual adaptado a COD (Suma directa sin multiplicar)
+    let sumaTotalBorrador = 0;
+
     const productos = draftOrder.line_items.map(i => {
-      return `${i.quantity}x ${i.title.toUpperCase()} ($${(parseFloat(i.price || 0) * i.quantity).toFixed(2).replace('.', ',')})`;
+      // Tomamos el precio fijo de la línea exactamente como viene de Shopify
+      const precioFijo = parseFloat(i.price || 0); 
+      
+      // Lo sumamos a la alcancía sin multiplicar por cantidad
+      sumaTotalBorrador += precioFijo; 
+      
+      // Dejamos el texto visual intacto para el mensaje
+      return `${i.quantity}x ${i.title.toUpperCase()} ($${precioFijo.toFixed(2).replace('.', ',')})`;
     }).join(" y ");
 
-    const totalBorrador = draftOrder?.total_price 
-      ? parseFloat(draftOrder.total_price).toFixed(2).replace('.', ',') 
-      : "";
+    // Guardamos el total forzado, asegurando 2 decimales
+    const totalBorrador = sumaTotalBorrador.toFixed(2).replace('.', ',');
 
  // 4. DISPARAR SCRIPT 2 EN PARALELO (Asegurando la salida antes del cierre)
     const llamadaScript2 = fetch(`https://${request.headers.host}/api/process-sheets-whatsapp`, {
