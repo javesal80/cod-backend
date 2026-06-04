@@ -1,4 +1,4 @@
-// /api/process-sheets-whatsapp.js - Script 2: SOLO PROCESADOR DE GOOGLE SHEETS
+// /api/process-sheets-whatsapp.js - Script 2: PROCESADOR DE SHEETS Y CÁLCULO DE TOTAL
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: "Método no permitido" });
@@ -9,7 +9,7 @@ module.exports = async function handler(request, response) {
   console.log("--- [SCRIPT 2] Iniciando Envío a Google Sheets ---");
 
   try {
-    // 1. Recibimos los datos empaquetados por el Script 1
+    // 1. Recibimos los datos empaquetados por tu create-order original
     const { orderId, totalBorrador, productos, orderData } = request.body;
 
     if (!orderId || !orderData) {
@@ -17,10 +17,26 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({ success: false, error: "Datos incompletos" });
     }
 
+    // 2. CÁLCULO MATEMÁTICO DEL TOTAL (En las sombras)
+    let sumaTotal = 0;
+    
+    // Verificamos que vengan los productos y los sumamos
+    if (orderData.line_items && Array.isArray(orderData.line_items)) {
+      orderData.line_items.forEach(item => {
+        // Tomamos el precio fijo de cada línea y lo sumamos (sin multiplicar por cantidad)
+        const precioFijo = parseFloat(item.price || 0);
+        sumaTotal += precioFijo;
+      });
+    }
+
+    // Si la suma funcionó, la formateamos a 2 decimales con coma. Si da 0, intentamos usar el viejo totalBorrador
+    const totalCalculado = sumaTotal > 0 ? sumaTotal.toFixed(2).replace('.', ',') : (totalBorrador || "");
+
+    // 3. Saneamiento de datos del cliente
     const clienteNombre = `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`;
     const clienteTelefono = String(orderData.shipping_address.phone).replace('+', '');
 
-    // 2. Armamos el JSON con los nombres exactos que espera tu Apps Script (Incluyendo el Total)
+    // 4. Armamos el JSON con los nombres exactos para tu Apps Script
     const sheetData = {
       "ID Pedido": String(orderId), 
       "Fecha": new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" }),
@@ -30,12 +46,12 @@ module.exports = async function handler(request, response) {
       "Ciudad": orderData.shipping_address.city || "",
       "Productos": productos || "",
       "Estado": "Pendiente",
-      "Total": totalBorrador || ""
+      "Total": totalCalculado // <--- AQUÍ SE ENVÍA EL TOTAL MATEMÁTICO A LA COLUMNA I
     };
 
-    console.log("📡 [SCRIPT 2] Enviando fila a Apps Script...");
+    console.log(`📡 [SCRIPT 2] Enviando a Sheets... Total calculado: $${totalCalculado}`);
     
-    // 3. Disparamos a la URL de Google (que activará tu efecto dominó)
+    // 5. Disparamos a la URL de Google (Inicia el dominó)
     try {
       const sheetRes = await fetch(GOOGLE_SHEET_URL, {
         method: 'POST',
@@ -44,7 +60,7 @@ module.exports = async function handler(request, response) {
       });
       
       if (sheetRes.ok) {
-         console.log("✅ [SCRIPT 2] Fila guardada en Sheets. El dominó hacia cerebro-confirmar ha comenzado.");
+         console.log("✅ [SCRIPT 2] Fila guardada en Sheets con el Total. El dominó ha comenzado.");
       } else {
          console.error("❌ [SCRIPT 2] Error del servidor de Google:", sheetRes.status);
       }
@@ -52,8 +68,8 @@ module.exports = async function handler(request, response) {
       console.error("❌ [SCRIPT 2] Error al conectar con Google Sheets:", sheetErr.message);
     }
 
-    // 4. Cerramos el proceso con éxito
-    return response.status(200).json({ success: true, message: "Dominó iniciado con éxito." });
+    // 6. Cerramos el proceso con éxito
+    return response.status(200).json({ success: true, message: "Dominó y cálculos iniciados con éxito." });
 
   } catch (error) {
     console.error("❌ [SCRIPT 2] Error General crítico:", error.message);
