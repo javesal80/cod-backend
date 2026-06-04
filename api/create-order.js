@@ -73,20 +73,11 @@ module.exports = async function handler(request, response) {
       }).catch(err => console.error("Error en segundo plano:", err.message));
     }, 0);
 
-    // 5. RESPUESTA ULTRA RÁPIDA: El cliente no espera la petición de arriba
+ // 5. RESPUESTA ULTRA RÁPIDA: El cliente no espera la petición de arriba
     return response.status(200).json({ success: true, orderId: orderId });
 
   } catch (error) {
     console.error("❌ Error General en Script 1:", error.message);
     return response.status(500).json({ success: false, error: error.message });
   }
-}
-
-    // 5. RESPUESTA INMEDIATA: Desconectamos al cliente para que vea la página de gracias YA
-    return response.status(200).json({ success: true, orderId: orderId });
-
-  } catch (error) {
-    console.error("❌ Error General en Script 1:", error.message);
-    return response.status(500).json({ success: false, error: error.message });
-  }
-}
+};
