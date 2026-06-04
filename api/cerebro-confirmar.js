@@ -52,7 +52,7 @@ module.exports = async (request, response) => {
             `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
             
             // Mensaje 3: Datos de entrega del cliente
-           `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n\n¿Es correcto?`
+           `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n\n¿Es correcto?`,
              
             // Mensaje 4: Datos de entrega del cliente
            `📍 ¿Los datos son correctos?`
