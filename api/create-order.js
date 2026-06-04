@@ -59,21 +59,27 @@ module.exports = async function handler(request, response) {
       ? parseFloat(draftOrder.total_price).toFixed(2).replace('.', ',') 
       : "";
 
-    // 4. Notificar al Script 2 y responder AL INSTANTE (Sin esperas de red)
-    setTimeout(() => {
-      fetch(`https://${request.headers.host}/api/process-sheets-whatsapp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: String(orderId),
-          totalBorrador: totalBorrador,
-          productos: productos,
-          orderData: orderData
-        })
-      }).catch(err => console.error("Error en segundo plano:", err.message));
-    }, 0);
+ // 4. DISPARAR SCRIPT 2 EN PARALELO (Asegurando la salida antes del cierre)
+    const llamadaScript2 = fetch(`https://${request.headers.host}/api/process-sheets-whatsapp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        orderId: String(orderId),
+        totalBorrador: totalBorrador,
+        productos: productos,
+        orderData: orderData
+      })
+    }).catch(err => console.error("Error en segundo plano ejecutando Script 2:", err.message));
 
- // 5. RESPUESTA ULTRA RÁPIDA: El cliente no espera la petición de arriba
+    // Si Vercel tiene habilitado el manejador de fondo, le ordenamos mantenerlo vivo
+    if (request.waitUntil) {
+      request.waitUntil(llamadaScript2);
+    } else {
+      // Si no, le damos 60 milisegundos para que el paquete salga a la red antes de responder
+      await new Promise(resolve => setTimeout(resolve, 60));
+    }
+
+    // 5. RESPUESTA ULTRA RÁPIDA: El cliente avanza a la página de gracias
     return response.status(200).json({ success: true, orderId: orderId });
 
   } catch (error) {
