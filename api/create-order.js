@@ -1,4 +1,4 @@
-// /api/create-order.js - v3.8 Completo Dinámico
+// /api/create-order.js - v3.9 Completo Dinámico Corregido
 export default async function handler(request, response) {
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
@@ -63,7 +63,7 @@ export default async function handler(request, response) {
       const precioTotalFormateado = (precioBase * cantidad).toFixed(2).replace('.', ',');
       
       return `${cantidad}x ${nombreProducto} por $${precioTotalFormateado}`;
-    }).join(", ");
+    }).join(" - "); // <--- CAMBIO CLAVE: Separamos con guion en lugar de coma para no romper los decimales
 
     // Extraemos el total general del borrador y le ponemos formato con coma (ej: 35,00)
     const totalBorrador = draftOrder?.total_price 
