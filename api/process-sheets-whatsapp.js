@@ -17,20 +17,25 @@ module.exports = async function handler(request, response) {
       return response.status(400).json({ success: false, error: "Datos incompletos" });
     }
 
-    // 2. CÁLCULO MATEMÁTICO DEL TOTAL (En las sombras)
+    // 2. CÁLCULO MATEMÁTICO (Extrayendo los precios directo del texto de los productos)
     let sumaTotal = 0;
     
-    // Verificamos que vengan los productos y los sumamos
-    if (orderData.line_items && Array.isArray(orderData.line_items)) {
-      orderData.line_items.forEach(item => {
-        // Tomamos el precio fijo de cada línea y lo sumamos (sin multiplicar por cantidad)
-        const precioFijo = parseFloat(item.price || 0);
-        sumaTotal += precioFijo;
-      });
+    if (productos) {
+        // Escanea el texto buscando todo lo que empiece con $ y tenga números (ej. $35,00)
+        const precios = productos.match(/\$([0-9]+[.,]?[0-9]*)/g);
+        
+        if (precios) {
+            precios.forEach(p => {
+                // Le quitamos el $ y cambiamos la coma por punto para poder sumar
+                let valor = parseFloat(p.replace('$', '').replace(',', '.'));
+                sumaTotal += valor; 
+            });
+        }
     }
 
-    // Si la suma funcionó, la formateamos a 2 decimales con coma. Si da 0, intentamos usar el viejo totalBorrador
+    // Formateamos la suma final a 2 decimales con coma (ej. 35,00)
     const totalCalculado = sumaTotal > 0 ? sumaTotal.toFixed(2).replace('.', ',') : (totalBorrador || "");
+    
 
     // 3. Saneamiento de datos del cliente
     const clienteNombre = `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`;
