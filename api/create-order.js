@@ -67,7 +67,7 @@ export default async function handler(request, response) {
 
     // Extraemos el total general del borrador y le ponemos formato con coma (ej: 35,00)
     const totalBorrador = draftOrder?.total_price 
-      ? parseFloat(draftOrder.total_price).toFixed(2).replace('.', '.') 
+      ? parseFloat(draftOrder.total_price).toFixed(2).replace('.', ',') 
       : "";
 
     const sheetData = {
