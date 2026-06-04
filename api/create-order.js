@@ -113,16 +113,17 @@ console.log("✅ [FONDO] Todo el flujo en segundo plano se ejecutó con éxito."
     }
   };
 
-  // --- CIRUGÍA 2: Ejecutar la tarea sin congelar Vercel y responder de inmediato ---
-  if (request.waitUntil) {
-    request.waitUntil(tareaDeFondo());
-  } else {
-    tareaDeFondo();
-  }
+ // --- CIRUGÍA CORRECTIVA: Disparar en paralelo real ---
+  // Ejecutamos la tarea de fondo inmediatamente sin el 'await' para que no bloquee
+  tareaDeFondo();
 
-  // Enviamos la página de gracias al cliente AL INSTANTE (Menos de 1 segundo)
-  return response.status(200).json({ 
+  // Le damos un respiro minúsculo al hilo de Node antes de cortar la respuesta
+  await new Promise(resolve => setTimeout(resolve, 50));
+
+  // Enviamos la página de gracias al cliente
+  response.status(200).json({ 
     success: true, 
     message: "Pedido recibido. Procesando en segundo plano." 
   });
+  return;
 }
