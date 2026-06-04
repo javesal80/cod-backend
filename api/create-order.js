@@ -16,7 +16,9 @@ export default async function handler(request, response) {
 
   console.log("--- [DEBUG SHEETS] Inicio de Proceso ---");
 
-  try {
+  // --- CIRUGÍA 1: Envolver el proceso pesado en una función de fondo ---
+  const tareaDeFondo = async () => {
+    try {
     // 1. Obtener Token
     const tokenRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
       method: 'POST',
@@ -105,11 +107,22 @@ export default async function handler(request, response) {
       console.error("❌ [DEBUG SHEETS] Error conectando a Sheet.best:", sheetErr.message);
     }
 
-    // Una vez asegurado el registro en el Sheet (que activa tu confirmar), liberamos al cliente
-    return response.status(200).json({ success: true, orderId: orderId });
+console.log("✅ [FONDO] Todo el flujo en segundo plano se ejecutó con éxito.");
+    } catch (error) {
+      console.error("❌ [FONDO] Error General en segundo plano:", error.message);
+    }
+  };
 
-  } catch (error) {
-    console.error("❌ [DEBUG SHEETS] Error General:", error.message);
-    return response.status(500).json({ success: false, error: error.message });
+  // --- CIRUGÍA 2: Ejecutar la tarea sin congelar Vercel y responder de inmediato ---
+  if (request.waitUntil) {
+    request.waitUntil(tareaDeFondo());
+  } else {
+    tareaDeFondo();
   }
+
+  // Enviamos la página de gracias al cliente AL INSTANTE (Menos de 1 segundo)
+  return response.status(200).json({ 
+    success: true, 
+    message: "Pedido recibido. Procesando en segundo plano." 
+  });
 }
