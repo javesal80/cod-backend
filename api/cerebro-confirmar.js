@@ -12,7 +12,7 @@ module.exports = async (request, response) => {
 
     const orderData = request.body;
 
-    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga limpia con corrección de nombre y datos directos");
+    console.log("🚀 [CEREBRO-CONFIRMAR] Enviando ráfaga estructurada en mensajes separados");
 
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
@@ -35,19 +35,16 @@ module.exports = async (request, response) => {
         let totalGeneral = orderData["Total"] || "";
         let textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* $${totalGeneral}` : "";
 
-        // 3. Estructura exacta de los 4 mensajes independientes que me pediste
+        // 3. Estructura de mensajes independientes
         const mensajesAEnviar = [
             // Mensaje 1: El saludo
             `Hola, muy buenas... Un gusto saludarle 😊`,
             
             // Mensaje 2: Confirmación de productos y valores + Total general
-            `Nos comunicamos para confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
+            `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
             
             // Mensaje 3: Datos de entrega del cliente
-            `📍 *Para:* ${primerNombre}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`,
-            
-            // Mensaje 4: Pregunta final de cierre
-            `¿Es correcto?`
+            `📍 *Para:* ${primerNombre}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n\n¿Es correcto?`
         ];
 
         // 4. Enviar la ráfaga con espacio de 1.5 segundos entre cada mensaje
@@ -65,3 +62,4 @@ module.exports = async (request, response) => {
         console.error("Error general Cerebro:", error.message);
         return response.status(200).json({ error: error.message });
     }
+};
