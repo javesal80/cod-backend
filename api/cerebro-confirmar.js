@@ -55,7 +55,7 @@ module.exports = async (request, response) => {
            `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`,
              
             // Mensaje 4: Datos de entrega del cliente
-           `📍 ¿Los datos son correctos?`
+           `¿Es esto correcto?`
         
         ];
 
