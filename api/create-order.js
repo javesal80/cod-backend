@@ -60,10 +60,10 @@ export default async function handler(request, response) {
       let precioBase = parseFloat(i.price || 0);
       
       // Multiplicamos por la cantidad del item, fijamos 2 decimales y cambiamos punto por coma
-      const precioTotalFormateado = (precioBase * cantidad).toFixed(2).replace('.', ',');
+      const precioTotalFormateado = (precioBase * cantidad).toFixed(2).replace('.', '.');
       
       return `${cantidad}x ${nombreProducto} por $${precioTotalFormateado}`;
-    })//.join(" - "); // <--- CAMBIO CLAVE: Separamos con guion en lugar de coma para no romper los decimales
+    }).join(" , "); // <--- CAMBIO CLAVE: Separamos con guion en lugar de coma para no romper los decimales
 
     // Extraemos el total general del borrador y le ponemos formato con coma (ej: 35,00)
     const totalBorrador = draftOrder?.total_price 
