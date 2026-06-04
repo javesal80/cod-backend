@@ -16,8 +16,7 @@ export default async function handler(request, response) {
 
   console.log("--- [DEBUG SHEETS] Inicio de Proceso ---");
 
-  // --- CIRUGÍA 1: Envolver el proceso pesado en una función de fondo ---
-  const tareaDeFondo = async () => {
+
     try {
     // 1. Obtener Token
     const tokenRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/oauth/access_token`, {
@@ -84,46 +83,34 @@ export default async function handler(request, response) {
       "Total": totalBorrador
     };
 
-    console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
-    console.log("📦 Payload enviado:", JSON.stringify(sheetData));
+   console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
+console.log("📦 Payload enviado:", JSON.stringify(sheetData));
 
-    try {
-      // Forzamos el await pero con un tiempo de espera optimizado para que guarde en Sheets sí o sí
-      const sheetRes = await fetch(GOOGLE_SHEET_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sheetData)
-      });
-
-      const sheetStatus = sheetRes.status;
-      const sheetBody = await sheetRes.json();
-
-      if (sheetRes.ok) {
-        console.log("✅ [DEBUG SHEETS] Sheet.best respondió éxito (200/201):", sheetBody);
-      } else {
-        console.error(`❌ [DEBUG SHEETS] Sheet.best error (${sheetStatus}):`, sheetBody);
-      }
-    } catch (sheetErr) {
-      console.error("❌ [DEBUG SHEETS] Error conectando a Sheet.best:", sheetErr.message);
-    }
-
-console.log("✅ [FONDO] Todo el flujo en segundo plano se ejecutó con éxito.");
-    } catch (error) {
-      console.error("❌ [FONDO] Error General en segundo plano:", error.message);
-    }
-  };
-
- // --- CIRUGÍA CORRECTIVA: Disparar en paralelo real ---
-  // Ejecutamos la tarea de fondo inmediatamente sin el 'await' para que no bloquee
-  tareaDeFondo();
-
-  // Le damos un respiro minúsculo al hilo de Node antes de cortar la respuesta
-  await new Promise(resolve => setTimeout(resolve, 50));
-
-  // Enviamos la página de gracias al cliente
-  response.status(200).json({ 
-    success: true, 
-    message: "Pedido recibido. Procesando en segundo plano." 
+try {
+  // Forzamos el await pero con un tiempo de espera optimizado para que guarde en Sheets sí o sí
+  const sheetRes = await fetch(GOOGLE_SHEET_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sheetData)
   });
-  return;
+
+  const sheetStatus = sheetRes.status;
+  const sheetBody = await sheetRes.json();
+
+  if (sheetRes.ok) {
+    console.log("✅ [DEBUG SHEETS] Sheet.best respondió éxito (200/201):", sheetBody);
+  } else {
+    console.error(`❌ [DEBUG SHEETS] Sheet.best error (${sheetStatus}):`, sheetBody);
+  }
+} catch (sheetErr) {
+  console.error("❌ [DEBUG SHEETS] Error conectando a Sheet.best:", sheetErr.message);
+}
+
+// Una vez asegurado el registro en el Sheet, liberamos al cliente
+return response.status(200).json({ success: true, orderId: orderId });
+
+} catch (error) {
+  console.error("❌ [DEBUG SHEETS] Error General:", error.message);
+  return response.status(500).json({ success: false, error: error.message });
+}
 }
