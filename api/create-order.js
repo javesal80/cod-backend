@@ -1,4 +1,4 @@
-// /api/create-order.js - v3.6 Debug Sheets (RESTAURADO Y CORREGIDO)
+// /api/create-order.js - v3.8 Completo Dinámico
 export default async function handler(request, response) {
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
@@ -29,7 +29,7 @@ export default async function handler(request, response) {
     });
     const { access_token } = await tokenRes.json();
 
-    // 2. Crear Pedido
+    // 2. Crear Pedido en Shopify (Draft Order)
     const orderData = request.body;
     const shopifyRes = await fetch(`https://${SHOPIFY_STORE_DOMAIN}/admin/api/2024-10/draft_orders.json`, {
       method: 'POST',
@@ -47,29 +47,27 @@ export default async function handler(request, response) {
     });
 
     const data = await shopifyRes.json();
-    const orderId = data.draft_order?.id;
+    const draftOrder = data.draft_order;
+    const orderId = draftOrder?.id;
     console.log("✅ [DEBUG SHEETS] Shopify OK, ID:", orderId);
 
-    // 3. Preparar Datos para el Sheet (CORRECCIÓN QUIRÚRGICA DE FORMATO DE PRECIO XX,YY)
-    const productos = orderData.line_items.map(i => {
-      // Extraemos el precio base del item que viene del webhook
+    // 3. Preparar Datos para el Sheet leyendo los precios reales calculados por Shopify
+    const productos = draftOrder.line_items.map(i => {
+      const cantidad = i.quantity;
+      const nombreProducto = i.title.toUpperCase();
+      
+      // Obtenemos el precio unitario real que calculó Shopify
       let precioBase = parseFloat(i.price || 0);
       
-      // Si el precio viene multiplicado en centavos puros (ej: 1499), lo divide para 100
-      if (precioBase > 500) {
-        precioBase = precioBase / 100;
-      }
+      // Multiplicamos por la cantidad del item, fijamos 2 decimales y cambiamos punto por coma
+      const precioTotalFormateado = (precioBase * cantidad).toFixed(2).replace('.', ',');
       
-      const cantidad = i.quantity || 1;
-      // Calcula el total de la línea, fuerza los dos decimales y cambia el punto por la coma
-      const precioTotal = (precioBase * cantidad).toFixed(2).replace('.', ',');
-      
-      return `${cantidad}x ${i.title.toUpperCase()} por $${precioTotal}`;
+      return `${cantidad}x ${nombreProducto} por $${precioTotalFormateado}`;
     }).join(", ");
 
-    // Extraemos el total general del borrador que devuelve Shopify y lo formateamos con coma
-    const totalBorrador = data.draft_order?.total_price 
-      ? parseFloat(data.draft_order.total_price).toFixed(2).replace('.', ',') 
+    // Extraemos el total general del borrador y le ponemos formato con coma (ej: 35,00)
+    const totalBorrador = draftOrder?.total_price 
+      ? parseFloat(draftOrder.total_price).toFixed(2).replace('.', ',') 
       : "";
 
     const sheetData = {
@@ -81,13 +79,12 @@ export default async function handler(request, response) {
       "Ciudad": orderData.shipping_address.city,
       "Productos": productos,
       "Estado": "Pendiente",
-      "Total": totalBorrador // Se envía la columna del total general calculado dinámicamente
+      "Total": totalBorrador
     };
 
     console.log("📡 [DEBUG SHEETS] Intentando enviar a Sheet.best...");
     console.log("📦 Payload enviado:", JSON.stringify(sheetData));
 
-    // Cambiamos a 'await' SOLO PARA LA PRUEBA, para ver la respuesta real
     const sheetRes = await fetch(GOOGLE_SHEET_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
