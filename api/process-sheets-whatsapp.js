@@ -1,4 +1,4 @@
-// /api/process-sheets-whatsapp.js - Script 2: PROCESADOR DE SHEETS Y CÁLCULO DE TOTAL
+// /api/process-sheets-whatsapp.js - Script 2: PROCESADOR DE SHEETS CON RASTREADORES
 module.exports = async function handler(request, response) {
   if (request.method !== 'POST') {
     return response.status(405).json({ error: "Método no permitido" });
@@ -6,42 +6,36 @@ module.exports = async function handler(request, response) {
 
   const { GOOGLE_SHEET_URL } = process.env;
 
-  console.log("--- [SCRIPT 2] Iniciando Envío a Google Sheets ---");
-
   try {
-    // 1. Recibimos los datos empaquetados por tu create-order original
     const { orderId, totalBorrador, productos, orderData } = request.body;
 
     if (!orderId || !orderData) {
-      console.error("❌ [SCRIPT 2] Error: Datos incompletos recibidos.");
       return response.status(400).json({ success: false, error: "Datos incompletos" });
     }
 
-    // 2. CÁLCULO MATEMÁTICO (Extrayendo los precios directo del texto de los productos)
+    console.log("🔍 [DEBUG] Texto de productos a analizar:", productos);
+
+    // 💡 CÁLCULO INFALIBLE
     let sumaTotal = 0;
-    
     if (productos) {
-        // Escanea el texto buscando todo lo que empiece con $ y tenga números (ej. $35,00)
         const precios = productos.match(/\$([0-9]+[.,]?[0-9]*)/g);
+        console.log("🔍 [DEBUG] Precios encontrados con regex:", precios);
         
         if (precios) {
             precios.forEach(p => {
-                // Le quitamos el $ y cambiamos la coma por punto para poder sumar
                 let valor = parseFloat(p.replace('$', '').replace(',', '.'));
+                console.log(`🔍 [DEBUG] Valor extraído y listo para sumar: ${valor}`);
                 sumaTotal += valor; 
             });
         }
     }
 
-    // Formateamos la suma final a 2 decimales con coma (ej. 35,00)
     const totalCalculado = sumaTotal > 0 ? sumaTotal.toFixed(2).replace('.', ',') : (totalBorrador || "");
-    
+    console.log("🔍 [DEBUG] TOTAL FINAL CALCULADO:", totalCalculado);
 
-    // 3. Saneamiento de datos del cliente
     const clienteNombre = `${orderData.shipping_address.first_name} ${orderData.shipping_address.last_name}`;
     const clienteTelefono = String(orderData.shipping_address.phone).replace('+', '');
 
-    // 4. Armamos el JSON con los nombres exactos para tu Apps Script
     const sheetData = {
       "ID Pedido": String(orderId), 
       "Fecha": new Date().toLocaleString("es-EC", { timeZone: "America/Guayaquil" }),
@@ -51,33 +45,21 @@ module.exports = async function handler(request, response) {
       "Ciudad": orderData.shipping_address.city || "",
       "Productos": productos || "",
       "Estado": "Pendiente",
-      "Total": totalCalculado // <--- AQUÍ SE ENVÍA EL TOTAL MATEMÁTICO A LA COLUMNA I
+      "Total": totalCalculado // <--- AQUÍ VA EL TOTAL
     };
 
-    console.log(`📡 [SCRIPT 2] Enviando a Sheets... Total calculado: $${totalCalculado}`);
+    console.log(`📡 [SCRIPT 2] Enviando a Sheets con payload de Total: ${sheetData["Total"]}`);
     
-    // 5. Disparamos a la URL de Google (Inicia el dominó)
-    try {
-      const sheetRes = await fetch(GOOGLE_SHEET_URL, {
+    await fetch(GOOGLE_SHEET_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(sheetData)
-      });
-      
-      if (sheetRes.ok) {
-         console.log("✅ [SCRIPT 2] Fila guardada en Sheets con el Total. El dominó ha comenzado.");
-      } else {
-         console.error("❌ [SCRIPT 2] Error del servidor de Google:", sheetRes.status);
-      }
-    } catch (sheetErr) {
-      console.error("❌ [SCRIPT 2] Error al conectar con Google Sheets:", sheetErr.message);
-    }
+    });
 
-    // 6. Cerramos el proceso con éxito
-    return response.status(200).json({ success: true, message: "Dominó y cálculos iniciados con éxito." });
+    return response.status(200).json({ success: true });
 
   } catch (error) {
-    console.error("❌ [SCRIPT 2] Error General crítico:", error.message);
+    console.error("❌ [SCRIPT 2] Error crítico:", error.message);
     return response.status(500).json({ success: false, error: error.message });
   }
 };
