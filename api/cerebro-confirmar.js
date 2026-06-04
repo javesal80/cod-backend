@@ -21,18 +21,26 @@ module.exports = async (request, response) => {
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
-        // 1. Limpiar nombre duplicado (Solo primera palabra)
-        let nombreRaw = String(orderData["Cliente"] || "").trim();
-        let primerNombre = nombreRaw.split(' ')[0] || nombreRaw;
+        // 1. CORRECCIÓN DE NOMBRE: Dejar el nombre completo exactamente como viene
+        let nombreCompleto = String(orderData["Cliente"] || "").trim();
 
-        // 2. Formatear la lista de productos de forma vertical
+       // 2. CORRECCIÓN DE PRODUCTOS Y DECIMALES
         let productosRaw = String(orderData["Productos"] || "");
-        let listaProductosFinal = productosRaw.split(',')
+        
+        // Transformamos "($35,00)" a "por $35.00"
+        let productosFormateados = productosRaw
+            .replace(/\(\$/g, "por $")
+            .replace(/\)/g, "")
+            .replace(/,/g, ".");
+
+        // Separamos usando " y " en lugar de coma
+        let listaProductosFinal = productosFormateados.split(' y ')
             .map(item => `▪️ ${item.trim()}`)
             .join('\n');
 
-        // Extraer el total general enviado desde el Sheet
+        // Extraer el total general asegurando el punto decimal
         let totalGeneral = orderData["Total"] || "";
+        if (totalGeneral) totalGeneral = String(totalGeneral).replace(/,/g, ".");
         let textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* $${totalGeneral}` : "";
 
         // 3. Estructura de mensajes independientes
@@ -44,7 +52,11 @@ module.exports = async (request, response) => {
             `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
             
             // Mensaje 3: Datos de entrega del cliente
-            `📍 *Para:* ${primerNombre}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n\n¿Es correcto?`
+           `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}\n\n¿Es correcto?`
+             
+            // Mensaje 4: Datos de entrega del cliente
+           `📍 ¿Los datos son correctos?`
+        
         ];
 
         // 4. Enviar la ráfaga con espacio de 1.5 segundos entre cada mensaje
