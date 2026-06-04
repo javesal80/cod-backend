@@ -1,4 +1,4 @@
-// /api/create-order.js - Script 1: Creador de Borradores Rápido
+// /api/create-order.js - Script 1: Creador de Borradores Rápido y Puro
 module.exports = async function handler(request, response) {
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
@@ -50,44 +50,25 @@ module.exports = async function handler(request, response) {
     const orderId = draftOrder?.id;
     console.log("✅ Shopify OK, ID:", orderId);
 
-   // 3. Cálculo matemático manual adaptado a COD (Suma directa sin multiplicar)
-    let sumaTotalBorrador = 0;
-
-    const productos = draftOrder.line_items.map(i => {
-      // Tomamos el precio fijo de la línea exactamente como viene de Shopify
-      const precioFijo = parseFloat(i.price || 0); 
-      
-      // Lo sumamos a la alcancía sin multiplicar por cantidad
-      sumaTotalBorrador += precioFijo; 
-      
-      // Dejamos el texto visual intacto para el mensaje
-      return `${i.quantity}x ${i.title.toUpperCase()} ($${precioFijo.toFixed(2).replace('.', ',')})`;
-    }).join(" y ");
-
-    // Guardamos el total forzado, asegurando 2 decimales
-    const totalBorrador = sumaTotalBorrador.toFixed(2).replace('.', ',');
-
- // 4. DISPARAR SCRIPT 2 EN PARALELO (Asegurando la salida antes del cierre)
+    // 3. DISPARAR SCRIPT 2 EN PARALELO (Pasamos el borrador crudo sin hacer cálculos)
     const llamadaScript2 = fetch(`https://${request.headers.host}/api/process-sheets-whatsapp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         orderId: String(orderId),
-        totalBorrador: totalBorrador,
-        productos: productos,
+        draftOrder: draftOrder, // Enviamos toda la info de Shopify al fondo
         orderData: orderData
       })
     }).catch(err => console.error("Error en segundo plano ejecutando Script 2:", err.message));
 
-    // Si Vercel tiene habilitado el manejador de fondo, le ordenamos mantenerlo vivo
+    // Mantenemos tus 60ms para máxima velocidad
     if (request.waitUntil) {
       request.waitUntil(llamadaScript2);
     } else {
-      // Si no, le damos 60 milisegundos para que el paquete salga a la red antes de responder
       await new Promise(resolve => setTimeout(resolve, 60));
     }
 
-    // 5. RESPUESTA ULTRA RÁPIDA: El cliente avanza a la página de gracias
+    // 4. RESPUESTA ULTRA RÁPIDA
     return response.status(200).json({ success: true, orderId: orderId });
 
   } catch (error) {
