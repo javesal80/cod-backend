@@ -1,5 +1,6 @@
 // /api/create-order.js - v3.9 Completo Dinámico Corregido
-export default async function handler(request, response) {
+module.exports = async function handler(request, response) {
+
   const origin = request.headers.origin || '';
   response.setHeader('Access-Control-Allow-Origin', origin);
   response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
