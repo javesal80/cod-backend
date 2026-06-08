@@ -311,7 +311,7 @@ Para brindarle la información correcta, cuénteme por favor:
 2️⃣ [Insertar Beneficio Principal Producto B]
 3️⃣ [Insertar Beneficio Principal Producto C]
 
-(Por favor indíqueme el número o el malestar que le gustaría tratar para guiarle correctamente)."
+(Por favor indíqueme el número o el malestar que le gustaría tratar para guiarle correctamente)."`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 CONTEXTO ACTUAL Y REGLAS DE CONTROL DE FLUJO
