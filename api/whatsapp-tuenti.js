@@ -655,3 +655,4 @@ Solo comillas simples dentro del mensaje — nunca dobles.
     } catch (error) { console.error("Error general:", error.message); }
 
     return res.status(200).send('OK');
+};
