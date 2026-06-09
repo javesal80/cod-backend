@@ -104,10 +104,14 @@ module.exports = async (req, res) => {
     };
 
     // ─── ANTI-DUPLICADOS POR msgId ────────────────────────────────────
-    try {
+   try {
         if (await redisGet(`dd:${msgId}`)) return res.status(200).send('OK');
         await redisSetex(`dd:${msgId}`, 60, "1");
     } catch (e) { console.error("Dedup error:", e.message); }
+
+    // Registrar timestamp del último mensaje del cliente
+    const tsActual = Date.now().toString();
+    await redisSetex(`lastmsg:${cleanJid}`, 300, tsActual).catch(() => {});
 
     const cleanJid     = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
@@ -683,6 +687,7 @@ if (nuevaEtapa === 'DECISIÓN') {
                 return res.status(200).send('OK');
             }
             await redisSetex(hashKey, 180, "1");
+            const tsEnvio = tsActual;
           
             let partes = textoFinal.split('\n\n').map(l => l.trim()).filter(l => l !== "");
             if (partes.length > 8) { const u = partes.pop(); partes = partes.slice(0, 7); partes.push(u); }
@@ -698,6 +703,12 @@ if (nuevaEtapa === 'DECISIÓN') {
             const preguntaCierre = partes.length > 1 ? partes.pop() : "";
 
             const enviar = async (texto) => {
+                // Verificar si el cliente escribió algo nuevo mientras esperábamos
+                const tsReciente = await redisGet(`lastmsg:${cleanJid}`).catch(() => null);
+                if (tsReciente && tsReciente !== tsEnvio) {
+                    console.log("[ABORT] Mensaje nuevo del cliente detectado, cancelando envío:", texto.substring(0, 50));
+                    return false;
+                }
                 const delay = Math.min(texto.length * 35, 5000);
                 console.log("[ENVIO] Intentando enviar a:", remoteJid, "| texto:", texto.substring(0, 50));
                 try {
@@ -724,7 +735,10 @@ if (nuevaEtapa === 'DECISIÓN') {
             console.log("[ENVIO] preguntaCierre:", preguntaCierre.substring(0, 50));
             console.log("[ENVIO] baseUrl:", baseUrl, "| instName:", instName);
 
-            for (const parte of partes) await enviar(parte);
+            for (const parte of partes) {
+                const ok = await enviar(parte);
+                if (ok === false) break;
+            }
 
             // ─── FOTOS ────────────────────────────────────────────────
             const mapaFotos = {
@@ -758,7 +772,9 @@ if (nuevaEtapa === 'DECISIÓN') {
                 await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
             }
 
-            if (preguntaCierre) await enviar(preguntaCierre);
+            if (preguntaCierre) {
+                const ok = await enviar(preguntaCierre);
+            }
         }
 
     } catch (error) { console.error("Error general:", error.message); }
