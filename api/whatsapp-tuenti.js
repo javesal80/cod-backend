@@ -408,6 +408,7 @@ Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto co
 \\n\\n
 
 ✨¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?
+
 Recuerde en primera compra,🚚*Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
 
 B) Si el cliente viene de la condición 2 (Preguntó precio directo de entrada):
@@ -425,6 +426,7 @@ Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto co
 \\n\\n
 
 ✨¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?
+
 Recuerde en primera compra, 🚚*Envío GRATIS* y 🤝*Pago CONTRA-ENTREGA* a nivel nacional.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
