@@ -403,7 +403,7 @@ A continuación le presento las opciones disponibles para el producto:
 📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3 extraído del .txt] ✅ RECOMENDADO.
 \n\n
 
-Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo, usa emoticons dentrodelmensaje para que la respuesta no se vea muy fria , te recuerdo debe ser una repsuetsa corta].
+Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo, usa negritas y emoticons para reslatar lo principal.
 \n\n
 ✨¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?
 \nRecuerde en primera compra,🚚*Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
@@ -419,7 +419,7 @@ A continuación le presento las opciones disponibles para el producto:
 📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3] ✅ RECOMENDADO
 \n\n
 
-Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo, usa emoticons dentrodelmensaje para que la respuesta no se vea muy fria , te recuerdo debe ser una repsuetsa corta].
+Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo, usa negritas y emoticons para reslatar lo principal.
 \n\n
 ✨¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?
 \nRecuerde en primera compra, 🚚*Envío GRATIS* y 🤝*Pago CONTRA-ENTREGA* a nivel nacional.
