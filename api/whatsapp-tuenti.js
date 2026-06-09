@@ -111,7 +111,8 @@ module.exports = async (req, res) => {
 
     // Registrar timestamp del último mensaje del cliente
     const tsActual = Date.now().toString();
-    await redisSetex(`lastmsg:${cleanJid}`, 300, tsActual).catch(() => {});
+    const cleanJidTemp = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+    await redisSetex(`lastmsg:${cleanJidTemp}`, 300, tsActual).catch(() => {});
 
     const cleanJid     = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
