@@ -574,7 +574,7 @@ if (nuevaEtapa === 'DECISIÓN') {
                     bloque1 = bloque1.replace(/(A continuaci[oó]n[^\n]+)\n(📦)/i, '$1\n\n$2');
 
                     // Opciones 📦 en \n simple entre ellas
-                     bloque1 = bloque1.replace(/\n?(📦)/g, '\n\n$1');
+                      bloque1 = bloque1.replace(/\n?(📦)/g, '\n \n$1');
 
                     // Separar ✅ de "Le recomiendo" en mensaje distinto
                     bloque1 = bloque1.replace(/(✅[^\n]*)\n?(Le recomiendo)/g, '$1\n\n$2');
