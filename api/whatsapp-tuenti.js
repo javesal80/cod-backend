@@ -399,8 +399,7 @@ BLOQUE 2 — Pregunta de cierre + condiciones (dos líneas con \n simple, NUNCA 
 
 
 Contexto A (cliente aceptó ver precios): Línea intro = "A continuación le presento las opciones disponibles para el producto:"
-Contexto B (cliente preguntó precio directo): Línea intro = una validación empática de máximo 1 línea + "Aquí las opciones:" — todo en la misma línea, sin \n\n.
-
+Contexto B (cliente preguntó precio directo): Antes del bloque de opciones genera UN párrafo puente de 3 líneas máximo que incluya: 1) validación empática de que eligió bien al preguntar por este producto, 2) una línea de autoridad: producto 100% original, importado de EE.UU., certificado FDA y GMP, 3) una línea conectando el beneficio principal del producto con el dolor más común según el .txt. Luego en la siguiente línea: "A continuación le presento las opciones disponibles para el producto:" — todo esto dentro del BLOQUE 1, usando \n simple entre líneas, NUNCA \n\n.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGLAS DE CONTROL POST-PRECIOS (DECISIÓN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -569,6 +568,7 @@ if (parsed) {
                     const bloque1 = textoFinal.substring(0, idxCierre)
                         .replace(/\n\n/g, '\n')
                         .replace(/(📦[^\n]+)/g, '\n$1')
+                        .replace(/(✅[^\n]*)(Le recomiendo)/g, '$1\n\n$2')
                         .trimEnd();
                     const bloque2 = textoFinal.substring(idxCierre)
                         .replace(/\n\n/g, '\n')
