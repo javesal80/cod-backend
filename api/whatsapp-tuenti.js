@@ -366,8 +366,8 @@ DECISIÓN — Entrega de precios y planes comerciales.
 
 A) Si el cliente viene de la condición 1 (Aceptó ver precios):
 Estructura obligatoria de la respuesta (Línea por línea usando \\n):
-"Listo, a continuación le presento las opciones disponibles para el producto:
-(la opción 2 y 3 son ofertas para mejores resultados 😊)
+"A continuación le presento las opciones disponibles para el producto:"
+
 📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
 📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
 📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3 extraído del .txt] ✅ RECOMENDADO
@@ -382,7 +382,7 @@ Estructura obligatoria de la respuesta (Línea por línea usando \\n):
 - Primero conecta con el Dolor de forma empática y levanta el Escudo de Autoridad explicando que el producto es 100% original, importado y con registros oficiales vigentes. 
 - Inmediatamente después, en la misma respuesta, desglosa los precios así:
 "A continuación le presento las opciones disponibles para el producto:
-(la opción 2 y 3 son ofertas para mejores resultados 😊)
+
 📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
 📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
 📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3] ✅ RECOMENDADO
