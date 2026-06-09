@@ -558,10 +558,25 @@ if (parsed) {
                     .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1')
                     .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
             }
-            textoFinal = textoRaw;
-
-        
+            textoFinal = textoRaw;        
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
+
+// ─── FIX DECISIÓN: forzar estructura 2 bloques ───────────
+            if (nuevaEtapa === 'DECISIÓN') {
+                const cierreMarker = '✨';
+                const idxCierre = textoFinal.indexOf(cierreMarker);
+                if (idxCierre !== -1) {
+                    const bloque1 = textoFinal.substring(0, idxCierre)
+                        .replace(/\n\n/g, '\n')
+                        .trimEnd();
+                    const bloque2 = textoFinal.substring(idxCierre)
+                        .replace(/\n\n/g, '\n')
+                        .replace(/([\?])\s+(Su primera|Recuerde)/g, '$1\n$2');
+                    textoFinal = bloque1 + '\n\n' + bloque2;
+                }
+            }
+
+  
         }
 
        // ─── GUARDAR REDIS ────────────────────────────────────────────
