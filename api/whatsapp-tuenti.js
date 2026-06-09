@@ -560,21 +560,30 @@ if (parsed) {
             textoFinal = textoRaw;        
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
 
-// ─── FIX DECISIÓN: forzar estructura 2 bloques ───────────
-            if (nuevaEtapa === 'DECISIÓN') {
+  
+if (nuevaEtapa === 'DECISIÓN') {
                 const cierreMarker = '✨';
                 const idxCierre = textoFinal.indexOf(cierreMarker);
                 if (idxCierre !== -1) {
-                   const bloque1 = textoFinal.substring(0, idxCierre)
-                        .replace(/\n\n/g, '\n')
-                        .replace(/(A continuaci[oó]n[^\n]+)/i, '\n\n$1')
-                        .replace(/\n?(📦)/g, '\n$1')
-                        .replace(/(✅[^\n]*)\n(Le recomiendo)/g, '$1\n\n$2')
-                        .trimEnd();
+                    let bloque1 = textoFinal.substring(0, idxCierre).replace(/\n\n/g, '\n').trim();
+
+                    // Separar intro del "A continuación"
+                    bloque1 = bloque1.replace(/(A continuaci[oó]n[^\n]+\n?)/i, '\n\n$1');
+
+                    // Separar "A continuación" de las opciones 📦
+                    bloque1 = bloque1.replace(/(A continuaci[oó]n[^\n]+)\n(📦)/i, '$1\n\n$2');
+
+                    // Opciones 📦 en \n simple entre ellas
+                     bloque1 = bloque1.replace(/\n?(📦)/g, '\n\n$1');
+
+                    // Separar ✅ de "Le recomiendo" en mensaje distinto
+                    bloque1 = bloque1.replace(/(✅[^\n]*)\n?(Le recomiendo)/g, '$1\n\n$2');
+
                     const bloque2 = textoFinal.substring(idxCierre)
                         .replace(/\n\n/g, '\n')
                         .replace(/([\?])\s+(Su primera|Recuerde)/g, '$1\n$2');
-                    textoFinal = bloque1 + '\n\n' + bloque2;
+
+                    textoFinal = bloque1.trim() + '\n\n' + bloque2;
                 }
             }
 
