@@ -392,7 +392,7 @@ DECISIÓN — Entrega de precios y planes comerciales.
 El servidor divide el texto en mensajes WhatsApp cada vez que detecta \n\n. Debes generar EXACTAMENTE DOS (2) bloques separados por \n\n. Nada más, nada menos.
 
 BLOQUE 1 — Opciones + Recomendación (un solo bloque compacto, usa \n simple entre líneas, NUNCA \n\n dentro):
-[Línea intro según contexto A o B]\n📦 *Opción 1:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 2:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 3:* [Nombre] — $[Precio] — [Beneficio corto del .txt] ✅\nLe recomiendo la *Opción 3* porque [argumento humano corto conectado al caso específico del cliente].
+[Línea intro según contexto A o B]\n📦 *Opción 1:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 2:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 3:* [Nombre] — $[Precio] — [Beneficio corto del .txt] ✅RECOMENDADO\nLe sugiero la *Opción 3* porque [argumento humano corto conectado al caso específico del cliente].
 
 BLOQUE 2 — Pregunta de cierre + condiciones (dos líneas con \n simple, NUNCA \n\n):
 ✨ ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?\n Su primera compra tiene 🚚 *Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
@@ -581,7 +581,7 @@ if (nuevaEtapa === 'DECISIÓN') {
 
                     const bloque2 = textoFinal.substring(idxCierre)
                         .replace(/\n\n/g, '\n')
-                        .replace(/([\?])\s+(Su primera|Recuerde)/g, '$1\n$2');
+                        .replace(/([\?])\s+(Su primera|Recuerde)/g, '$1\n \n$2');
 
                     textoFinal = bloque1.trim() + '\n\n' + bloque2;
                 }
