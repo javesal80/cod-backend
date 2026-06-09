@@ -565,10 +565,11 @@ if (parsed) {
                 const cierreMarker = '✨';
                 const idxCierre = textoFinal.indexOf(cierreMarker);
                 if (idxCierre !== -1) {
-                    const bloque1 = textoFinal.substring(0, idxCierre)
+                   const bloque1 = textoFinal.substring(0, idxCierre)
                         .replace(/\n\n/g, '\n')
-                        .replace(/(📦[^\n]+)/g, '\n$1')
-                        .replace(/(✅[^\n]*)(Le recomiendo)/g, '$1\n\n$2')
+                        .replace(/(A continuaci[oó]n[^\n]+)/i, '\n\n$1')
+                        .replace(/\n?(📦)/g, '\n$1')
+                        .replace(/(✅[^\n]*)\n(Le recomiendo)/g, '$1\n\n$2')
                         .trimEnd();
                     const bloque2 = textoFinal.substring(idxCierre)
                         .replace(/\n\n/g, '\n')
