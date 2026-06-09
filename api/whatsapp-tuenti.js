@@ -375,10 +375,10 @@ Genera exactamente esta estructura de dos bloques separados por un solo \\n\\n:
 A continuación le presento las opciones disponibles para el producto:
 📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
 📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
-📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3 extraído del .txt] ✅ RECOMENDADO
+📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3 extraído del .txt] ✅ RECOMENDADO.
+\n\n
 
 Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor,etc), usando la lógica del archivo técnico del producto activo].
-\n\n
 
 Por su primera compra:\nel *envío es completamente GRATIS*\n y cuenta con la seguridad de *pago CONTRA-ENTREGA* a nivel nacional.
 ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios? 📦"
@@ -392,9 +392,9 @@ A continuación le presento las opciones disponibles para el producto:
 📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
 📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
 📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3] ✅ RECOMENDADO
-Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor,etc), usando la lógica del archivo técnico del producto activo].
 \n\n
 
+Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor,etc), usando la lógica del archivo técnico del producto activo].
 Por su primera compra:\nel *envío es completamente GRATIS*\n y cuenta con la seguridad de *pago CONTRA-ENTREGA* a nivel nacional.
 ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios? 📦"
 
