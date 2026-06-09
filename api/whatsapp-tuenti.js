@@ -568,6 +568,7 @@ if (parsed) {
                 if (idxCierre !== -1) {
                     const bloque1 = textoFinal.substring(0, idxCierre)
                         .replace(/\n\n/g, '\n')
+                        .replace(/(📦[^\n]+)/g, '\n$1')
                         .trimEnd();
                     const bloque2 = textoFinal.substring(idxCierre)
                         .replace(/\n\n/g, '\n')
