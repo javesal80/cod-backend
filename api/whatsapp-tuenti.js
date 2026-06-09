@@ -394,10 +394,11 @@ El servidor divide el texto en mensajes WhatsApp cada vez que detecta \n\n. Debe
 BLOQUE 1 — Opciones + Recomendación (un solo bloque compacto, usa \n simple entre líneas, NUNCA \n\n dentro):
 [Línea intro según contexto A o B]\n📦 *Opción 1:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 2:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 3:* [Nombre] — $[Precio] — [Beneficio corto del .txt] ✅\nLe recomiendo la *Opción 3* porque [argumento humano corto conectado al caso específico del cliente].
 
-BLOQUE 2 — Pregunta de cierre + condiciones (una sola línea sin ningún salto interno):
-✨ ¿Con cuál le gustaría empezar? Su primera compra tiene 🚚 *Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
+BLOQUE 2 — Pregunta de cierre + condiciones (dos líneas con \n simple, NUNCA \n\n):
+✨ ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios?\n Su primera compra tiene 🚚 *Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
 
-Contexto A (cliente aceptó ver precios): Línea intro = "Aquí las opciones disponibles:"
+
+Contexto A (cliente aceptó ver precios): Línea intro = "A continuación le presento las opciones disponibles para el producto:"
 Contexto B (cliente preguntó precio directo): Línea intro = una validación empática de máximo 1 línea + "Aquí las opciones:" — todo en la misma línea, sin \n\n.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
