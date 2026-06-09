@@ -388,34 +388,18 @@ DECISIÓN — Entrega de precios y planes comerciales.
 ⚠️ CONTROL ESTRICTO DE PRECIOS Y FORMATO UNIFICADO:
 - Solo puedes saltar a esta etapa y listar los precios bajo dos condiciones únicas: 1) Si el cliente aceptó el gancho de permiso, o 2) Si exigió el costo desde su primer mensaje.
 
-⚠️ ALERTA ROJA TÉCNICA (EVITAR FRAGMENTACIÓN MASIVA):
-Tu respuesta es procesada por un servidor que corta el texto cada vez que usas un doble salto de línea (\n\n) o dejas un renglón en blanco. Tienes ESTRICTAMENTE PROHIBIDO dejar renglones en blanco entre las opciones de la lista, o dentro de la pregunta final. 
-Debes generar exactamente TRES (3) bloques de texto. El Bloque 3 DEBE escribirse todo de corrido en una sola línea.
+⚠️ ALERTA ROJA TÉCNICA — ESTRUCTURA DE 2 BLOQUES EXACTOS:
+El servidor divide el texto en mensajes WhatsApp cada vez que detecta \n\n. Debes generar EXACTAMENTE DOS (2) bloques separados por \n\n. Nada más, nada menos.
 
-A) Si el cliente viene del flujo normal (Aceptó ver precios):
-Genera EXACTAMENTE esta estructura respetando los espacios visuales (no agregues renglones en blanco extra):
+BLOQUE 1 — Opciones + Recomendación (un solo bloque compacto, usa \n simple entre líneas, NUNCA \n\n dentro):
+[Línea intro según contexto A o B]\n📦 *Opción 1:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 2:* [Nombre] — $[Precio] — [Beneficio corto del .txt]\n📦 *Opción 3:* [Nombre] — $[Precio] — [Beneficio corto del .txt] ✅\nLe recomiendo la *Opción 3* porque [argumento humano corto conectado al caso específico del cliente].
 
-A continuación le presento las opciones disponibles para el producto:
-📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
-📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
-📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3 extraído del .txt] ✅ RECOMENDADO.
+BLOQUE 2 — Pregunta de cierre + condiciones (una sola línea sin ningún salto interno):
+✨ ¿Con cuál le gustaría empezar? Su primera compra tiene 🚚 *Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
 
-Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo.
+Contexto A (cliente aceptó ver precios): Línea intro = "Aquí las opciones disponibles:"
+Contexto B (cliente preguntó precio directo): Línea intro = una validación empática de máximo 1 línea + "Aquí las opciones:" — todo en la misma línea, sin \n\n.
 
-✨ ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios? Recuerde por primera compra, 🚚*Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
-
-B) Si el cliente viene de la condición 2 (Preguntó precio directo de entrada):
-Genera EXACTAMENTE esta estructura respetando los espacios visuales (no agregues renglones en blanco extra):
-
-[IA: Primero conecta con el Dolor de forma empática y levanta el Escudo de Autoridad explicando que el producto es 100% original, importado y con registros oficiales vigentes].\nA continuación le presento las opciones disponibles para el producto:\n📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1].\n📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2].\n📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3] ✅ RECOMENDADO.
-- Inmediatamente después, en la misma respuesta, desglosa los precios así:
-A continuación le presento las opciones disponibles para el producto:
-📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio 1 extraído del .txt].
-📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio 2 extraído del .txt].
-📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio 3] ✅ RECOMENDADO
-
-Le recomiendo *Opción 3* porque [IA: Redacta un argumento ultra humano corto conectando por qué esta cantidad/paquete es la solución definitiva para el dolor o situación específica que el cliente te mencionó en el historial del chat (para su edad, para su dolor, etc...), usando la lógica del archivo técnico del producto activo.
-✨ ¿Con cuál de estas opciones le gustaría empezar a beneficiarse y notar los cambios? Recuerde por primera compra, 🚚*Envío GRATIS* y 🤝 *Pago CONTRA-ENTREGA* a nivel nacional.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 REGLAS DE CONTROL POST-PRECIOS (DECISIÓN)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -563,13 +547,17 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
         }
 
 if (parsed) {
-            textoFinal = (parsed.mensaje || "")
+            nuevaEtapa = parsed.etapa || etapaActual;
+            let textoRaw = (parsed.mensaje || "")
                 .replace(/\\n\\n/g, '\n\n')
                 .replace(/\\n/g, '\n')
-                .replace(/\*\*(.*?)\*\*/g, '*$1*')
-                .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1') // Regresa tu divisor de párrafos corto
-                .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
-            nuevaEtapa = parsed.etapa || etapaActual;
+                .replace(/\*\*(.*?)\*\*/g, '*$1*');
+            if (nuevaEtapa !== 'DECISIÓN') {
+                textoRaw = textoRaw
+                    .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1')
+                    .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
+            }
+            textoFinal = textoRaw;
 
         
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
