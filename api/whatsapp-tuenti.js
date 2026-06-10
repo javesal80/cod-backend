@@ -136,7 +136,10 @@ module.exports = async (req, res) => {
 
     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
     await new Promise(r => setTimeout(r, 500));
-    try { if (await redisGet(`pausa:${cleanJid}`)) return res.status(200).send('OK'); } catch (e) {}
+   try { if (await redisGet(`pausa:${cleanJid}`)) {
+        await fetch(`${KV_REST_API_URL}`, { method: 'POST', headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(["DEL", lockKey]) }).catch(() => {});
+        return res.status(200).send('OK');
+    }} catch (e) {}
 
     // ─── CLAVES REDIS ─────────────────────────────────────────────────
     const memoriaKey  = `chat:${cleanJid}`;
@@ -714,8 +717,9 @@ if (nuevaEtapa === 'DECISIÓN') {
             console.log("[ANTI-DUP CHECK] hash:", textoHash, "| key:", hashKey);
             const antidupExiste = await redisGet(hashKey).catch(() => null);
             console.log("[ANTI-DUP CHECK] existe en Redis:", antidupExiste);
-            if (antidupExiste) {
+           if (antidupExiste) {
                 console.log("[ANTI-DUP] Mismo mensaje detectado con certeza, omitiendo envío.");
+                await fetch(`${KV_REST_API_URL}`, { method: 'POST', headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify(["DEL", lockKey]) }).catch(() => {});
                 return res.status(200).send('OK');
             }
             await redisSetex(hashKey, 180, "1");
