@@ -749,7 +749,7 @@ if (nuevaEtapa === 'DECISIÓN') {
             console.log("[ENVIO] preguntaCierre:", preguntaCierre.substring(0, 50));
             console.log("[ENVIO] baseUrl:", baseUrl, "| instName:", instName);
 
-            for (const parte of partes) {
+           for (const parte of partes) {
                 const ok = await enviar(parte);
                 if (ok === false) break;
             }
@@ -759,14 +759,19 @@ if (nuevaEtapa === 'DECISIÓN') {
                 "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
                 "SOLUCIÓN":   imgBeneficios, "DECISIÓN": imgTestimonios
             };
-            const fotoEtapa    = mapaFotos[nuevaEtapa] || "";
+            const fotoEtapa     = mapaFotos[nuevaEtapa] || "";
             const fotoYaEnviada = fotosEnviadas[nuevaEtapa] === true;
             const etapaCambio   = nuevaEtapa !== etapaActual;
             const esNuevoProducto = !fotosEnviadas["ESCUCHA"];
-            const debeEnviarFoto  = fotoEtapa && (etapaCambio || (nuevaEtapa === "ESCUCHA" && esNuevoProducto)) && !fotoYaEnviada;
+            // DECISIÓN: foto siempre después de opciones, antes del cierre
+            // ESCUCHA/SOLUCIÓN: foto al cambiar de etapa como antes
+            const debeEnviarFoto = fotoEtapa && !fotoYaEnviada && (
+                (nuevaEtapa === "DECISIÓN") ||
+                (nuevaEtapa !== "DECISIÓN" && (etapaCambio || (nuevaEtapa === "ESCUCHA" && esNuevoProducto)))
+            );
 
             if (debeEnviarFoto) {
-                await new Promise(r => setTimeout(r, 2000 + Math.floor(Math.random() * 2000)));
+              await new Promise(r => setTimeout(r, 2000 + Math.floor(Math.random() * 2000)));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
