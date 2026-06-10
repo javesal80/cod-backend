@@ -210,12 +210,25 @@ module.exports = async (req, res) => {
             }
         }
         
-        // 2. PRIORIDAD 2: Si no hubo match por Ads, buscamos por Keyword en el texto
+       // 2. PRIORIDAD 2: Si no hubo match por Ads, buscamos por Keyword en el texto
         if (!productoActivo && productoDetectadoPorKeyword) {
             productoActivo = productoDetectadoPorKeyword;
             await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
             if (!fotosEnviadas) fotosEnviadas = {};
             console.log(`[PRIMER CONTACTO] Producto fijado por KEYWORD (Plan de Respaldo): ${productoActivo.nombre}`);
+        }
+
+        // 3. PRIORIDAD 3: Si aún no hay producto, esperar 800ms y releer Redis
+        // por si un webhook paralelo (el del referral) ya lo guardó
+        if (!productoActivo) {
+            await new Promise(r => setTimeout(r, 800));
+            try {
+                const recheck = await redisGet(productoKey);
+                if (recheck) {
+                    productoActivo = JSON.parse(recheck);
+                    console.log(`[RECHECK] Producto recuperado del webhook paralelo: ${productoActivo.nombre}`);
+                }
+            } catch(e) {}
         }
     } 
     // Escenario B: YA HAY UN PRODUCTO ACTIVO -> Se bloquea, SALVO que cambie de dolor
