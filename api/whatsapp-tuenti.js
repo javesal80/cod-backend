@@ -109,12 +109,9 @@ module.exports = async (req, res) => {
         await redisSetex(`dd:${msgId}`, 60, "1");
     } catch (e) { console.error("Dedup error:", e.message); }
 
-    // Registrar timestamp del último mensaje del cliente
-    const tsActual = Date.now().toString();
-    const cleanJidTemp = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
-    await redisSetex(`lastmsg:${cleanJidTemp}`, 300, tsActual).catch(() => {});
+      const tsActual = Date.now().toString();
+      const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
-   const cleanJid     = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
     // ─── LOCK ATÓMICO ANTI-PARALELO ───────────────────────────────────
     const tieneReferral = !!(data?.contextInfo?.externalAdReply || data?.message?.referral);
@@ -134,6 +131,7 @@ module.exports = async (req, res) => {
         }
     } catch(e) { console.error("[LOCK ERROR]", e.message); }
 
+      await redisSetex(`lastmsg:${cleanJid}`, 300, tsActual).catch(() => {});
     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
     await new Promise(r => setTimeout(r, 500));
    try { if (await redisGet(`pausa:${cleanJid}`)) {
