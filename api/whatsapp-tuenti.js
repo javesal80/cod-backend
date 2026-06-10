@@ -608,10 +608,10 @@ if (nuevaEtapa === 'DECISIÓN') {
                     let bloque1 = textoFinal.substring(0, idxCierre).replace(/\n\n/g, '\n').trim();
 
                     // Separar intro del "A continuación"
-                    bloque1 = bloque1.replace(/(A continuaci[oó]n[^\n]+\n?)/i, '\n\n$1');
+                    bloque1 = bloque1.replace(/([Cc]laro[^\n]+\n?)/i, '\n\n$1');
 
                     // Separar "A continuación" de las opciones 📦
-                    bloque1 = bloque1.replace(/(A continuaci[oó]n[^\n]+)\n(📦)/i, '$1\n\n$2');
+                    bloque1 = bloque1.replace(/([Cc]laro[^\n]+)\n(📦)/i, '$1\n\n$2');
 
                     // Opciones 📦 en \n simple entre ellas
                       bloque1 = bloque1.replace(/\n?(📦)/g, '\n \n$1');
