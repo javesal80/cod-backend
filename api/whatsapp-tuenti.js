@@ -114,7 +114,25 @@ module.exports = async (req, res) => {
     const cleanJidTemp = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
     await redisSetex(`lastmsg:${cleanJidTemp}`, 300, tsActual).catch(() => {});
 
-    const cleanJid     = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+   const cleanJid     = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
+
+    // ─── LOCK ATÓMICO ANTI-PARALELO ───────────────────────────────────
+    const tieneReferral = !!(data?.contextInfo?.externalAdReply || data?.message?.referral);
+    if (!tieneReferral) await new Promise(r => setTimeout(r, 600));
+
+    const lockKey = `lock:${cleanJid}`;
+    try {
+        const lockResult = await fetch(`${KV_REST_API_URL}`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(["SET", lockKey, "1", "NX", "EX", "25"])
+        });
+        const lockJson = await lockResult.json();
+        if (lockJson.result !== "OK") {
+            console.log("[LOCK] Webhook paralelo bloqueado para:", cleanJid);
+            return res.status(200).send('OK');
+        }
+    } catch(e) { console.error("[LOCK ERROR]", e.message); }
 
     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
     await new Promise(r => setTimeout(r, 500));
@@ -798,5 +816,11 @@ if (nuevaEtapa === 'DECISIÓN') {
 
     } catch (error) { console.error("Error general:", error.message); }
 
+    await fetch(`${KV_REST_API_URL}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(["DEL", lockKey])
+    }).catch(() => {});
+    
     return res.status(200).send('OK');
 };
