@@ -607,17 +607,16 @@ if (nuevaEtapa === 'DECISIÓN') {
                 if (idxCierre !== -1) {
                     let bloque1 = textoFinal.substring(0, idxCierre).replace(/\n\n/g, '\n').trim();
 
-                   // Separar la intro + línea de envío/pago de las opciones
-              const introRegex = /(Claro[^\n]*\n.*Pago CONTRA-ENTREGA)/i;
-              const matchIntro = bloque1.match(introRegex);
-              let introMensaje = matchIntro ? matchIntro[1].trim() : '';
-              let resto = bloque1.replace(introMensaje, '').trim();
+                   // Separar intro de "A continuación/Claro" en mensaje propio
+                    bloque1 = bloque1.replace(/((?:A continuaci[oó]n|Claro)[^\n]+)\n(📦)/gi, '$1\n\n$2');
 
+                    // Separar párrafo previo al "A continuación/Claro"
+                    bloque1 = bloque1.replace(/([^\n]+)\n((?:A continuaci[oó]n|Claro)[^\n]+)/gi, '$1\n\n$2');
 
-                    // Opciones 📦 en \n simple entre ellas
-                      bloque1 = bloque1.replace(/\n?(📦)/g, '\n \n$1');
+                    // Opciones 📦 con línea visual entre ellas
+                    bloque1 = bloque1.replace(/\n?(📦)/g, '\n \n$1');
 
-                    // Separar ✅ de "Le recomiendo" en mensaje distinto
+                    // Separar ✅ de "Le sugiero/recomiendo" en mensaje distinto
                     bloque1 = bloque1.replace(/(✅[^\n]*)\n?(Le (?:sugiero|recomiendo|indico|aconsejo))/g, '$1\n\n$2');
 
                     const bloque2 = textoFinal.substring(idxCierre)
