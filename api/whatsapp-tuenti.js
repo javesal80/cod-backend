@@ -607,11 +607,12 @@ if (nuevaEtapa === 'DECISIÓN') {
                 if (idxCierre !== -1) {
                     let bloque1 = textoFinal.substring(0, idxCierre).replace(/\n\n/g, '\n').trim();
 
-                    // Separar intro del "A continuación"
-                    bloque1 = bloque1.replace(/([Cc]laro[^\n]+\n?)/i, '\n\n$1');
+                   // Separar la intro + línea de envío/pago de las opciones
+              const introRegex = /(Claro[^\n]*\n.*Pago CONTRA-ENTREGA)/i;
+              const matchIntro = bloque1.match(introRegex);
+              let introMensaje = matchIntro ? matchIntro[1].trim() : '';
+              let resto = bloque1.replace(introMensaje, '').trim();
 
-                    // Separar "A continuación" de las opciones 📦
-                    bloque1 = bloque1.replace(/([Cc]laro[^\n]+)\n(📦)/i, '$1\n\n$2');
 
                     // Opciones 📦 en \n simple entre ellas
                       bloque1 = bloque1.replace(/\n?(📦)/g, '\n \n$1');
