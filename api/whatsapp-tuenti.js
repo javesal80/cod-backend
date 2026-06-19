@@ -433,7 +433,10 @@ DECISIÓN — Entrega de precios y planes comerciales.
 El servidor divide el texto en mensajes WhatsApp cada vez que detecta \n\n. Debes generar EXACTAMENTE DOS (2) bloques separados por \n\n. Nada más, nada menos.
 
 BLOQUE 1 — Opciones + Recomendación (un solo bloque compacto, usa \n simple entre líneas, NUNCA \n\n dentro):
-[Línea intro según contexto A o B]\n📦 *Opción 1:* [Nombre del Plan 1] ([Cantidad 1]) — $[Precio 1] — [Beneficio/Ganancia del Plan 1 extraído del .txt].\n📦 *Opción 2:* [Nombre del Plan 2] ([Cantidad 2]) — $[Precio 2] — [Beneficio/Ganancia del Plan 2 extraído del .txt].\n📦 *Opción 3:* [Nombre del Plan 3] ([Cantidad 3]) — $[Precio 3] — [Beneficio/Ganancia del Plan 3 extraído del .txt] ✅RECOMENDADO\nLe sugiero la *Opción 3* porque [argumento humano corto conectado al caso específico del cliente].
+Lista TODAS las opciones que existen en el archivo del PRODUCTO ACTIVO — pueden ser 1, 2, 3, 4 o más, nunca inventes ni omitas ninguna. Usa el formato:
+📦 *Opción N:* [Nombre del Plan] ([Cantidad]) — $[Precio] — [Beneficio/Ganancia extraído del .txt].
+Marca con ✅RECOMENDADO la opción que el archivo del producto indique explícitamente como recomendada. Si el archivo no marca ninguna como recomendada, marca la de mayor cantidad/valor.
+Después de listar todas las opciones, en la siguiente línea: Le sugiero la *Opción N* (usa el número real de la opción marcada con ✅) porque [argumento humano corto conectado al caso específico del cliente].
 
 BLOQUE 2 — Pregunta de cierre (dos líneas con \n simple, NUNCA \n\n):
 ✨ ¿Con cuál de estas opciones le gustaría empezar para alcanzar los resultados deseados?
@@ -668,11 +671,14 @@ if (nuevaEtapa === 'DECISIÓN') {
             let numeroOpcion = "";
 
             // Identificamos qué número de opción eligió el cliente
-            for (let i = mensajesCliente.length - 1; i >= 0; i--) {
+           for (let i = mensajesCliente.length - 1; i >= 0; i--) {
                 const txt = mensajesCliente[i].content.toLowerCase();
-                if (txt.includes("opción 3") || txt.includes("opcion 3") || txt.includes("la 3") || txt.includes("la tercera")) { numeroOpcion = "opción 3"; break; }
-                if (txt.includes("opción 2") || txt.includes("opcion 2") || txt.includes("la 2") || txt.includes("la segunda") || txt.includes("de 38")) { numeroOpcion = "opción 2"; break; }
-                if (txt.includes("opción 1") || txt.includes("opcion 1") || txt.includes("la 1") || txt.includes("la primera")) { numeroOpcion = "opción 1"; break; }
+                const match = txt.match(/opci[oó]n\s*(\d)|la\s*(\d)|la\s*(primera|segunda|tercera|cuarta)/);
+                if (match) {
+                    const numerales = { primera: "1", segunda: "2", tercera: "3", cuarta: "4" };
+                    const num = match[1] || match[2] || numerales[match[3]];
+                    if (num) { numeroOpcion = `opción ${num}`; break; }
+                }
             }
 
             // Buscamos en el historial de la IA la línea exacta
