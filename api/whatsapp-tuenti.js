@@ -202,8 +202,12 @@ module.exports = async (req, res) => {
 
     const adIdCapturado = referral ? (referral.sourceId || referral.adId || "").toString().trim() : "";
 
+    console.log(`[META DEBUG] contextInfo completo:`, JSON.stringify(data?.contextInfo || {}).substring(0, 500));
+    console.log(`[META DEBUG] message.referral completo:`, JSON.stringify(data?.message?.referral || {}).substring(0, 500));
     if (referral) {
-        console.log(`[META ADS CAPTURADO] ID original: ${adIdCapturado}`);
+        console.log(`[META ADS CAPTURADO] ID original: "${adIdCapturado}" | referral usado:`, JSON.stringify(referral).substring(0, 300));
+    } else {
+        console.log(`[META ADS] No se encontró ningún referral en este mensaje`);
     }
 
     // ─── ANALIZAR KEYWORD DEL TEXTO ───────────────────────────────────
