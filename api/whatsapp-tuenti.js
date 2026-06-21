@@ -250,16 +250,9 @@ module.exports = async (req, res) => {
             } catch(e) {}
         }
     } 
-    // Escenario B: YA HAY UN PRODUCTO ACTIVO -> Se bloquea, SALVO que cambie de dolor
-    else if (productoActivo && productoDetectadoPorKeyword) {
-        if (productoDetectadoPorKeyword.nombre !== productoActivo.nombre) {
-            console.log(`[CAMBIO DE RUMBO] Transición de producto detectada: ${productoActivo.nombre} -> ${productoDetectadoPorKeyword.nombre}`);
-            productoActivo = productoDetectadoPorKeyword;
-            fotosEnviadas = {}; 
-            await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
-            await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
-        }
-    }
+  // Escenario B: YA HAY UN PRODUCTO ACTIVO -> se mantiene fijo.
+    // El cambio de producto SOLO lo decide la IA (ver campo "cambiarA" en su respuesta JSON),
+    // nunca el código por coincidencia de keyword en el mensaje del cliente.
   
     // ─── ALTA INTENCIÓN — solo hint para el prompt, la IA decide la etapa
     const altaIntencion = /quiero (realizar |hacer )?(una )?compra|quiero (pedir|comprarlo|uno|pedirlo)|me lo llevo|d[oó]nde pago|c[oó]mo pago|quiero (el |los )?(\d+ )?(tarros?|unidades?|paquetes?)/i.test(clienteMsg);
@@ -490,10 +483,10 @@ REGLAS DE ORO
 - Queda terminantemente prohibido inventar, aproximar o redondear precios, cantidades o nombres de opciones comerciales basándote en tu conocimiento general. 
 - Toda cifra monetaria, cantidad por paquete y ganancia del tratamiento que escribas en tu mensaje debe existir textualmente dentro del archivo del PRODUCTO ACTIVO que tienes en tu contexto, debes enviar todas las opciones que tiene el archivo. Si estás en un flujo orgánico y acabas de identificar el producto, detente y extrae los datos exclusivamente del texto de ese producto. Si el dato no está explícito en el archivo proporcionado, solicita amablemente un segundo al cliente para verificar el sistema, pero jamás lances números falsos creados por ti.
 10. TRANSPARENCIA TÉCNICA — Si piden tabla nutricional, registro sanitario o certificaciones: da datos puros sin pitch.
-11. CONTROL DE CATÁLOGO Y CAMBIO DE PRODUCTO (CROSS-SELL)  —  Solo si el malestar NO tiene relación con el producto activo, ofrece brevemente el producto del catálogo que corresponda.
-- Mantén el foco en el producto activo mientras el cliente hable de los síntomas relacionados a este. Si el cliente solo repite el nombre del producto o hace preguntas de este, no mires el resto del catálogo.
-- Tienes total libertad de cambiar la recomendación hacia otro producto del catálogo SI Y SOLO SI el cliente manifiesta un dolor, malestar o síntoma completamente nuevo que no se soluciona ni se cubre con el producto activo actual. 
-- Si ocurre este cambio de dolor, realiza la transición de forma médica y empática: explícale por qué el producto anterior ya no aplica para ese síntoma específico y preséntale el nuevo suplemento como la solución correcta a su problema de salud. Al hacer esto, el sistema actualizará el contexto.
+11. CONTROL DE CATÁLOGO Y CAMBIO DE PRODUCTO (CROSS-SELL) — La conversación se mantiene siempre sobre el PRODUCTO ACTIVO. Solo tú decides si hay un cambio real, nunca el sistema.
+- Mantén el foco absoluto en el producto activo mientras el cliente hable de él, de sus síntomas relacionados, o use palabras que casualmente coincidan con otro producto del catálogo sin que eso sea su intención real. Una palabra suelta no es un cambio de producto.
+- SOLO consideras un cambio de producto si el cliente, de forma clara y en el contexto de la conversación, expresa que el producto activo no es lo que busca, o pregunta explícitamente por otro producto distinto ("en realidad necesito algo para...", "¿tienen algo para...", "mejor hábleme del otro que vi"). Analiza la conversación completa, no una palabra aislada.
+- Si decides que SÍ hay cambio real, hazlo de forma médica y empática en tu mensaje: explica por qué el producto anterior no aplica a esa necesidad nueva y presenta el producto correcto. Además, en tu JSON de respuesta agrega el campo "cambiarA" con el nombre EXACTO del producto del catálogo al que cambias (debe coincidir tal cual con el campo "nombre" del catálogo). Si NO hay cambio de producto, no incluyas ese campo o déjalo vacío.
 12. PROHIBIDO CERRAR LA PUERTA O DESPEDIRSE PREMATURAMENTE: Mientras la venta no esté confirmada, queda estrictamente prohibido despedirse del cliente con frases como "Que tenga un excelente día" cuando solo te está dando un dato o una palabra de cortesía (ej: "A gracias", "Ok"). Mantén el canal abierto de forma vendedora.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -509,7 +502,12 @@ FORMATO WHATSAPP (ESTILO COMERCIAL ELEGANTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FORMATO DE RESPUESTA — OBLIGATORIO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO DE RESPUESTA — OBLIGATORIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta aquí","cambiarA":""}
+El campo "cambiarA" va vacío "" en el 99% de los casos. Solo lo llenas con el nombre EXACTO de otro producto del catálogo cuando decidiste, según la Regla de Oro 11, que el cliente realmente quiere cambiar de producto.
+
 ⚠️ REGLA ESTRICTA DE ORTOGRAFÍA PARA LAS ETAPAS:
 El campo "etapa" debe coincidir EXACTAMENTE con una de estas opciones en mayúsculas. Queda prohibido alterar su escritura:
 - BIENVENIDA
@@ -591,6 +589,18 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
 
 if (parsed) {
             nuevaEtapa = parsed.etapa || etapaActual;
+
+            // Cambio de producto decidido por la IA (nunca por keyword automática)
+            if (parsed.cambiarA && parsed.cambiarA.trim() !== "") {
+                const nuevoProducto = catalogo.find(p => p.nombre.toLowerCase() === parsed.cambiarA.trim().toLowerCase());
+                if (nuevoProducto && (!productoActivo || nuevoProducto.nombre !== productoActivo.nombre)) {
+                    console.log(`[CAMBIO DE PRODUCTO POR IA] ${productoActivo?.nombre || 'ninguno'} -> ${nuevoProducto.nombre}`);
+                    productoActivo = nuevoProducto;
+                    fotosEnviadas = {};
+                    await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
+                    await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+                }
+            }
             let textoRaw = (parsed.mensaje || "")
                 .replace(/\\n\\n/g, '\n\n')
                 .replace(/\\n/g, '\n')
