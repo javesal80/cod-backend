@@ -109,9 +109,10 @@ module.exports = async (req, res) => {
         await redisSetex(`dd:${msgId}`, 60, "1");
     } catch (e) { console.error("Dedup error:", e.message); }
 
-   const remoteJid  = data.key?.remoteJid || ""; // Asegura que no sea undefined
-const cleanJid   = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
-  if (!remoteJid) return res.status(200).send('OK');
+   // Aseguramos que si no viene remoteJid, la función no explote y frene aquí
+if (!remoteJid) return res.status(200).send('OK');
+
+const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
     // ─── VERIFICAR PAUSA ──────────────────────────────────────────────
     await new Promise(r => setTimeout(r, 500));
