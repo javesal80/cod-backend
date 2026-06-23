@@ -3,7 +3,7 @@ const path = require('path');
 
 module.exports = async (req, res) => {
 
-  if (req.method !== 'POST') return res.status(200).send('OK');
+    if (req.method !== 'POST') return res.status(200).send('OK');
 
     const {
         EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
 
     const NUMERO_ADMIN = "593992668002";
 
-   if (!req.body?.data?.message) return res.status(200).send('OK');
+    if (!req.body?.data?.message) return res.status(200).send('OK');
 
     // ─── COMANDOS ADMIN ───────────────────────────────────────────────
     if (req.body.data.key?.fromMe) {
@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
                 formData.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'audio.ogg');
                 formData.append('model', 'whisper-1');
                 formData.append('language', 'es');
-                const whisperResp = await fetch('[https://api.openai.com/v1/audio/transcriptions](https://api.openai.com/v1/audio/transcriptions)', {
+                const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
                     body: formData
@@ -201,8 +201,6 @@ module.exports = async (req, res) => {
         }
     } 
 
-    const altaIntencion = /quiero (realizar |hacer )?(una )?compra|quiero (pedir|comprarlo|uno|pedirlo)|me lo llevo|d[oó]nde pago|c[oó]mo pago|quiero (el |los )?(\d+ )?(tarros?|unidades?|paquetes?)/i.test(clienteMsg);
-
     // ─── EXTRACTORES DE DATOS EN TXT DE PRODUCTOS ─────────────────────
     let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
     if (productoActivo) {
@@ -288,10 +286,10 @@ MECÁNICA DE ETAPAS CONVERSACIONALES
 2. UNA SOLA PREGUNTA: Todo mensaje conversacional debe terminar estrictamente con una única e interesante pregunta al final. Nunca dejes al cliente en un callejón sin salida.
 3. ESTÉTICA LIMPIA: Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n). Usa de 1 a 3 emojis sutiles por mensaje.
 
-Genera tu respuesta en formato JSON plano con la estructura exacta: {"etapa": "NOMBRE_ETAPA", "mensaje": "Texto para WhatsApp"}. No uses bloques de código markdown, ni agregues texto adicional fuera de las llaves.
+CRÍTICO: Debes responder única y exclusivamente un objeto JSON plano que contenga de forma estricta las llaves "etapa" y "mensaje".
 `;
 
-    // ─── 🧠 ARQUITECTURA DE CONEXIÓN NATIVA CON API DE GEMINI ──────────────────
+    // ─── 🧠 CONEXIÓN NATIVA CON API DE GEMINI ──────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
@@ -300,7 +298,7 @@ Genera tu respuesta en formato JSON plano con la estructura exacta: {"etapa": "N
             parts: [{ text: msg.content }]
         }));
 
-        const urlGemini = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$){GEMINI_API_KEY.trim()}`;
+        const urlGemini = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY.trim()}`;
 
         const requestBody = {
             contents: geminiContents,
@@ -323,37 +321,20 @@ Genera tu respuesta en formato JSON plano con la estructura exacta: {"etapa": "N
         });
 
         const resJson = await r.json();
-        let respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        const respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-        // ─── PARSEADOR DEFENSIVO AVANZADO ─────────────────
+        // Parsers directos sin expresiones regulares propensas a romper sintaxis
         let parsed = null;
-        let clean = respuestaRaw.trim();
-        
-        // Sanitización previa: remover posibles envolturas markdown si Gemini ignora la orden
-        if (clean.startsWith("```")) {
-            clean = clean.replace(/^```json\s*/i, "").replace(/
-```$/, "").trim();
-        }
-
         try {
-            parsed = JSON.parse(clean);
-        } catch (e) {
-            // Si JSON.parse falla por caracteres de escape rotos en saltos de línea (\n crudos)
+            parsed = JSON.parse(respuestaRaw.trim());
+        } catch (jsonErr) {
+            console.log("[FALLBACK JSON] Intento alternativo de lectura directa...");
             try {
-                // Forzar corrección de strings con saltos de línea reales dentro de las comillas
-                const reparado = clean.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-                parsed = JSON.parse(reparado);
-            } catch (innerError) {
-                console.log("[FALLBACK REGEX] Error de parseo crítico, extrayendo via Regex manual...");
-                const matchEtapa = clean.match(/"etapa"\s*:\s*"([^"]+)"/);
-                const matchMensaje = clean.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*\}\s*$/) || clean.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*,/);
-                
-                if (matchMensaje) {
-                    textoFinal = matchMensaje[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
-                    if (matchEtapa) nuevaEtapa = matchEtapa[1];
-                } else {
-                    textoFinal = clean;
-                }
+                // Elimina saltos de línea crudos dentro de los textos que puedan romper el parser stringified
+                const sanitizado = respuestaRaw.replace(/[\n\r\t]/g, " ");
+                parsed = JSON.parse(sanitizado);
+            } catch (err) {
+                textoFinal = respuestaRaw.trim();
             }
         }
 
@@ -364,7 +345,7 @@ Genera tu respuesta en formato JSON plano con la estructura exacta: {"etapa": "N
                 .replace(/\*\*(.*?)\*\*/g, '*$1*') 
                 .trim();
 
-            // ─── FORMATEADOR ESTÉTICO AVANZADO PARA LA ETAPA DE PRECIOS ─────────────────
+            // ─── FORMATEADOR ESTÉTICO PARA LA ETAPA DE PRECIOS ─────────────────
             if (nuevaEtapa === 'DECISIÓN') {
                 const marcadorCierre = '✨';
                 const idxMarcador = textoFinal.indexOf(marcadorCierre);
