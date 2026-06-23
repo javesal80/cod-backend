@@ -18,7 +18,7 @@ const {
     GEMINI_API_KEY,
     OPENAI_API_KEY,
     GROK_API_KEY,
-    IA_PROVIDER,
+    IA_PROVIDER1,
     masterPrompt
 } = process.env;
 
@@ -112,7 +112,7 @@ let textoFinal = "";
 
 try {
 
-    if (IA_PROVIDER === "openai") {
+    if (IA_PROVIDER1 === "openai") {
 
         const r = await fetch("https://api.openai.com/v1/chat/completions", {
             method: "POST",
@@ -130,7 +130,7 @@ try {
         const json = await r.json();
         textoFinal = json?.choices?.[0]?.message?.content || "";
 
-    } else if (IA_PROVIDER === "grok") {
+    } else if (IA_PROVIDER1 === "grok") {
 
         const r = await fetch("https://api.x.ai/v1/chat/completions", {
             method: "POST",
