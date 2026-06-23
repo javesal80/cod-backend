@@ -6,39 +6,50 @@ module.exports = async (req, res) => {
 if (req.method !== 'POST') return res.status(200).send('OK');
 if (!req.body?.data?.message) return res.status(200).send('OK');
 
-// ─── ENV ─────────────────────────────
+// ─────────────────────────────────────
+// ENV
+// ─────────────────────────────────────
 const {
     EVOLUTION_URL,
     EVOLUTION_TOKEN_WHATSAPI,
     INSTANCE_WHATSAPI,
     KV_REST_API_URL,
     KV_REST_API_TOKEN,
-    GEMINI_API_KEY
+    GEMINI_API_KEY,
+    OPENAI_API_KEY,
+    GROK_API_KEY,
+    IA_PROVIDER,
+    masterPrompt
 } = process.env;
 
-// ─── DATA ────────────────────────────
+// ─────────────────────────────────────
+// DATA
+// ─────────────────────────────────────
 const data = req.body.data;
+
 const remoteJid = data.key?.remoteJid;
 const msgId = data.key?.id;
+
+if (!remoteJid || !msgId) return res.status(200).send('OK');
 
 const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
 const instName = req.body.instance || INSTANCE_WHATSAPI || "bot";
 
-// ─── EXTRACT MSG ─────────────────────
 let clienteMsg =
-data.message?.conversation ||
-data.message?.extendedTextMessage?.text ||
-data.message?.imageMessage?.caption ||
-data.message?.videoMessage?.caption ||
-data.message?.buttonsResponseMessage?.selectedButtonId ||
-data.message?.interactiveResponseMessage?.body ||
-"";
+    data.message?.conversation ||
+    data.message?.extendedTextMessage?.text ||
+    data.message?.imageMessage?.caption ||
+    data.message?.videoMessage?.caption ||
+    data.message?.buttonsResponseMessage?.selectedButtonId ||
+    data.message?.interactiveResponseMessage?.body ||
+    "";
 
-clienteMsg = clienteMsg.toString().trim().toLowerCase();
-
+clienteMsg = clienteMsg.toString().trim();
 if (!clienteMsg) return res.status(200).send('OK');
 
-// ─── REDIS ───────────────────────────
+// ─────────────────────────────────────
+// REDIS HELPERS
+// ─────────────────────────────────────
 const redisGet = async (key) => {
     const r = await fetch(KV_REST_API_URL, {
         method: 'POST',
@@ -56,14 +67,30 @@ const redisSetex = async (key, s, v) => {
     });
 };
 
-// ─── ANTI DUP FÍSICO ────────────────
-if (await redisGet(`dd:${msgId}`)) return res.status(200).send('OK');
-await redisSetex(`dd:${msgId}`, 60, "1");
-
-// ─── JID ─────────────────────────────
+// ─────────────────────────────────────
+// ID EMPOTENCIA REAL (CLAVE)
+// ─────────────────────────────────────
 const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
-// ─── LOCK ────────────────────────────
+const fingerprint = Buffer.from(
+    `${msgId}:${clienteMsg}:${remoteJid}`
+).toString('base64').slice(0, 40);
+
+const msgKey = `msg:${cleanJid}:${msgId}`;
+const fpKey = `fp:${cleanJid}:${fingerprint}`;
+
+if (await redisGet(msgKey) || await redisGet(fpKey)) {
+    return res.status(200).send('OK');
+}
+
+await Promise.all([
+    redisSetex(msgKey, 120, "1"),
+    redisSetex(fpKey, 120, "1")
+]);
+
+// ─────────────────────────────────────
+// LOCK (EVITA CONCURRENCIA)
+// ─────────────────────────────────────
 const lockKey = `lock:${cleanJid}`;
 
 const lock = await fetch(KV_REST_API_URL, {
@@ -74,104 +101,100 @@ const lock = await fetch(KV_REST_API_URL, {
 
 if (lock.result !== "OK") return res.status(200).send('OK');
 
-// ─── MEMORIA ─────────────────────────
-const memoriaKey = `chat:${cleanJid}`;
-const stageKey = `stage:${cleanJid}`;
-
-let historial = [];
-let etapaActual = "BIENVENIDA";
-
-const h = await redisGet(memoriaKey);
-const e = await redisGet(stageKey);
-
-if (h) historial = JSON.parse(h);
-if (e) etapaActual = e;
-
 // ─────────────────────────────────────
-// 🔴 ANTI LOOP INTELIGENTE (CLAVE)
+// IA ROUTER
 // ─────────────────────────────────────
+const prompt = masterPrompt
+    ? masterPrompt + "\n\nMENSAJE DEL CLIENTE:\n" + clienteMsg
+    : clienteMsg;
 
-// si usuario repite exactamente lo mismo 2 veces seguidas → no responder
-const lastUser = [...historial].reverse().find(m => m.role === "user");
-if (lastUser?.content?.trim() === clienteMsg) {
-    await fetch(KV_REST_API_URL, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` },
-        body: JSON.stringify(["DEL", lockKey])
-    });
-    return res.status(200).send('OK');
-}
-
-// filtro basura tipo "hola" repetido
-const trivial = ["hola", "hi", "buenas", "holaa", "holaaa"];
-if (trivial.includes(clienteMsg) && lastUser?.content === clienteMsg) {
-    await fetch(KV_REST_API_URL, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` },
-        body: JSON.stringify(["DEL", lockKey])
-    });
-    return res.status(200).send('OK');
-}
-
-// ─── HISTORIAL ───────────────────────
-historial.push({ role: "user", content: clienteMsg });
-
-// ─── PROMPT GEMINI (CONTROLADO) ──────
-const prompt = `
-Eres un asesor humano de ventas por WhatsApp.
-
-Reglas estrictas:
-- Respuestas naturales, humanas y cortas
-- Máximo 6 líneas
-- No repitas saludos infinitos
-- No entres en bucles de cortesía
-- Si el usuario dice hola, responde SOLO una vez de forma breve y pregunta qué necesita
-- Una sola pregunta final
-- Estilo cercano, no robótico
-
-Usuario:
-${clienteMsg}
-`;
-
-// ─── GEMINI ──────────────────────────
-let respuestaRaw = "";
+let textoFinal = "";
 
 try {
-    const r = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
-        {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
-            })
-        }
-    );
 
-    respuestaRaw =
-        (await r.json()).candidates?.[0]?.content?.parts?.[0]?.text ||
-        "Hola 😊 ¿en qué puedo ayudarte?";
+    if (IA_PROVIDER === "openai") {
+
+        const r = await fetch("https://api.openai.com/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "gpt-4o",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.6
+            })
+        });
+
+        const json = await r.json();
+        textoFinal = json?.choices?.[0]?.message?.content || "";
+
+    } else if (IA_PROVIDER === "grok") {
+
+        const r = await fetch("https://api.x.ai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${GROK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: "grok-4-1-fast-non-reasoning",
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7
+            })
+        });
+
+        const json = await r.json();
+        textoFinal = json?.choices?.[0]?.message?.content || "";
+
+    } else {
+
+        // ─── GEMINI (TU VERSION ORIGINAL CORREGIDA) ───
+        console.log("[IA ENGINE] GEMINI ACTIVATED");
+
+        const r = await fetch(
+            `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [
+                        {
+                            role: "user",
+                            parts: [{ text: prompt }]
+                        }
+                    ],
+                    generationConfig: {
+                        temperature: 0.4,
+                        maxOutputTokens: 1000
+                    }
+                })
+            }
+        );
+
+        const json = await r.json();
+
+        textoFinal =
+            json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    }
+
 } catch (e) {
-    respuestaRaw = "Hola 😊 ¿en qué puedo ayudarte?";
+    textoFinal = "Hola 😊 ¿en qué puedo ayudarte?";
 }
 
-// ─── LIMPIEZA ────────────────────────
-let textoFinal = respuestaRaw
-    .replace(/```/g, "")
-    .trim();
+// ─────────────────────────────────────
+// CLEAN OUTPUT
+// ─────────────────────────────────────
+textoFinal = (textoFinal || "").replace(/```/g, "").trim();
 
-// fallback duro
 if (!textoFinal || textoFinal.length < 3) {
     textoFinal = "Hola 😊 ¿en qué puedo ayudarte?";
 }
 
-// ─── GUARDAR ─────────────────────────
-historial.push({ role: "assistant", content: textoFinal });
-
-await redisSetex(memoriaKey, 604800, JSON.stringify(historial));
-await redisSetex(stageKey, 604800, etapaActual);
-
-// ─── ENVÍO ───────────────────────────
+// ─────────────────────────────────────
+// SEND
+// ─────────────────────────────────────
 await fetch(`${baseUrl}/message/sendText/${instName}`, {
     method: 'POST',
     headers: {
@@ -184,7 +207,9 @@ await fetch(`${baseUrl}/message/sendText/${instName}`, {
     })
 });
 
-// ─── UNLOCK ──────────────────────────
+// ─────────────────────────────────────
+// UNLOCK
+// ─────────────────────────────────────
 await fetch(KV_REST_API_URL, {
     method: 'POST',
     headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}` },
