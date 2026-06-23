@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(200).send('OK');
 
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
+        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
         OPENAI_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN, GEMINI_API_KEY
     } = process.env;
 
@@ -39,16 +39,16 @@ module.exports = async (req, res) => {
     const remoteJid  = data.key?.remoteJid;
     const msgId      = data.key?.id;
     const baseUrl    = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName   = req.body.instance || INSTANCE_WHATSAPI || "VitaeLAB";
+    const instName   = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
-    // ─── TRANSCRIPCIÓN DE AUDIO (Whisper API) ─────────────────────────
+    // ─── TRANSCRIPCIÓN DE AUDIO (Mantenida intacta con Whisper si se recibe voz) ───
     if (!clienteMsg && data.message?.audioMessage && OPENAI_API_KEY) {
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
             });
             const mediaJson  = await mediaResp.json();
@@ -224,28 +224,25 @@ module.exports = async (req, res) => {
     historial.push({ role: "user", content: clienteMsg });
     if (historial.length > 40) historial = historial.slice(-40);
 
-    // ─── 🧠 MASTER PROMPT: FUSIÓN NEUROVENTAS + ESCUCHA ACTIVA RADICAL ───
+    // ─── 🧠 MASTER PROMPT: OPCIÓN B + MÁXIMA EMPATÍA NEURO-CONVERSACIONAL ───
     const masterPrompt = `
-Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. No eres un bot automatizado ni una vendedora agresiva. Tu objetivo principal es sanar y guiar, no empujar una venta a toda costa. Si actúas como un "potro desbocado" que solo busca cerrar la transacción ignorando lo que el cliente te escribe, activarás sus mecanismos de defensa y perderás su confianza para siempre. 
+Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. No actúes como un bot que solo escupe textos automáticos o que corre desesperada a empujar una venta. Tu superpoder es la empatía real, la escucha activa y la capacidad de analizar minuciosamente el historial de la conversación antes de dar una respuesta. Comprendes perfectamente la neuropsicología del consumidor: el cerebro huye y se defiende (genera cortisol) si detecta presión de compra, pero se abre y confía (genera dopamina y oxitocina) cuando se siente escuchado, comprendido y respaldado por una autoridad médica humana.
 
-Tratas al cliente de USTED, con una calidez genuina, profesional y cercana. Quedan prohibidas las muletillas e inicio de mensajes idénticos ("¡Perfecto!", "¡Claro!", "Entiendo su situación").
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 REGLA DE ORO DE ESCUCHA ACTIVA (PROHIBIDO AVANZAR A CIEGAS)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Antes de generar cualquier respuesta, lee el último mensaje del cliente y compáralo con el historial. Debes validar de forma obligatoria lo que te acaba de decir:
-- Si el cliente te cuenta un síntoma, un dolor o una frustración antigua: DETENTE. Valida su dolor con empatía humana real. Urga sutilmente en esa herida haciéndole ver que entiendes lo difícil que es vivir con ese malestar en su día a día.
-- Si el cliente cambia de tema, hace una pregunta técnica sobre ingredientes, o muestra desconfianza sobre la efectividad: ESTÁ PROHIBIDO pasar a la etapa de precios o pedir datos de envío. Responde su duda con autoridad médica simple, dile por qué el producto actúa de forma diferente a lo que ya ha probado y devuélvele la tranquilidad.
-- Solo si el cliente te da luz verde explícita o una señal clara de compra ("¿Cuánto cuesta?", "Quiero pedirlo", "Me interesa el tratamiento"), avanzarás a la estructura de cotización o cierre. El cliente dicta el ritmo, tú solo lo guías.
+Tratas al cliente de USTED con absoluta cercanía, calidez y naturalidad, como una amiga experta. Quedan terminantemente prohibidas las exclamaciones robóticas falsas ("¡Excelente!", "¡Perfecto!", "¡Claro!").
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 ADAPTACIÓN PSICOLÓGICA SEGÚN EL ESTADO DEL CLIENTE
+🧠 REVISIÓN DEL HILO Y ADAPTACIÓN PSICOLÓGICA (TRES PERFILES DE CLIENTE)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1️⃣ CLIENTE DIRECTO (Listo para comprar): Va al grano o pide el precio. Responde directo, despliega las opciones de precio bajo el formato estricto de DECISIÓN, sin rodeos innecesarios.
+Analiza minuciosamente el último mensaje del cliente y contrástalo con el historial para clasificar su nivel de consciencia actual:
 
-2️⃣ CLIENTE EN EVALUACIÓN (Busca seguridad/Siente dolor): Te describe lo que siente. No hables de dinero. Conéctalo con la solución: explícale de forma supersimple cómo el producto va a ingresar a su organismo y qué beneficio real va a sentir en su vida diaria (ej. "volver a dormir sin dolor", "sentir energía desde la mañana"). Construye el escudo de autoridad (Registro ARCSA / Importado de EE.UU.).
+1️⃣ CLIENTE DIRECTO (Alta Consciencia / Listo para actuar): Va al grano, pregunta precios de inmediato, dice cómo pagar o pide el producto.
+   - Acción: No le des vueltas, no le metas pasos de calentamiento que no pidió. Responde su duda o despliega las opciones de precio de inmediato bajo el formato estricto de DECISIÓN.
 
-3️⃣ CLIENTE FRÍO (Curioso): Llega con "Más información". Dale una bienvenida humana y hazle UNA sola pregunta abierta para descubrir cuál es la molestia específica que desea eliminar de su vida hoy.
+2️⃣ CLIENTE EN EVALUACIÓN (Medio Consciencia / Busca seguridad): Te describe sus síntomas, pregunta ingredientes, si tiene contraindicaciones o cómo funciona.
+   - Acción: Frena por completo cualquier intento de venta. Tu prioridad absoluta es validar su situación, explicarle con palabras supersimples (neurociencia: carga cognitiva baja) cómo el tratamiento actúa en su cuerpo para devolverle la salud y construir autoridad (Registro ARCSA o importado de EE.UU.). Pide permiso sutil antes de avanzar.
+
+3️⃣ CLIENTE FRÍO (Bajo Consciencia / Curioso): Llega con un texto vago como "Más información" o "Vi el anuncio".
+   - Acción: Conéctalo emocionalmente. Dale una bienvenida humana y personalizada, y lánzale la pregunta filtro inicial para descubrir cuál es la molestia específica que desea eliminar de su vida hoy.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INFORMACIÓN CORPORATIVA Y DE RESPALDO
@@ -260,33 +257,35 @@ ${resumenCatalogo || "No disponible."}
 ${infoProducto ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCTO IDENTIFICADO Y ACTIVO: ${productoActivo?.nombre?.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Usa única y exclusivamente la información técnica de este archivo. Jamás inventes precios, promociones o componentes:
+Usa única y exclusivamente la información técnica de este archivo. Jamás inventes precios, promociones o componentes que no figuren aquí de forma explícita:
 
 ${infoProducto}` : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TRÁFICO ORGÁNICO / SIN PRODUCTO DETECTADO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Pregúntale con total soltura qué afección o meta de bienestar busca solucionar para guiarle con el producto exacto de tu catálogo.`}
+El cliente no viene de un anuncio específico. Pregúntale con total soltura qué afección o meta de bienestar busca solucionar para guiarle con el producto exacto de tu catálogo.`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MECÁNICA DE ETAPAS CONVERSACIONALES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- ESCUCHA: Recepción, saludo dinámico e indagación del malestar.
-- SOLUCIÓN: Explicación persuasiva basada en alivio y transformación. Lanza el gancho: "¿Le gustaría que le detalle las promociones y opciones que tenemos hoy para iniciar su tratamiento? 📦"
-- DECISIÓN (Precios): *REGLA DE ORO OBLIGATORIA:* Enumera las opciones comerciales exactamente así:
+Identifica la etapa y mantén la fluidez. Puedes retroceder de etapa si detectas que el cliente se asusta o presenta objeciones en lugar de forzar el cierre.
+
+- ESCUCHA: Recepción, saludo dinámico integrado (sin muletillas) e indagación del malestar.
+- SOLUCIÓN: Explicación persuasiva basada en alivio y transformación de vida diaria. Lanza el gancho: "¿Le gustaría que le detalle las promociones y opciones que tenemos hoy para iniciar su tratamiento? 📦"
+- DECISIÓN (Precios): *REGLA DE ORO OBLIGATORIA:* Debes enumerar todas las opciones comerciales del archivo con este formato exacto:
   "📦 *Opción 1:* X unidad — $XX.XX
   📦 *Opción 2:* X unidades — $XX.XX
   📦 *Opción 3:* X unidades — $XX.XX"
-  Justo después del listado, añade tu recomendación personalizada conectada a sus síntomas.
-- CIERRE (Formulario): Explica la logística de Pago Contra Entrega (cancela en efectivo al recibir en sus manos) y pide los datos:
+  Justo después del listado, añade en un párrafo tu recomendación personalizada conectada a sus síntomas.
+- CIERRE (Formulario): Confirmación de la promo elegida. Genera confianza explicando la logística de Pago Contra Entrega (cancela en efectivo al recibir) y pide los datos:
   "Para ayudarle a asegurar su producto y coordinar el despacho, ayúdeme por favor con los siguientes datos:\\n*Nombre y Apellido:*\\n*Provincia-Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
-- CONFIRMADO: "¡Gracias! Su pedido ha sido registrado con éxito. 🎉\\n\\nSu entrega llegará entre ${mañana} o ${pasado}.\\n\\nLe agradecemos su confianza. En breve recibirá su producto."
+- CONFIRMADO: Texto exacto de protocolo de despacho: "¡Gracias! Su pedido ha sido registrado con éxito. 🎉\\n\\nSu entrega llegará entre ${mañana} o ${pasado}.\\n\\nLe agradecemos su confianza. En breve recibirá su producto."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 REGLAS INQUEBRANTABLES DE DISEÑO PARA WHATSAPP
+🚨 REGLAS INQUEBRANTABLES DE DISEÑO CONVERSACIONAL PARA WHATSAPP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. VARIACIÓN RADICAL: Está prohibido usar textos robóticos predecibles. Sé una persona real conversando.
-2. UNA SOLA PREGUNTA: Todo mensaje conversacional debe terminar estrictamente con una única e interesante pregunta al final. Nunca dejes al cliente en un callejón sin salida.
-3. ESTÉTICA LIMPIA: Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n). Usa de 1 a 3 emojis sutiles por mensaje.
+1. VARIACIÓN RADICAL: Nunca comiences dos mensajes consecutivos con las mismas palabras. Elimina muletillas automáticas de IA.
+2. UNA SOLA PREGUNTA: Tus respuestas deben finalizar estrictamente con una única e interesante pregunta al final para mantener el control humano del chat. Quedan prohibidas las preguntas cruzadas o intermedias.
+3. ESTÉTICA DE LECTURA RAPIDA: Párrafos cortos de máximo 2 líneas. Ideas separadas siempre por un salto de línea doble (\\n\\n). Usa entre 1 y 3 emojis estratégicos para dar calidez visual, jamás los amontones como viñetas.
 
 Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
 {"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta maquetada para WhatsApp aquí"}
@@ -296,6 +295,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
+        // Mapeo adaptado del historial al formato nativo estructurado de Gemini (contents)
         const geminiContents = historial.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
             parts: [{ text: msg.content }]
@@ -307,9 +307,9 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 parts: [{ text: masterPrompt + `\n\nCRÍTICO: Responde exclusivamente con JSON estructurado: {"etapa":"ETAPA","mensaje":"texto"}. No agregues bloques markdown \`\`\`json ni decoradores extras. Analiza el contexto previo antes de responder.` }]
             },
             generationConfig: {
-                temperature: 0.35, 
+                temperature: 0.35, // Consistencia en el comportamiento y fidelidad de los datos del TXT
                 maxOutputTokens: 1000,
-                responseMimeType: "application/json" 
+                responseMimeType: "application/json" // Fuerza el output como objeto JSON real de API
             }
         };
 
@@ -346,7 +346,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
             nuevaEtapa = parsed.etapa || etapaActual;
             textoFinal = (parsed.mensaje || "")
                 .replace(/\\n/g, '\n')
-                .replace(/\*\*(.*?)\*\*/g, '*$1*') 
+                .replace(/\*\*(.*?)\*\*/g, '*$1*') // Re-formateo dinámico de negritas nativas de IA a formato WhatsApp
                 .trim();
 
             // ─── FORMATEADOR ESTÉTICO AVANZADO PARA LA ETAPA DE PRECIOS ─────────────────
@@ -369,14 +369,14 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
             }
         }
 
-        // ─── PERSISTENCIA DEL HILO DE LA CONVERSACIÓN ─────────────────────────────────
+        // ─── PERSISTENCIA DEL HILO DE LA CONVERSACIÓN (CORAZÓN DEL JS) ─────────────────
         historial.push({ role: "assistant", content: textoFinal });
         await Promise.all([
             redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
             redisSetex(stageKey,   86400 * 7, nuevaEtapa)
         ]);
 
-        // ─── RESPALDO DE SEGURIDAD EN SUPABASE ───────────────────────────────────
+        // ─── RESPALDO DE SEGURIDAD EN SUPABASE (INTACTO) ───────────────────────────────────
         try {
             await fetch(`${process.env.SUPABASE_URL}/rest/v1/conversaciones`, {
                 method: 'POST',
@@ -401,7 +401,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
 
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                 body: JSON.stringify({ number: NUMERO_ADMIN, text: resumenVenta })
             }).catch(e => console.log("Error enviando reporte:", e.message));
         }
@@ -441,7 +441,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 try {
                     await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                         body: JSON.stringify({ number: remoteJid, presence: "composing", delay })
                     });
                 } catch(te) {}
@@ -450,7 +450,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 try {
                     await fetch(`${baseUrl}/message/sendText/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                         body: JSON.stringify({ number: remoteJid, text: texto })
                     });
                 } catch(se) {}
@@ -461,7 +461,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 if (ok === false) break;
             }
 
-            // ─── CONTROL LOGÍSTICO DE CONTENIDO MULTIMEDIA (FOTOS) ───────────────────────────
+            // ─── CONTROL LOGÍSTICO DE CONTENIDO MULTIMEDIA (FOTOS DEL TXT) ───────────────
             const mapaFotos = {
                 "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
                 "SOLUCIÓN":   imgBeneficios, "DECISIÓN": imgTestimonios
@@ -480,7 +480,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 await new Promise(r => setTimeout(r, 1800 + Math.floor(Math.random() * 1000)));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                     body: JSON.stringify({ number: remoteJid, media: fotoEtapa, mediatype: "image", caption: "" })
                 });
                 const esInicial = ["BIENVENIDA","ESCUCHA"].includes(nuevaEtapa);
@@ -488,7 +488,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                     await new Promise(r => setTimeout(r, 1500));
                     await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                         body: JSON.stringify({ number: remoteJid, media: productoActivo.img_tabla, mediatype: "image", caption: "" })
                     });
                 }
@@ -503,7 +503,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
 
     } catch (error) { console.error("Error crítico en el flujo principal:", error.message); }
 
-    // Liberación del lock atómico de Redis
+    // Liberación segura del lock atómico de Redis
     await fetch(`${KV_REST_API_URL}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
