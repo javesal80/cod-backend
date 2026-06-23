@@ -23,14 +23,14 @@ module.exports = async (req, res) => {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["SETEX", `pausa:${cleanJidAdmin}`, 86400, "1"])
-            });
+            }).catch(() => {});
         }
         if (msgAdmin === '#activar') {
             await fetch(`${KV_REST_API_URL}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["DEL", `pausa:${cleanJidAdmin}`])
-            });
+            }).catch(() => {});
         }
         return res.status(200).send('OK');
     }
@@ -65,7 +65,6 @@ module.exports = async (req, res) => {
                     body: formData
                 });
                 clienteMsg = (await whisperResp.json()).text || "";
-                console.log("[WHISPER]", clienteMsg);
             }
         } catch (e) { console.error("[WHISPER ERROR]", e.message); }
     }
@@ -83,7 +82,7 @@ module.exports = async (req, res) => {
     const mañana = dias[d1.getDay()];
     const pasado  = dias[d2.getDay()];
 
-    // ─── REDIS HELPERS ────────────────────────────────────────────────
+    // ─── REDIS HELPERS SEGUROS ────────────────────────────────────────
     const redisGet = async (key) => {
         try {
             const r = await fetch(`${KV_REST_API_URL}`, {
@@ -91,11 +90,11 @@ module.exports = async (req, res) => {
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["GET", key])
             });
-            const resData = await r.json();
-            return resData.result || null;
+            const d = await r.json();
+            return d.result || null;
         } catch (e) { return null; }
     };
-    
+
     const redisSetex = async (key, seconds, value) => {
         try {
             await fetch(`${KV_REST_API_URL}`, {
@@ -106,26 +105,23 @@ module.exports = async (req, res) => {
         } catch (e) {}
     };
 
-    const tsActual = Date.now().toString();
     const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
-    // ─── ANTI-DUPLICADOS REOPTIMIZADO ────────────────────────────────
+    // ─── ANTI-DUPLICADOS SIMPLIFICADO EFECTIVO ────────────────────────
     try {
-        const dupCheck = await redisGet(`dd:${msgId}`);
-        if (dupCheck) {
-            console.log("[ANTI-DUP] Mensaje duplicado ignorado:", msgId);
-            return res.status(200).send('OK');
-        }
-        await redisSetex(`dd:${msgId}`, 30, "1");
+        const dup = await redisGet(`dd:${msgId}`);
+        if (dup) return res.status(200).send('OK');
+        await redisSetex(`dd:${msgId}`, 45, "1");
     } catch (e) {}
 
+    const tsActual = Date.now().toString();
+    await redisSetex(`lastmsg:${cleanJid}`, 300, tsActual).catch(() => {});
+    
     // ─── CONTROL DE PAUSA ACTIVA ──────────────────────────────────────
     try { 
         const isPaused = await redisGet(`pausa:${cleanJid}`);
         if (isPaused) return res.status(200).send('OK');
     } catch (e) {}
-
-    await redisSetex(`lastmsg:${cleanJid}`, 300, tsActual).catch(() => {});
 
     // ─── RECUPERACIÓN DE ESTADO DESDE REDIS ───────────────────────────
     const memoriaKey  = `chat:${cleanJid}`;
@@ -213,42 +209,49 @@ module.exports = async (req, res) => {
     historial.push({ role: "user", content: clienteMsg });
     if (historial.length > 40) historial = historial.slice(-40);
 
-    // ─── 🧠 MASTER PROMPT ───
+    // ─── 🧠 MASTER PROMPT EXCLUSIVO WHATSAPP (TEXTO PLANO DELIMITADO) ───
     const masterPrompt = `
-Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. Tratas al cliente de USTED, con una calidez genuina, profesional y cercana.
+Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. Tratas al cliente de USTED, con una calidez genuina, profesional y cercana. Quedan prohibidas las muletillas e inicio de mensajes idénticos ("¡Perfecto!", "¡Claro!", "Entiendo...").
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 REGLA DE ORO DE ESCUCHA ACTIVA
+🚨 REGLA DE ORO DE ESCUCHA ACTIVA (PROHIBIDO AVANZAR A CIEGAS)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Antes de avanzar, valida empáticamente lo que te acaba de decir el cliente. No hables de dinero ni pidas datos si hay dudas médicas o desconfianza. El cliente dicta el ritmo.
+Antes de generar cualquier respuesta, lee el último mensaje del cliente y compáralo con el historial. Debes validar de forma obligatoria lo que te acaba de decir:
+- Si el cliente te cuenta un síntoma o un dolor: DETENTE. Valida su dolor con empatía humana real. Urga sutilmente en esa herida.
+- Si el cliente cambia de tema o hace una pregunta técnica sobre ingredientes, responde con autoridad médica simple. ESTÁ PROHIBIDO pasar a la etapa de precios o pedir datos en estos escenarios.
+- Solo si el cliente te da luz verde explícita o una señal clara de compra ("¿Cuánto cuesta?", "Quiero pedirlo"), avanzarás a la estructura de cotización o cierre.
 
-INFORMACIÓN CORPORATIVA:
+INFORMACIÓN CORPORATIVA Y DE RESPALDO:
 ${infoGeneral}
 
-CATÁLOGO:
+CATÁLOGO DE PRODUCTOS DISPONIBLES:
 ${resumenCatalogo || "No disponible."}
 
-${infoProducto ? `PRODUCTO ACTIVO: ${productoActivo?.nombre?.toUpperCase()}\n${infoProducto}` : `TRÁFICO ORGÁNICO / SIN PRODUCTO DETECTADO.`}
+${infoProducto ? `PRODUCTO IDENTIFICADO Y ACTIVO: ${productoActivo?.nombre?.toUpperCase()}\n${infoProducto}` : `TRÁFICO ORGÁNICO / SIN PRODUCTO DETECTADO.`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MECÁNICA DE ETAPAS CONVERSACIONALES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- ESCUCHA: Saludo e indagación.
-- SOLUCIÓN: Explicación y gancho comercial ("¿Le gustaría que le detalle las promociones...?").
-- DECISIÓN (Precios): Enumera estrictamente las opciones:
+- ESCUCHA: Recepción, saludo dinámico e indagación del malestar.
+- SOLUCIÓN: Explicación persuasiva basada en alivio. Lanza el gancho: "¿Le gustaría que le detalle las promociones y opciones que tenemos hoy para iniciar su tratamiento? 📦"
+- DECISIÓN (Precios): *REGLA DE ORO OBLIGATORIA:* Enumera las opciones comerciales exactamente así:
   "📦 *Opción 1:* X unidad — $XX.XX
-  📦 *Opción 2:* X unidades — $XX.XX"
-- CIERRE (Formulario): Pide datos de envío con logística Contra Entrega.
-- CONFIRMADO: "¡Gracias! Pedido registrado. Entrega entre ${mañana} o ${pasado}."
+  📦 *Opción 2:* X unidades — $XX.XX
+  📦 *Opción 3:* X unidades — $XX.XX"
+  Justo después del listado, añade tu recomendación personalizada conectada a sus síntomas.
+- CIERRE (Formulario): Explica la logística de Pago Contra Entrega y pide los datos:
+  "Para ayudarle a asegurar su producto y coordinar el despacho, ayúdeme por favor con los siguientes datos:\\n*Nombre y Apellido:*\\n*Provincia-Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
+- CONFIRMADO: "¡Gracias! Su pedido ha sido registrado con éxito. 🎉\\n\\nSu entrega llegará entre ${mañana} o ${pasado}.\\n\\nLe agradecemos su confianza."
 
-🚨 REGLAS DE WHATSAPP:
-1. Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n).
-2. Termina con una única pregunta clara.
+🚨 REGLAS INQUEBRANTABLES DE DISEÑO PARA WHATSAPP:
+1. Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n). Usa de 1 a 3 emojis sutiles por mensaje.
+2. Todo mensaje debe terminar estrictamente con una única pregunta al final.
 
-⚠️ FORMATO DE SALIDA OBLIGATORIO TEXTO PLANO:
+⚠️ FORMATO DE SALIDA COMPULSORIO OBLIGATORIO:
+Tu respuesta debe seguir este formato exacto en texto plano, usando tres barras verticales como separador:
 ETAPA_CORRESPONDIENTE|||Texto del mensaje listo para enviarse a WhatsApp
 
-No uses JSON ni bloques markdown decorativos. Envía la línea limpia.
+No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera de esta estructura plana.
 `;
 
     // ─── 🧠 CONEXIÓN DIRECTA CON API DE GEMINI ──────────────────
@@ -275,7 +278,6 @@ No uses JSON ni bloques markdown decorativos. Envía la línea limpia.
         const resJson = await r.json();
         let respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-        // Limpieza de envolturas Markdown si Gemini las genera por inercia
         respuestaRaw = respuestaRaw.trim();
         if (respuestaRaw.startsWith("```")) {
             respuestaRaw = respuestaRaw.replace(/^```[a-zA-Z]*\n?/i, "").replace(/```$/, "").trim();
@@ -306,21 +308,21 @@ No uses JSON ni bloques markdown decorativos. Envía la línea limpia.
                 }
             }
 
-            // Persistencia inmediata
+            // Persistencia inmediata de estados
             historial.push({ role: "assistant", content: textoFinal });
             await Promise.all([
                 redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
                 redisSetex(stageKey,   86400 * 7, nuevaEtapa)
             ]);
 
-            // Cola de mensajes y simulación humana
+            // Envío secuencial simulando tipeo humano
             const tsEnvio = tsActual;
             let partes = textoFinal.split('\n\n').map(l => l.trim()).filter(l => l !== "");
             const preguntaCierre = partes.length > 1 ? partes.pop() : "";
 
             const enviar = async (texto) => {
                 const tsReciente = await redisGet(`lastmsg:${cleanJid}`);
-                if (tsReciente && tsReciente !== tsEnvio) return false; // Interrupción por cliente
+                if (tsReciente && tsReciente !== tsEnvio) return false;
                 
                 const delay = Math.min(texto.length * 28, 3800); 
                 try {
@@ -345,11 +347,11 @@ No uses JSON ni bloques markdown decorativos. Envía la línea limpia.
                 if ((await enviar(parte)) === false) break;
             }
 
-            // Envío de Multimedia lógico
+            // Envío de imágenes lógicas por etapa
             const mapaFotos = { "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto, "SOLUCIÓN": imgBeneficios, "DECISIÓN": imgTestimonios };
             const fotoEtapa = mapaFotos[nuevaEtapa] || "";
             if (fotoEtapa && !fotosEnviadas[nuevaEtapa]) {
-                await new Promise(r => setTimeout(r, 1000));
+                await new Promise(r => setTimeout(r, 1200));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
@@ -372,7 +374,7 @@ No uses JSON ni bloques markdown decorativos. Envía la línea limpia.
             }
         }
     } catch (error) { 
-        console.error("Error crítico en flujo principal:", error.message); 
+        console.error("Error crítico:", error.message); 
     }
 
     return res.status(200).send('OK');
