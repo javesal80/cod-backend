@@ -586,15 +586,38 @@ console.log("[IA MODEL] gpt-4o");
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
         } else if (provider === 'gemini') {
-          console.log("[IA ENGINE] GEMINI ACTIVATED");
-console.log("[IA MODEL] gemini-1.5-flash");
-            const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ contents: [{ parts: [{ text: masterPrompt + "\n\n" + JSON.stringify(mensajesFinales) }] }] })
-            });
-            respuestaRaw = (await r.json()).candidates?.[0]?.content?.parts?.[0]?.text || "";
+  console.log("[IA ENGINE] GEMINI ACTIVATED");
+  console.log("[IA MODEL] gemini-1.5-flash");
+
+  const prompt = masterPrompt + "\n\nMENSAJE DEL CLIENTE:\n" + clienteMsg;
+
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 1000
         }
+      })
+    }
+  );
+
+  const json = await r.json();
+
+  console.log("[GEMINI FULL RESPONSE]", JSON.stringify(json, null, 2));
+
+  respuestaRaw =
+    json?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+}
 
         console.log("[IA RAW]", respuestaRaw.substring(0, 400));
       console.log("[IA RESPONSE LENGTH]", respuestaRaw.length);
