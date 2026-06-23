@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
     const baseUrl    = EVOLUTION_URL?.replace(/\/$/, "");
     const instName   = req.body.instance || INSTANCE_WHATSAPI || "WHATSAPI";
     const provider   = (IA_PROVIDER1 || 'grok').trim().toLowerCase();
-
+    console.log("[IA PROVIDER ACTIVE]", provider);
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
     // ─── TRANSCRIPCIÓN DE AUDIO ───────────────────────────────────────
@@ -495,6 +495,8 @@ Solo comillas simples dentro del mensaje — nunca dobles.
         let respuestaRaw = "";
 
         if (provider === 'grok') {
+          console.log("[IA ENGINE] GROK ACTIVATED");
+console.log("[IA MODEL] grok-4-1-fast-non-reasoning");
             const r = await fetch('https://api.x.ai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${GROK_API_KEY.trim()}`, 'Content-Type': 'application/json' },
@@ -506,6 +508,8 @@ Solo comillas simples dentro del mensaje — nunca dobles.
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
         } else if (provider === 'openai') {
+          console.log("[IA ENGINE] OPENAI ACTIVATED");
+console.log("[IA MODEL] gpt-4o");
             const r = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
@@ -517,6 +521,8 @@ Solo comillas simples dentro del mensaje — nunca dobles.
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
         } else if (provider === 'gemini') {
+          console.log("[IA ENGINE] GEMINI ACTIVATED");
+console.log("[IA MODEL] gemini-1.5-flash");
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -526,6 +532,7 @@ Solo comillas simples dentro del mensaje — nunca dobles.
         }
 
         console.log("[IA RAW]", respuestaRaw.substring(0, 400));
+      console.log("[IA RESPONSE LENGTH]", respuestaRaw.length);
 
         // ─── PARSEAR ──────────────────────────────────────────────────
         let parsed = null;
