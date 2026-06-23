@@ -532,7 +532,29 @@ Solo comillas simples dentro del mensaje — nunca dobles.
         const mensajesFinales  = [
             ...historialParaIA,
             { role: "user", content: clienteMsg },
-            { role: "system", content: 'Responde ÚNICAMENTE con JSON puro. Formato: {"etapa":"ETAPA","mensaje":"respuesta"}. CRÍTICO: Lee el mensaje actual del cliente y decide en qué etapa está ÉL ahora — puedes avanzar, quedarte o retroceder. Si quiere comprar → DECISIÓN o CIERRE. Si duda después del precio → SOLUCIÓN o ESCUCHA. PRECIOS: cuando estés en DECISIÓN, es OBLIGATORIO listar TODAS las opciones del producto antes de recomendar una — nunca solo la recomendada. Nunca repitas información ya dada en el historial.' }
+           {
+  role: "system",
+  content: `
+Responde ÚNICAMENTE con JSON puro:
+{"etapa":"ETAPA","mensaje":"respuesta"}
+
+CRÍTICO:
+- Estás escribiendo para WhatsApp
+- El formato visual ES OBLIGATORIO
+
+REGLAS DE SALIDA:
+- Nunca un solo párrafo largo
+- Divide siempre en bloques cortos
+- Usa saltos de línea constantes
+- Usa *negrita* en puntos clave
+- Usa emojis (1–3 por respuesta)
+- Cada idea en línea separada
+
+Si no cumples formato, la respuesta es inválida.
+
+Mantén lógica de etapas igual.
+`
+}
         ];
 
         let respuestaRaw = "";
@@ -546,7 +568,7 @@ console.log("[IA MODEL] grok-4-1-fast-non-reasoning");
                 body: JSON.stringify({
                     model: "grok-4-1-fast-non-reasoning",
                     messages: [{ role: "system", content: masterPrompt }, ...mensajesFinales],
-                    temperature: 0.75, max_tokens: 1000
+                    temperature: 0.4, max_tokens: 1000
                 })
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
@@ -581,6 +603,7 @@ console.log("[IA MODEL] gemini-1.5-flash");
         let parsed = null;
         try {
             let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+          clean = clean.replace(/\n{2,}/g, "\n");
             const m = clean.match(/\{[\s\S]*\}/);
             if (m) clean = m[0];
             parsed = JSON.parse(clean);
@@ -590,13 +613,10 @@ console.log("[IA MODEL] gemini-1.5-flash");
         }
 
         if (parsed) {
-            textoFinal = (parsed.mensaje || "")
-                .replace(/\\n\\n/g, '\n\n')
-                .replace(/\\n/g, '\n')
-                .replace(/\*\*(.*?)\*\*/g, '*$1*')
-                .replace(/\.\s+([A-ZÁÉÍÓÚÑ¿])/g, '.\n\n$1')
-                .replace(/\s+([\u{1F300}-\u{1FAFF}])/gu, '\n\n$1');
-            nuevaEtapa = parsed.etapa || etapaActual;
+         textoFinal = (parsed.mensaje || "")
+  .replace(/\\n/g, '\n')              // solo normaliza saltos reales
+  .replace(/\*\*(.*?)\*\*/g, '*$1*') // compatibilidad WhatsApp
+  .trim();
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
         }
 
