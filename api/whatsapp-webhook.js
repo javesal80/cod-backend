@@ -286,10 +286,19 @@ MECÁNICA DE ETAPAS CONVERSACIONALES
 2. UNA SOLA PREGUNTA: Todo mensaje conversacional debe terminar estrictamente con una única e interesante pregunta al final. Nunca dejes al cliente en un callejón sin salida.
 3. ESTÉTICA LIMPIA: Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n). Usa de 1 a 3 emojis sutiles por mensaje.
 
-CRÍTICO: Debes responder única y exclusivamente un objeto JSON plano que contenga de forma estricta las llaves "etapa" y "mensaje".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ FORMATO DE SALIDA COMPULSORIO OBLIGATORIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tu respuesta debe seguir este formato exacto en texto plano, usando tres barras verticales como separador:
+ETAPA_CORRESPONDIENTE|||Texto del mensaje listo para enviarse a WhatsApp
+
+Ejemplo:
+ESCUCHA|||Hola, un placer saludarle de nuevo. ¿Qué síntoma le gustaría aliviar hoy?
+
+No uses marcas markdown, no uses JSON, no uses envolturas de código. Envía la respuesta plana.
 `;
 
-    // ─── 🧠 CONEXIÓN NATIVA CON API DE GEMINI ──────────────────
+    // ─── 🧠 CONEXIÓN DIRECTA CON API DE GEMINI ──────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
@@ -302,17 +311,11 @@ CRÍTICO: Debes responder única y exclusivamente un objeto JSON plano que conte
 
         const requestBody = {
             contents: geminiContents,
-            systemInstruction: {
-                parts: [{ text: masterPrompt }]
-            },
-            generationConfig: {
-                temperature: 0.35, 
-                maxOutputTokens: 1000,
-                responseMimeType: "application/json"
-            }
+            systemInstruction: { parts: [{ text: masterPrompt }] },
+            generationConfig: { temperature: 0.35, maxOutputTokens: 1000 } // Sin responseMimeType JSON
         };
 
-        console.log("[GEMINI] Solicitando respuesta nativa estructurada para:", cleanJid);
+        console.log("[GEMINI] Solicitando respuesta de texto plano directa para:", cleanJid);
         
         const r = await fetch(urlGemini, {
             method: 'POST',
@@ -323,27 +326,20 @@ CRÍTICO: Debes responder única y exclusivamente un objeto JSON plano que conte
         const resJson = await r.json();
         const respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-        // Parsers directos sin expresiones regulares propensas a romper sintaxis
-        let parsed = null;
-        try {
-            parsed = JSON.parse(respuestaRaw.trim());
-        } catch (jsonErr) {
-            console.log("[FALLBACK JSON] Intento alternativo de lectura directa...");
-            try {
-                // Elimina saltos de línea crudos dentro de los textos que puedan romper el parser stringified
-                const sanitizado = respuestaRaw.replace(/[\n\r\t]/g, " ");
-                parsed = JSON.parse(sanitizado);
-            } catch (err) {
-                textoFinal = respuestaRaw.trim();
-            }
+        // ─── SPLIT DIRECTO: SEPARACIÓN DE ETAPA Y MENSAJE SIN PARSEADORES ───
+        if (respuestaRaw.includes("|||")) {
+            const partesRaw = respuestaRaw.split("|||");
+            nuevaEtapa = partesRaw[0].trim();
+            textoFinal = partesRaw[1].trim();
+        } else {
+            // Salvaguarda absoluta si falta el delimitador por alguna anomalía externa
+            textoFinal = respuestaRaw.trim();
         }
 
-        if (parsed) {
-            nuevaEtapa = parsed.etapa || etapaActual;
-            textoFinal = (parsed.mensaje || "")
+        if (textoFinal) {
+            textoFinal = textoFinal
                 .replace(/\\n/g, '\n')
-                .replace(/\*\*(.*?)\*\*/g, '*$1*') 
-                .trim();
+                .replace(/\*\*(.*?)\*\*/g, '*$1*');
 
             // ─── FORMATEADOR ESTÉTICO PARA LA ETAPA DE PRECIOS ─────────────────
             if (nuevaEtapa === 'DECISIÓN') {
