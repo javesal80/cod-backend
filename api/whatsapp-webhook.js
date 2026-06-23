@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
 if (req.method !== 'POST') return res.status(200).send('OK');
 
 const {
-    EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
+    EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
     IA_PROVIDER1,
     KV_REST_API_URL, KV_REST_API_TOKEN,
     GEMINI_API_KEY
@@ -19,7 +19,7 @@ const remoteJid = data.key?.remoteJid;
 const msgId = data.key?.id;
 
 const baseUrl = EVOLUTION_URL?.replace(/\/$/, "");
-const instName = req.body.instance || INSTANCE_NAME || "bot";
+const instName = req.body.instance || INSTANCE_WHATSAPI || "bot";
 
 let clienteMsg =
 data.message?.conversation ||
@@ -146,7 +146,7 @@ await fetch(`${baseUrl}/message/sendText/${instName}`, {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json',
-        'apikey': EVOLUTION_TOKEN
+        'apikey': EVOLUTION_TOKEN_WHATSAPI
     },
     body: JSON.stringify({
         number: remoteJid,
