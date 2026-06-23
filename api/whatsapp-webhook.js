@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
 
-    // ─── TRANSCRIPCIÓN DE AUDIO (Mantenida intacta con Whisper si se recibe voz) ───
+    // ─── TRANSCRIPCIÓN DE AUDIO (Whisper API) ─────────────────────────
     if (!clienteMsg && data.message?.audioMessage && OPENAI_API_KEY) {
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
                 formData.append('file', new Blob([buffer], { type: 'audio/ogg' }), 'audio.ogg');
                 formData.append('model', 'whisper-1');
                 formData.append('language', 'es');
-                const whisperResp = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+                const whisperResp = await fetch('[https://api.openai.com/v1/audio/transcriptions](https://api.openai.com/v1/audio/transcriptions)', {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}` },
                     body: formData
@@ -224,25 +224,28 @@ module.exports = async (req, res) => {
     historial.push({ role: "user", content: clienteMsg });
     if (historial.length > 40) historial = historial.slice(-40);
 
-    // ─── 🧠 MASTER PROMPT: OPCIÓN B + MÁXIMA EMPATÍA NEURO-CONVERSACIONAL ───
+    // ─── 🧠 MASTER PROMPT: FUSIÓN NEUROVENTAS + ESCUCHA ACTIVA RADICAL ───
     const masterPrompt = `
-Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. No actúes como un bot que solo escupe textos automáticos o que corre desesperada a empujar una venta. Tu superpoder es la empatía real, la escucha activa y la capacidad de analizar minuciosamente el historial de la conversación antes de dar una respuesta. Comprendes perfectamente la neuropsicología del consumidor: el cerebro huye y se defiende (genera cortisol) si detecta presión de compra, pero se abre y confía (genera dopamina y oxitocina) cuando se siente escuchado, comprendido y respaldado por una autoridad médica humana.
+Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. No eres un bot automatizado ni una vendedora agresiva. Tu objetivo principal es sanar y guiar, no empujar una venta a toda costa. Si actúas como un "potro desbocado" que solo busca cerrar la transacción ignorando lo que el cliente te escribe, activarás sus mecanismos de defensa y perderás su confianza para siempre. 
 
-Tratas al cliente de USTED con absoluta cercanía, calidez y naturalidad, como una amiga experta. Quedan terminantemente prohibidas las exclamaciones robóticas falsas ("¡Excelente!", "¡Perfecto!", "¡Claro!").
+Tratas al cliente de USTED, con una calidez genuina, profesional y cercana. Quedan prohibidas las muletillas e inicio de mensajes idénticos ("¡Perfecto!", "¡Claro!", "Entiendo su situación").
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 REVISIÓN DEL HILO Y ADAPTACIÓN PSICOLÓGICA (TRES PERFILES DE CLIENTE)
+🚨 REGLA DE ORO DE ESCUCHA ACTIVA (PROHIBIDO AVANZAR A CIEGAS)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Analiza minuciosamente el último mensaje del cliente y contrástalo con el historial para clasificar su nivel de consciencia actual:
+Antes de generar cualquier respuesta, lee el último mensaje del cliente y compáralo con el historial. Debes validar de forma obligatoria lo que te acaba de decir:
+- Si el cliente te cuenta un síntoma, un dolor o una frustración antigua: DETENTE. Valida su dolor con empatía humana real. Urga sutilmente en esa herida haciéndele ver que entiendes lo difícil que es vivir con ese malestar en su día a día.
+- Si el cliente cambia de tema, hace una pregunta técnica sobre ingredientes, o muestra desconfianza sobre la efectividad: ESTÁ PROHIBIDO pasar a la etapa de precios o pedir datos de envío. Responde su duda con autoridad médica simple, dile por qué el producto actúa de forma diferente a lo que ya ha probado y devuélvele la tranquilidad.
+- Solo si el cliente te da luz verde explícita o una señal clara de compra ("¿Cuánto cuesta?", "Quiero pedirlo", "Me interesa el tratamiento"), avanzarás a la estructura de cotización o cierre. El cliente dicta el ritmo, tú solo lo guías.
 
-1️⃣ CLIENTE DIRECTO (Alta Consciencia / Listo para actuar): Va al grano, pregunta precios de inmediato, dice cómo pagar o pide el producto.
-   - Acción: No le des vueltas, no le metas pasos de calentamiento que no pidió. Responde su duda o despliega las opciones de precio de inmediato bajo el formato estricto de DECISIÓN.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 ADAPTACIÓN PSICOLÓGICA SEGÚN EL ESTADO DEL CLIENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1️⃣ CLIENTE DIRECTO (Listo para comprar): Va al grano o pide el precio. Responde directo, despliega las opciones de precio bajo el formato estricto de DECISIÓN, sin rodeos innecesarios.
 
-2️⃣ CLIENTE EN EVALUACIÓN (Medio Consciencia / Busca seguridad): Te describe sus síntomas, pregunta ingredientes, si tiene contraindicaciones o cómo funciona.
-   - Acción: Frena por completo cualquier intento de venta. Tu prioridad absoluta es validar su situación, explicarle con palabras supersimples (neurociencia: carga cognitiva baja) cómo el tratamiento actúa en su cuerpo para devolverle la salud y construir autoridad (Registro ARCSA o importado de EE.UU.). Pide permiso sutil antes de avanzar.
+2️⃣ CLIENTE EN EVALUACIÓN (Busca seguridad/Siente dolor): Te describe lo que siente. No hables de dinero. Conéctalo con la solución: explícale de forma supersimple cómo el producto va a ingresar a su organismo y qué beneficio real va a sentir en su vida diaria (ej. "volver a dormir sin dolor", "sentir energía desde la mañana"). Construye el escudo de autoridad (Registro ARCSA / Importado de EE.UU.).
 
-3️⃣ CLIENTE FRÍO (Bajo Consciencia / Curioso): Llega con un texto vago como "Más información" o "Vi el anuncio".
-   - Acción: Conéctalo emocionalmente. Dale una bienvenida humana y personalizada, y lánzale la pregunta filtro inicial para descubrir cuál es la molestia específica que desea eliminar de su vida hoy.
+3️⃣ CLIENTE FRÍO (Curioso): Llega con "Más información". Dale una bienvenida humana y hazle UNA sola pregunta abierta para descubrir cuál es la molestia específica que desea eliminar de su vida hoy.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INFORMACIÓN CORPORATIVA Y DE RESPALDO
@@ -257,65 +260,63 @@ ${resumenCatalogo || "No disponible."}
 ${infoProducto ? `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRODUCTO IDENTIFICADO Y ACTIVO: ${productoActivo?.nombre?.toUpperCase()}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Usa única y exclusivamente la información técnica de este archivo. Jamás inventes precios, promociones o componentes que no figuren aquí de forma explícita:
+Usa única y exclusivamente la información técnica de este archivo. Jamás inventes precios, promociones o componentes:
 
 ${infoProducto}` : `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TRÁFICO ORGÁNICO / SIN PRODUCTO DETECTADO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-El cliente no viene de un anuncio específico. Pregúntale con total soltura qué afección o meta de bienestar busca solucionar para guiarle con el producto exacto de tu catálogo.`}
+Pregúntale con total soltura qué afección o meta de bienestar busca solucionar para guiarle con el producto exacto de tu catálogo.`}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MECÁNICA DE ETAPAS CONVERSACIONALES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Identifica la etapa y mantén la fluidez. Puedes retroceder de etapa si detectas que el cliente se asusta o presenta objeciones en lugar de forzar el cierre.
-
-- ESCUCHA: Recepción, saludo dinámico integrado (sin muletillas) e indagación del malestar.
-- SOLUCIÓN: Explicación persuasiva basada en alivio y transformación de vida diaria. Lanza el gancho: "¿Le gustaría que le detalle las promociones y opciones que tenemos hoy para iniciar su tratamiento? 📦"
-- DECISIÓN (Precios): *REGLA DE ORO OBLIGATORIA:* Debes enumerar todas las opciones comerciales del archivo con este formato exacto:
+- ESCUCHA: Recepción, saludo dinámico e indagación del malestar.
+- SOLUCIÓN: Explicación persuasiva basada en alivio y transformación. Lanza el gancho: "¿Le gustaría que le detalle las promociones y opciones que tenemos hoy para iniciar su tratamiento? 📦"
+- DECISIÓN (Precios): *REGLA DE ORO OBLIGATORIA:* Enumera las opciones comerciales exactamente así:
   "📦 *Opción 1:* X unidad — $XX.XX
   📦 *Opción 2:* X unidades — $XX.XX
   📦 *Opción 3:* X unidades — $XX.XX"
-  Justo después del listado, añade en un párrafo tu recomendación personalizada conectada a sus síntomas.
-- CIERRE (Formulario): Confirmación de la promo elegida. Genera confianza explicando la logística de Pago Contra Entrega (cancela en efectivo al recibir) y pide los datos:
+  Justo después del listado, añade tu recomendación personalizada conectada a sus síntomas.
+- CIERRE (Formulario): Explica la logística de Pago Contra Entrega (cancela en efectivo al recibir en sus manos) y pide los datos:
   "Para ayudarle a asegurar su producto y coordinar el despacho, ayúdeme por favor con los siguientes datos:\\n*Nombre y Apellido:*\\n*Provincia-Ciudad:*\\n*Dirección exacta:* (dos calles y una referencia clara)"
-- CONFIRMADO: Texto exacto de protocolo de despacho: "¡Gracias! Su pedido ha sido registrado con éxito. 🎉\\n\\nSu entrega llegará entre ${mañana} o ${pasado}.\\n\\nLe agradecemos su confianza. En breve recibirá su producto."
+- CONFIRMADO: "¡Gracias! Su pedido ha sido registrado con éxito. 🎉\\n\\nSu entrega llegará entre ${mañana} o ${pasado}.\\n\\nLe agradecemos su confianza. En breve recibirá su producto."
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚨 REGLAS INQUEBRANTABLES DE DISEÑO CONVERSACIONAL PARA WHATSAPP
+🚨 REGLAS INQUEBRANTABLES DE DISEÑO PARA WHATSAPP
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. VARIACIÓN RADICAL: Nunca comiences dos mensajes consecutivos con las mismas palabras. Elimina muletillas automáticas de IA.
-2. UNA SOLA PREGUNTA: Tus respuestas deben finalizar estrictamente con una única e interesante pregunta al final para mantener el control humano del chat. Quedan prohibidas las preguntas cruzadas o intermedias.
-3. ESTÉTICA DE LECTURA RAPIDA: Párrafos cortos de máximo 2 líneas. Ideas separadas siempre por un salto de línea doble (\\n\\n). Usa entre 1 y 3 emojis estratégicos para dar calidez visual, jamás los amontones como viñetas.
+1. VARIACIÓN RADICAL: Está prohibido usar textos robóticos predecibles. Sé una persona real conversando.
+2. UNA SOLA PREGUNTA: Todo mensaje conversacional debe terminar estrictamente con una única e interesante pregunta al final. Nunca dejes al cliente en un callejón sin salida.
+3. ESTÉTICA LIMPIA: Párrafos cortos de máximo 2 líneas. Ideas separadas por salto de línea doble (\\n\\n). Usa de 1 a 3 emojis sutiles por mensaje.
 
-Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
-{"etapa":"NOMBRE_ETAPA","mensaje":"Tu respuesta maquetada para WhatsApp aquí"}
+Genera tu respuesta en formato JSON plano con la estructura exacta: {"etapa": "NOMBRE_ETAPA", "mensaje": "Texto para WhatsApp"}. No uses bloques de código markdown, ni agregues texto adicional fuera de las llaves.
 `;
 
     // ─── 🧠 ARQUITECTURA DE CONEXIÓN NATIVA CON API DE GEMINI ──────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     try {
-        // Mapeo adaptado del historial al formato nativo estructurado de Gemini (contents)
         const geminiContents = historial.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
             parts: [{ text: msg.content }]
         }));
 
+        const urlGemini = `[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=$){GEMINI_API_KEY.trim()}`;
+
         const requestBody = {
             contents: geminiContents,
             systemInstruction: {
-                parts: [{ text: masterPrompt + `\n\nCRÍTICO: Responde exclusivamente con JSON estructurado: {"etapa":"ETAPA","mensaje":"texto"}. No agregues bloques markdown \`\`\`json ni decoradores extras. Analiza el contexto previo antes de responder.` }]
+                parts: [{ text: masterPrompt }]
             },
             generationConfig: {
-                temperature: 0.35, // Consistencia en el comportamiento y fidelidad de los datos del TXT
+                temperature: 0.35, 
                 maxOutputTokens: 1000,
-                responseMimeType: "application/json" // Fuerza el output como objeto JSON real de API
+                responseMimeType: "application/json"
             }
         };
 
         console.log("[GEMINI] Solicitando respuesta nativa estructurada para:", cleanJid);
         
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY.trim()}`, {
+        const r = await fetch(urlGemini, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
@@ -324,29 +325,43 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
         const resJson = await r.json();
         let respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-        // ─── PARSEADOR E HIGIENIZACIÓN DE JSON CONTRA ERRORES DE LLAVES ─────────────────
+        // ─── PARSEADOR DEFENSIVO AVANZADO ─────────────────
         let parsed = null;
+        let clean = respuestaRaw.trim();
+        
+        // Sanitización previa: remover posibles envolturas markdown si Gemini ignora la orden
+        if (clean.startsWith("```")) {
+            clean = clean.replace(/^```json\s*/i, "").replace(/
+```$/, "").trim();
+        }
+
         try {
-            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-            const matchObjeto = clean.match(/\{[\s\S]*\}/);
-            if (matchObjeto) clean = matchObjeto[0];
             parsed = JSON.parse(clean);
         } catch (e) {
-            console.log("[FALLBACK REGEX] Error de parseo, extrayendo mensaje...");
-            const matchMensaje = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*}/);
-            if (matchMensaje) {
-                textoFinal = matchMensaje[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
-            } else {
-                textoFinal = respuestaRaw.trim();
+            // Si JSON.parse falla por caracteres de escape rotos en saltos de línea (\n crudos)
+            try {
+                // Forzar corrección de strings con saltos de línea reales dentro de las comillas
+                const reparado = clean.replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+                parsed = JSON.parse(reparado);
+            } catch (innerError) {
+                console.log("[FALLBACK REGEX] Error de parseo crítico, extrayendo via Regex manual...");
+                const matchEtapa = clean.match(/"etapa"\s*:\s*"([^"]+)"/);
+                const matchMensaje = clean.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*\}\s*$/) || clean.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*,/);
+                
+                if (matchMensaje) {
+                    textoFinal = matchMensaje[1].replace(/\\n/g, "\n").replace(/\\"/g, '"').trim();
+                    if (matchEtapa) nuevaEtapa = matchEtapa[1];
+                } else {
+                    textoFinal = clean;
+                }
             }
-            nuevaEtapa = etapaActual;
         }
 
         if (parsed) {
             nuevaEtapa = parsed.etapa || etapaActual;
             textoFinal = (parsed.mensaje || "")
                 .replace(/\\n/g, '\n')
-                .replace(/\*\*(.*?)\*\*/g, '*$1*') // Re-formateo dinámico de negritas nativas de IA a formato WhatsApp
+                .replace(/\*\*(.*?)\*\*/g, '*$1*') 
                 .trim();
 
             // ─── FORMATEADOR ESTÉTICO AVANZADO PARA LA ETAPA DE PRECIOS ─────────────────
@@ -369,14 +384,14 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
             }
         }
 
-        // ─── PERSISTENCIA DEL HILO DE LA CONVERSACIÓN (CORAZÓN DEL JS) ─────────────────
+        // ─── PERSISTENCIA DEL HILO DE LA CONVERSACIÓN ─────────────────────────────────
         historial.push({ role: "assistant", content: textoFinal });
         await Promise.all([
             redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
             redisSetex(stageKey,   86400 * 7, nuevaEtapa)
         ]);
 
-        // ─── RESPALDO DE SEGURIDAD EN SUPABASE (INTACTO) ───────────────────────────────────
+        // ─── RESPALDO DE SEGURIDAD EN SUPABASE ───────────────────────────────────
         try {
             await fetch(`${process.env.SUPABASE_URL}/rest/v1/conversaciones`, {
                 method: 'POST',
@@ -461,7 +476,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
                 if (ok === false) break;
             }
 
-            // ─── CONTROL LOGÍSTICO DE CONTENIDO MULTIMEDIA (FOTOS DEL TXT) ───────────────
+            // ─── CONTROL LOGÍSTICO DE CONTENIDO MULTIMEDIA (FOTOS) ───────────────────────────
             const mapaFotos = {
                 "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
                 "SOLUCIÓN":   imgBeneficios, "DECISIÓN": imgTestimonios
@@ -503,7 +518,7 @@ Responde ÚNICAMENTE en el siguiente formato JSON puro y ejecutable:
 
     } catch (error) { console.error("Error crítico en el flujo principal:", error.message); }
 
-    // Liberación segura del lock atómico de Redis
+    // Liberación del lock atómico de Redis
     await fetch(`${KV_REST_API_URL}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
