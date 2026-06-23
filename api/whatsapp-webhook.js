@@ -624,16 +624,32 @@ console.log("[IA MODEL] gpt-4o");
 
         // ─── PARSEAR ──────────────────────────────────────────────────
         let parsed = null;
-        try {
-            let clean = respuestaRaw.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-          clean = clean.replace(/\n{2,}/g, "\n");
-            const m = clean.match(/\{[\s\S]*\}/);
-            if (m) clean = m[0];
-            parsed = JSON.parse(clean);
-        } catch (e) {
-            textoFinal = respuestaRaw.trim();
-            nuevaEtapa = etapaActual;
-        }
+
+try {
+    const clean = respuestaRaw
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
+    parsed = JSON.parse(clean);
+} catch (e) {
+    console.log("[JSON PARSE FAIL]", e.message);
+    console.log("[RAW FALLBACK]", respuestaRaw);
+
+    // 🔥 FALLBACK INTELIGENTE: extraer mensaje aunque falle JSON
+    const match = respuestaRaw.match(/"mensaje"\s*:\s*"([\s\S]*?)"\s*}/);
+
+    if (match) {
+        textoFinal = match[1]
+            .replace(/\\n/g, "\n")
+            .replace(/\\"/g, '"')
+            .trim();
+    } else {
+        textoFinal = respuestaRaw;
+    }
+
+    nuevaEtapa = etapaActual;
+}
 
         if (parsed) {
          textoFinal = (parsed.mensaje || "")
