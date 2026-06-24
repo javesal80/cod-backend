@@ -329,14 +329,16 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             respuestaRaw = respuestaRaw.replace(/^```[a-zA-Z]*\n?/i, "").replace(/```$/, "").trim();
         }
 
-        if (respuestaRaw.includes("|||")) {
+       if (respuestaRaw.includes("|||")) {
             const partesRaw = respuestaRaw.split("|||");
             nuevaEtapa = partesRaw[0].trim();
             textoFinal = partesRaw[1].trim();
             console.log(`[GEMINI] Clasificado exitosamente. Etapa inferida: ${nuevaEtapa}`);
         } else {
+            // Plan de respaldo si falta el delimitador: no rompemos el flujo, usamos la etapa previa y enviamos el texto crudo
+            nuevaEtapa = etapaActual; 
             textoFinal = respuestaRaw;
-            console.log("[GEMINI ALERTA] No se encontró el delimitador ||| en la respuesta.");
+            console.log(`[GEMINI ALERTA] No se encontró el delimitador |||. Usando etapa por defecto: ${nuevaEtapa}`);
         }
 
         if (textoFinal) {
