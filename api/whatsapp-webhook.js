@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     }
 
     const {
-        EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
+        EVOLUTION_URL, EVOLUTION_TOKEN_WHATSAPI, INSTANCE_WHATSAPI,
         OPENAI_API_KEY, KV_REST_API_URL, KV_REST_API_TOKEN, GEMINI_API_KEY
     } = process.env;
 
@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
     const remoteJid  = data.key?.remoteJid;
     const msgId      = data.key?.id;
     const baseUrl    = EVOLUTION_URL?.replace(/\/$/, "");
-    const instName   = req.body.instance || INSTANCE_NAME || "VitaeLAB";
+    const instName   = req.body.instance || INSTANCE_WHATSAPI || "VitaeLAB";
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
     const cleanJid = remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
@@ -63,7 +63,7 @@ module.exports = async (req, res) => {
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                 body: JSON.stringify({ message: { key: data.key, message: data.message }, convertToMp4: false })
             });
             const mediaJson  = await mediaResp.json();
@@ -374,7 +374,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
                 try {
                     await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                         body: JSON.stringify({ number: remoteJid, presence: "composing", delay })
                     });
                 } catch(te) {}
@@ -384,7 +384,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
                 console.log("[EVOLUTION] Despachando bloque de texto...");
                 const evResp = await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, text: texto })
                 });
                 console.log("[EVOLUTION] Respuesta de envío de texto (Status):", evResp.status);
@@ -403,14 +403,14 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
                 await new Promise(r => setTimeout(r, 1200));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                     body: JSON.stringify({ number: remoteJid, media: fotoEtapa, mediatype: "image", caption: "" })
                 });
                 if (["BIENVENIDA","ESCUCHA"].includes(nuevaEtapa) && productoActivo?.img_tabla) {
                     await new Promise(r => setTimeout(r, 1200));
                     await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN_WHATSAPI },
                         body: JSON.stringify({ number: remoteJid, media: productoActivo.img_tabla, mediatype: "image", caption: "" })
                     });
                 }
