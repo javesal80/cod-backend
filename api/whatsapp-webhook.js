@@ -2,8 +2,12 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
+    console.log("[WEBHOOK] Petición recibida. Método:", req.method);
 
-    if (req.method !== 'POST') return res.status(200).send('OK');
+    if (req.method !== 'POST') {
+        console.log("[WEBHOOK] Método no permitido, enviando OK.");
+        return res.status(200).send('OK');
+    }
 
     const {
         EVOLUTION_URL, EVOLUTION_TOKEN, INSTANCE_NAME,
@@ -12,25 +16,32 @@ module.exports = async (req, res) => {
 
     const NUMERO_ADMIN = "593992668002";
 
-    if (!req.body?.data?.message) return res.status(200).send('OK');
+    if (!req.body?.data?.message) {
+        console.log("[WEBHOOK] Estructura de mensaje inválida u omitida.");
+        return res.status(200).send('OK');
+    }
 
     // ─── COMANDOS ADMIN ───────────────────────────────────────────────
     if (req.body.data.key?.fromMe) {
         const msgAdmin = (req.body.data.message?.conversation || "").trim().toLowerCase();
         const cleanJidAdmin = req.body.data.key?.remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
+        console.log("[ADMIN] Mensaje propio detectado:", msgAdmin);
+        
         if (msgAdmin === '#pausa') {
+            console.log("[ADMIN] Ejecutando #pausa para:", cleanJidAdmin);
             await fetch(`${KV_REST_API_URL}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["SETEX", `pausa:${cleanJidAdmin}`, 86400, "1"])
-            }).catch(() => {});
+            }).catch((e) => console.error("[ADMIN ERROR] Al pausar:", e.message));
         }
         if (msgAdmin === '#activar') {
+            console.log("[ADMIN] Ejecutando #activar para:", cleanJidAdmin);
             await fetch(`${KV_REST_API_URL}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["DEL", `pausa:${cleanJidAdmin}`])
-            }).catch(() => {});
+            }).catch((e) => console.error("[ADMIN ERROR] Al activar:", e.message));
         }
         return res.status(200).send('OK');
     }
@@ -42,9 +53,13 @@ module.exports = async (req, res) => {
     const instName   = req.body.instance || INSTANCE_NAME || "VitaeLAB";
 
     let clienteMsg = (data.message?.conversation || data.message?.extendedTextMessage?.text || "").trim();
+    const cleanJid = remoteJid?.replace(/[^a-zA-Z0-9]/g, '_');
+
+    console.log(`[INFO] MsgId: ${msgId} | Jid: ${remoteJid} | Mensaje: "${clienteMsg}"`);
 
     // ─── TRANSCRIPCIÓN DE AUDIO (Whisper API) ─────────────────────────
     if (!clienteMsg && data.message?.audioMessage && OPENAI_API_KEY) {
+        console.log("[AUDIO] Detectado mensaje de voz. Intentando transcripción...");
         try {
             const mediaResp = await fetch(`${baseUrl}/chat/getBase64FromMediaMessage/${instName}`, {
                 method: 'POST',
@@ -65,8 +80,9 @@ module.exports = async (req, res) => {
                     body: formData
                 });
                 clienteMsg = (await whisperResp.json()).text || "";
+                console.log("[AUDIO] Transcripción exitosa:", clienteMsg);
             }
-        } catch (e) { console.error("[WHISPER ERROR]", e.message); }
+        } catch (e) { console.error("[AUDIO ERROR]", e.message); }
     }
 
     // ─── FECHA Y LOGÍSTICA ECUADOR ────────────────────────────────────
@@ -84,6 +100,7 @@ module.exports = async (req, res) => {
 
     // ─── REDIS HELPERS SEGUROS ────────────────────────────────────────
     const redisGet = async (key) => {
+        console.log(`[REDIS] Consultando llave: ${key}`);
         try {
             const r = await fetch(`${KV_REST_API_URL}`, {
                 method: 'POST',
@@ -92,25 +109,32 @@ module.exports = async (req, res) => {
             });
             const d = await r.json();
             return d.result || null;
-        } catch (e) { return null; }
+        } catch (e) { 
+            console.error(`[REDIS ERROR] Fallo al leer ${key}:`, e.message);
+            return null; 
+        }
     };
 
     const redisSetex = async (key, seconds, value) => {
+        console.log(`[REDIS] Guardando llave: ${key} por ${seconds}s`);
         try {
             await fetch(`${KV_REST_API_URL}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify(["SETEX", key, seconds, value])
             });
-        } catch (e) {}
+        } catch (e) {
+            console.error(`[REDIS ERROR] Fallo al guardar ${key}:`, e.message);
+        }
     };
-
-    const cleanJid = remoteJid.replace(/[^a-zA-Z0-9]/g, '_');
 
     // ─── ANTI-DUPLICADOS SIMPLIFICADO EFECTIVO ────────────────────────
     try {
         const dup = await redisGet(`dd:${msgId}`);
-        if (dup) return res.status(200).send('OK');
+        if (dup) {
+            console.log("[DEDUP] Mensaje repetido detectado e ignorado:", msgId);
+            return res.status(200).send('OK');
+        }
         await redisSetex(`dd:${msgId}`, 45, "1");
     } catch (e) {}
 
@@ -120,7 +144,10 @@ module.exports = async (req, res) => {
     // ─── CONTROL DE PAUSA ACTIVA ──────────────────────────────────────
     try { 
         const isPaused = await redisGet(`pausa:${cleanJid}`);
-        if (isPaused) return res.status(200).send('OK');
+        if (isPaused) {
+            console.log("[PAUSA] El bot está pausado para este chat. Abortando flujo.");
+            return res.status(200).send('OK');
+        }
     } catch (e) {}
 
     // ─── RECUPERACIÓN DE ESTADO DESDE REDIS ───────────────────────────
@@ -134,6 +161,7 @@ module.exports = async (req, res) => {
     let productoActivo = null;
     let fotosEnviadas  = {};
 
+    console.log("[REDIS] Cargando estados conversacionales...");
     try {
         const [g, e, p, f] = await Promise.all([
             redisGet(memoriaKey), redisGet(stageKey),
@@ -143,10 +171,12 @@ module.exports = async (req, res) => {
         if (e) etapaActual = e;
         if (p) { try { productoActivo = JSON.parse(decodeURIComponent(p)); } catch { productoActivo = JSON.parse(p); } }
         if (f) { try { fotosEnviadas  = JSON.parse(decodeURIComponent(f)); } catch { fotosEnviadas  = JSON.parse(f); } }
-    } catch (e) { console.error("Error leyendo Redis:", e.message); }
+        console.log(`[REDIS] Carga lista. Etapa actual: ${etapaActual} | Prod Activo: ${productoActivo?.nombre || "Ninguno"}`);
+    } catch (e) { console.error("[REDIS ERROR] Error en Promise.all de carga:", e.message); }
 
     // ─── LEER CATÁLOGO DE PRODUCTOS DISPONIBLES ───────────────────────
     let catalogo = [], resumenCatalogo = "";
+    console.log("[SISTEMA] Leyendo archivo productos.json...");
     try {
         const pp = path.join(process.cwd(), 'api', 'productos.json');
         if (fs.existsSync(pp)) {
@@ -154,8 +184,11 @@ module.exports = async (req, res) => {
             resumenCatalogo = catalogo.map(p =>
                 `- ${p.nombre}: ${p.descripcion_corta || ''} | keywords: [${(p.keywords || []).join(', ')}]`
             ).join('\n');
+            console.log("[SISTEMA] Catálogo estructurado leído con éxito.");
+        } else {
+            console.log("[SISTEMA ALERTA] No se encontró productos.json en la ruta esperada.");
         }
-    } catch (e) { console.error("Error catálogo:", e.message); }
+    } catch (e) { console.error("[SISTEMA ERROR] Al leer catálogo:", e.message); }
 
     // ─── DETECCIÓN DE ENTRADA (ADS ID & KEYWORDS) ────────────────────
     const msgLower = clienteMsg.toLowerCase().trim();
@@ -169,6 +202,7 @@ module.exports = async (req, res) => {
         || null;
 
     const adIdCapturado = referral ? (referral.sourceId || referral.adId || "").toString().trim() : "";
+    console.log("[SISTEMA] AdID Detectado en Payload:", adIdCapturado || "Ninguno");
 
     if (!productoActivo) {
         if (adIdCapturado) {
@@ -177,12 +211,14 @@ module.exports = async (req, res) => {
             );
             if (productoDesdeRef) {
                 productoActivo = productoDesdeRef;
+                console.log("[SISTEMA] Producto asignado por AdID:", productoActivo.nombre);
                 await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
                 if (!fotosEnviadas) fotosEnviadas = {};
             }
         }
         if (!productoActivo && productoDetectadoPorKeyword) {
             productoActivo = productoDetectadoPorKeyword;
+            console.log("[SISTEMA] Producto asignado por Keyword:", productoActivo.nombre);
             await redisSetex(productoKey, 86400 * 7, JSON.stringify(productoActivo));
             if (!fotosEnviadas) fotosEnviadas = {};
         }
@@ -191,13 +227,14 @@ module.exports = async (req, res) => {
     // ─── EXTRACTORES DE DATOS EN TXT DE PRODUCTOS ─────────────────────
     let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
     if (productoActivo) {
+        console.log(`[SISTEMA] Cargando base de conocimiento para: ${productoActivo.archivo}`);
         try {
             const tp = path.join(process.cwd(), 'api', productoActivo.archivo);
             if (fs.existsSync(tp)) infoProducto = fs.readFileSync(tp, 'utf-8');
             imgProducto    = productoActivo.img_producto    || "";
             imgBeneficios  = productoActivo.img_beneficios  || "";
             imgTestimonios = productoActivo.img_testimonios || "";
-        } catch (e) { console.error("Error TXT:", e.message); }
+        } catch (e) { console.error("[SISTEMA ERROR] Fallo al leer TXT de producto:", e.message); }
     }
 
     let infoGeneral = "";
@@ -209,7 +246,7 @@ module.exports = async (req, res) => {
     historial.push({ role: "user", content: clienteMsg });
     if (historial.length > 40) historial = historial.slice(-40);
 
-    // ─── 🧠 MASTER PROMPT EXCLUSIVO WHATSAPP (TEXTO PLANO DELIMITADO) ───
+    // ─── 🧠 MASTER PROMPT ───
     const masterPrompt = `
 Eres Fiorella, asesora experta en salud y bienestar de JRJMarket. Tratas al cliente de USTED, con una calidez genuina, profesional y cercana. Quedan prohibidas las muletillas e inicio de mensajes idénticos ("¡Perfecto!", "¡Claro!", "Entiendo...").
 
@@ -257,6 +294,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
     // ─── 🧠 CONEXIÓN DIRECTA CON API DE GEMINI ──────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
+    console.log("[GEMINI] Solicitando respuesta a la API...");
     try {
         const geminiContents = historial.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
@@ -277,6 +315,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
 
         const resJson = await r.json();
         let respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
+        console.log("[GEMINI] Respuesta cruda recibida con éxito.");
 
         respuestaRaw = respuestaRaw.trim();
         if (respuestaRaw.startsWith("```")) {
@@ -287,8 +326,10 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             const partesRaw = respuestaRaw.split("|||");
             nuevaEtapa = partesRaw[0].trim();
             textoFinal = partesRaw[1].trim();
+            console.log(`[GEMINI] Clasificado exitosamente. Etapa inferida: ${nuevaEtapa}`);
         } else {
             textoFinal = respuestaRaw;
+            console.log("[GEMINI ALERTA] No se encontró el delimitador ||| en la respuesta.");
         }
 
         if (textoFinal) {
@@ -310,6 +351,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
 
             // Persistencia inmediata de estados
             historial.push({ role: "assistant", content: textoFinal });
+            console.log("[SISTEMA] Guardando el nuevo historial en Redis...");
             await Promise.all([
                 redisSetex(memoriaKey, 86400 * 7, JSON.stringify(historial)),
                 redisSetex(stageKey,   86400 * 7, nuevaEtapa)
@@ -322,9 +364,13 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
 
             const enviar = async (texto) => {
                 const tsReciente = await redisGet(`lastmsg:${cleanJid}`);
-                if (tsReciente && tsReciente !== tsEnvio) return false;
+                if (tsReciente && tsReciente !== tsEnvio) {
+                    console.log("[SISTEMA] El usuario envió otro mensaje durante el delay. Cancelando cola vieja.");
+                    return false;
+                }
                 
                 const delay = Math.min(texto.length * 28, 3800); 
+                console.log(`[EVOLUTION] Enviando simulación de tipeo ("composing") por ${delay}ms`);
                 try {
                     await fetch(`${baseUrl}/chat/returntyping/${instName}`, {
                         method: 'POST',
@@ -335,11 +381,13 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
                 
                 await new Promise(r => setTimeout(r, delay + 300));
                 
-                await fetch(`${baseUrl}/message/sendText/${instName}`, {
+                console.log("[EVOLUTION] Despachando bloque de texto...");
+                const evResp = await fetch(`${baseUrl}/message/sendText/${instName}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
                     body: JSON.stringify({ number: remoteJid, text: texto })
                 });
+                console.log("[EVOLUTION] Respuesta de envío de texto (Status):", evResp.status);
                 return true;
             };
 
@@ -351,6 +399,7 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             const mapaFotos = { "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto, "SOLUCIÓN": imgBeneficios, "DECISIÓN": imgTestimonios };
             const fotoEtapa = mapaFotos[nuevaEtapa] || "";
             if (fotoEtapa && !fotosEnviadas[nuevaEtapa]) {
+                console.log(`[EVOLUTION] Enviando archivo multimedia adjunto para la etapa: ${nuevaEtapa}`);
                 await new Promise(r => setTimeout(r, 1200));
                 await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                     method: 'POST',
@@ -374,8 +423,9 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             }
         }
     } catch (error) { 
-        console.error("Error crítico:", error.message); 
+        console.error("[CRÍTICO GLOBAL] Ocurrió un fallo en el proceso principal:", error); 
     }
 
+    console.log("[WEBHOOK] Proceso finalizado. Retornando 200 OK.");
     return res.status(200).send('OK');
 };
