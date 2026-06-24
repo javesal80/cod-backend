@@ -296,19 +296,13 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
 
     console.log("[GEMINI] Solicitando respuesta a la API...");
     try {
-        const geminiContents = historial.map(msg => ({
+       const geminiContents = historial.map(msg => ({
             role: msg.role === "assistant" ? "model" : "user",
-            parts: [{ text: msg.content }]
+            parts: [{ text: msg.content || "Hola" }]
         }));
 
-        // INYECTOR DE REFUERZO: Obliga al modelo a recordar el delimitador en el último turno
-        geminiContents.push({
-            role: "user",
-            parts: [{ text: `(RECUERDA: Tu respuesta debe iniciar obligatoriamente con el formato: ETAPA|||Texto. Responde al último mensaje usando la etapa correspondiente).` }]
-        });
-
         const urlGemini = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY.trim()}`;
-
+        
       
         const r = await fetch(urlGemini, {
             method: 'POST',
@@ -320,10 +314,12 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             })
         });
 
-        const resJson = await r.json();
+       const resJson = await r.json();
+        console.log("[GEMINI DEBUG - BODY COMPLETO]:", JSON.stringify(resJson));
+        
         let respuestaRaw = resJson.candidates?.[0]?.content?.parts?.[0]?.text || "";
-        console.log("[GEMINI] Respuesta cruda recibida con éxito.");
-
+        console.log("[GEMINI] Respuesta cruda extraída:", respuestaRaw);
+        
         respuestaRaw = respuestaRaw.trim();
         if (respuestaRaw.startsWith("```")) {
             respuestaRaw = respuestaRaw.replace(/^```[a-zA-Z]*\n?/i, "").replace(/```$/, "").trim();
