@@ -291,7 +291,7 @@ ETAPA_CORRESPONDIENTE|||Texto del mensaje listo para enviarse a WhatsApp
 No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera de esta estructura plana.
 `;
 
-    // ─── 🧠 CONEXIÓN DIRECTA CON API DE GEMINI ──────────────────
+   // ─── 🧠 CONEXIÓN DIRECTA CON API DE GEMINI ──────────────────
     let textoFinal = "", nuevaEtapa = etapaActual;
 
     console.log("[GEMINI] Solicitando respuesta a la API...");
@@ -301,8 +301,15 @@ No uses marcas markdown de bloques, no uses objetos JSON, no envíes nada fuera 
             parts: [{ text: msg.content }]
         }));
 
+        // INYECTOR DE REFUERZO: Obliga al modelo a recordar el delimitador en el último turno
+        geminiContents.push({
+            role: "user",
+            parts: [{ text: `(RECUERDA: Tu respuesta debe iniciar obligatoriamente con el formato: ETAPA|||Texto. Responde al último mensaje usando la etapa correspondiente).` }]
+        });
+
         const urlGemini = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY.trim()}`;
 
+      
         const r = await fetch(urlGemini, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
