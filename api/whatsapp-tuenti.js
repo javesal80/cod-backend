@@ -560,6 +560,7 @@ REGLAS CRÍTICAS DE CONTROL DE FORMATO (JSON)
             });
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
         } else if (provider === 'openai') {
+          console.log("[OPENAI] Entrando al bloque OpenAI");
             const r = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
