@@ -575,13 +575,18 @@ console.log("[OPENAI] Prompt chars:", masterPrompt.length);
                 })
             });
 
-          // 👇 CAMBIA LA LÍNEA DE ABAJO 👇
+          // Leemos el JSON una ÚNICA vez
             const apiResponse = await r.json();
+
+            // Verificamos si hay error o si hay texto exitoso
             if (apiResponse.error) {
-                console.error("[OPENAI ERROR FATAL]:", JSON.stringify(apiResponse.error));
+                console.error("[OPENAI ERROR FATAL]:", apiResponse.error.message);
+                respuestaRaw = "";
+            } else {
+                respuestaRaw = apiResponse.choices?.[0]?.message?.content || "";
             }
           
-            respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
+         
         } else if (provider === 'gemini') {
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
                 method: 'POST',
