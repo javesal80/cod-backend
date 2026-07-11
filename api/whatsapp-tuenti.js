@@ -574,6 +574,13 @@ console.log("[OPENAI] Prompt chars:", masterPrompt.length);
                     temperature: 0.5, max_tokens: 1000
                 })
             });
+
+          // 👇 CAMBIA LA LÍNEA DE ABAJO 👇
+            const apiResponse = await r.json();
+            if (apiResponse.error) {
+                console.error("[OPENAI ERROR FATAL]:", JSON.stringify(apiResponse.error));
+            }
+          
             respuestaRaw = (await r.json()).choices?.[0]?.message?.content || "";
         } else if (provider === 'gemini') {
             const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
