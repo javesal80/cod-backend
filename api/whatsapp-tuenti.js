@@ -564,7 +564,7 @@ console.log("[OPENAI] ===== INICIO =====");
 console.log("[OPENAI] Modelo:", "gpt-4o");
 console.log("[OPENAI] API KEY:", OPENAI_API_KEY ? "OK" : "NO EXISTE");
 console.log("[OPENAI] Historial:", historial.length);
-console.log("[OPENAI] Prompt chars:", prompt.length);
+console.log("[OPENAI] Prompt chars:", masterPrompt.length);
             const r = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${OPENAI_API_KEY.trim()}`, 'Content-Type': 'application/json' },
