@@ -11,12 +11,13 @@
     },
     {
       "nombre": "KidGrow",
-      "descripcion_corta": "Suplemento premium para niños. Activa el máximo potencial de estatura, concentración y sistema inmune.",
+      "descripcion_corta": "Suplemento premium para niños y jóvenes que activa su máximo potencial de estatura, rendimiento escolar, desarrollo cognitivo y fortalece sus defensas diarias.",
       "keywords": ["kidgrow"],
       "archivo": "kidgrow.txt",
-      "img_producto": "",
-      "img_beneficios": "",
-      "img_testimonios": ""
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/nubest.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/benenubest.png",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/testnubest.png",
+      "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/tabla_nubest.webp"
     },
     {
       "nombre": "NuBest Tall",
