@@ -13,7 +13,7 @@
       "nombre": "KidGrow",
       "ad_ids": ["120246715761330289", "120246715728840289", "120246715939580289", "120246715761360289", "120246715761340289"],
       "descripcion_corta": "Suplemento premium para niños y jóvenes que activa su máximo potencial de estatura, rendimiento escolar, desarrollo cognitivo y fortalece sus defensas diarias.",
-      "keywords": ["kidgrow", "información de Kidgrow", "informacion de Kidgrow"],
+      "keywords": ["kidgrow", "información de Kidgrow", "informacion de Kidgrow", "informacion Kidgrow"],
       "archivo": "Kidgrow.txt",
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/KIDGROW.png",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/BENEFICIOS.png",
