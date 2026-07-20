@@ -2,6 +2,7 @@
     "PRODUCTOS": [
     {
       "nombre": "Combo Movilidad Total (Multicolágeno+ Curcuma)",
+      "ad_ids": ["120246720011530289", "120246720011500289", "120246719819930289", "120246720011520289", "120246720011510289"],
       "descripcion_corta": "Una poderosa sinergia nutricional que fusiona el poder desinflamatorio de 1800mg de cúrcuma con péptidos de colágeno para apagar el dolor y regenerar tus tejidos y articulaciones",
       "keywords": ["combo", "Combo", "movilidad", "informacion combo movilidad", "información combo movilidad"],
       "archivo": "ComboCC.txt",
