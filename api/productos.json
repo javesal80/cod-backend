@@ -2,12 +2,22 @@
     "PRODUCTOS": [
     {
       "nombre": "Combo Regeneración Total (Aceite de Orégano + Multicolágeno)",
-      "descripcion_corta": "Limpieza y reparación interna. La Espada que ataca y el Escudo que repara. Para gastritis, hongos, articulaciones, piel y cabello.",
-      "keywords": ["oregano", "orégano", "colageno", "colágeno", "combo", "regeneracion", "regeneración", "biotina", "gastritis", "hongo", "hongos", "cansado", "dolor", "piel", "articulacion", "articulaciones", "energia", "energía", "rodillas", "espalda", "cabello", "candida", "cándida", "parasitos", "parásitos", "ardor", "barriga", "hinchada", "defensas", "acne", "acné"],
+      "descripcion_corta": "Una poderosa sinergia nutricional que fusiona el poder desinflamatorio de 1800mg de cúrcuma con péptidos de colágeno para apagar el dolor y regenerar tus tejidos y articulaciones",
+      "keywords": ["combo", "informacion combo orégano", "colageno", "colágeno", "combo", "regeneracion", "regeneración", "biotina", "gastritis", "hongo", "hongos", "cansado", "dolor", "piel", "articulacion", "articulaciones", "energia", "energía", "rodillas", "espalda", "cabello", "candida", "cándida", "parasitos", "parásitos", "ardor", "barriga", "hinchada", "defensas", "acne", "acné"],
       "archivo": "combo-regeneracion.txt",
       "img_producto": "",
       "img_beneficios": "",
       "img_testimonios": ""
+    },
+
+    {
+      "nombre": "Combo Movilidad Total (Multicolágeno+ Curcuma)",
+      "descripcion_corta": "Una poderosa sinergia nutricional que fusiona el poder desinflamatorio de 1800mg de cúrcuma con péptidos de colágeno para apagar el dolor y regenerar tus tejidos y articulaciones",
+      "keywords": ["combo", "movilidad", "informacion combo movilidad", "información combo movilidad"],
+      "archivo": "comboCC.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/FOTOCC.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/BENCC.png",
+      "img_testimonios": "",
     },
     {
       "nombre": "KidGrow",
