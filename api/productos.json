@@ -23,7 +23,8 @@
     },
     {
       "nombre": "NuBest Tall",
-      "ad_ids": ["120250403810520751", "120250403810510751", "120250403810540751", "120250403810530751", "120250403810550751", "120250404959860751", "120250404959950751", "120250404959940751", "120250404959930751", "120250404959940751"],
+      
+      "ad_ids": ["120250404959890751", "120250403810520751", "120250403810510751", "120250403810540751", "120250403810530751", "120250403810550751", "120250404959860751", "120250404959950751", "120250404959940751", "120250404959930751", "120250404959940751"],
       "descripcion_corta": "Batido de proteína para crecer en estatura. Ideal para adolescentes y adultos jóvenes que quieren ganar altura.",
       "keywords": ["nubest", "nubestall", "crecimiento", "proteina para crecer", "batido para estatura", "nubest tall", "crecimiento vegano", "proteina niños", "ganar estatura", "masa muscular niños", "crecer de estatura", "suplemento vainilla", "proteina crecimiento", "batido", "vainilla", "proteína"],
       "archivo": "nubest-tall.txt",
