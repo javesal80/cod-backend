@@ -1,5 +1,16 @@
 {
     "PRODUCTOS": [
+{
+      "nombre": "SET DE 3 SÉRUM THE ORDINARY (RENUEVA + EQUILIBRA + DESPIERTA)",
+      "ad_ids": ["1202467200115302", "1202467200115002", "1202467198199302", "120246720011520", "12024672001151"],
+      "descripcion_corta": "Set de 3 sérums The Ordinary que ataca manchas, acné/poros dilatados y ojeras en una sola rutina — resultados visibles sin gastar en tratamientos estéticos costosos.",
+      "keywords": ["combo", "ordinary", "serums", "set"],
+      "archivo": "ordinary.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/FOTOCC.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/BENCC.png",
+      "img_testimonios": ""
+    },
+        
     {
       "nombre": "Combo Movilidad Total (Multicolágeno+ Curcuma)",
       "ad_ids": ["120246720011530289", "120246720011500289", "120246719819930289", "120246720011520289", "120246720011510289"],
