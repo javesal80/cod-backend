@@ -2,9 +2,9 @@
     "PRODUCTOS": [
 {
       "nombre": "SET DE 3 SÉRUM THE ORDINARY (RENUEVA + EQUILIBRA + DESPIERTA)",
-      "ad_ids": ["1202467200115302", "1202467200115002", "1202467198199302", "120246720011520", "12024672001151"],
+      "ad_ids": ["120250944468290282", "120250944608840282", "120250944608820282", "120250944608830282"],
       "descripcion_corta": "Set de 3 sérums The Ordinary que ataca manchas, acné/poros dilatados y ojeras en una sola rutina — resultados visibles sin gastar en tratamientos estéticos costosos.",
-      "keywords": ["combo", "ordinary", "serums", "set"],
+      "keywords": ["informacion del kit Ordinary", "combo", "ordinary", "serums", "set"],
       "archivo": "ordinary.txt",
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD1.jpeg",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD2.jpeg",
