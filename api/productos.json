@@ -1,6 +1,18 @@
 {
     "PRODUCTOS": [
 {
+      "nombre": "7DAYS NAIL TREATMENT — MEJORA VISIBLE Y FORTALECIMIENTO DE TUS UÑAS EN 7 DÍAS",
+      "ad_ids": ["120250944468290282", "120250944608840282", "120250944608820282", "120250944608830282", "120250944791170282", "120250944791140282", "120250944791160282", "120250944791150282"],
+      "descripcion_corta": "Tratamiento botánico avanzado en gotas que penetra hasta la raíz y ayuda a frenar y eliminar la acción de hongos, reparar uñas quebradizas y devolverles su aspecto fuerte y saludable con el uso constante.",
+      "keywords": ["nails", "uñas", "7 days"],
+      "archivo": "7daysnail.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/71.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/72.jpeg",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/73.jpeg",
+      "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/74.jgep"
+    },
+        
+    {
       "nombre": "SET DE 3 SÉRUM THE ORDINARY (RENUEVA + EQUILIBRA + DESPIERTA)",
       "ad_ids": ["120250944468290282", "120250944608840282", "120250944608820282", "120250944608830282", "120250944791170282", "120250944791140282", "120250944791160282", "120250944791150282"],
       "descripcion_corta": "Set de 3 sérums The Ordinary que ataca manchas, acné/poros dilatados y ojeras en una sola rutina — resultados visibles sin gastar en tratamientos estéticos costosos.",
