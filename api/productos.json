@@ -6,10 +6,9 @@
       "descripcion_corta": "Tratamiento botánico avanzado en gotas que penetra hasta la raíz y ayuda a frenar y eliminar la acción de hongos, reparar uñas quebradizas y devolverles su aspecto fuerte y saludable con el uso constante.",
       "keywords": ["nails", "uñas", "7 days"],
       "archivo": "7daysnail.txt",
-      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/71.jpeg",
-      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/72.jpeg",
-      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/73.jpeg",
-      "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/74.jgep"
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/F1.png",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/F2.jpeg",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/F3.jpeg"
     },
         
     {
