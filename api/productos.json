@@ -17,8 +17,8 @@
       "descripcion_corta": "Sistema modular de alta potencia dermocosmética diseñado para personalizar tu rutina skincare según tus necesidades.",
       "keywords": ["Ordinary", "serum", "skincare", "set"],
       "archivo": "theordinary.txt",
-      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD1.jpeg",
-      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD2.jpeg",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/O1.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/O2.jpeg",
       "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD3.jpeg"
     },
         
