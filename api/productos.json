@@ -10,6 +10,17 @@
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/F2.jpeg",
       "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/F3.jpeg"
     },
+
+    {
+      "nombre": "INICIA TU SKINCARE (THE ORDINARY) — ELIGE TU FÓRMULA MAESTRA CONTRA MANCHAS, ACNÉ Y ENVEJECIMIENTO DE ACUERDO A LO QUE NECESITA TU PIEL",
+      "ad_ids": ["120250944468290282", "120250944608840282", "120250944608820282", "120250944608830282", "120250944791170282", "120250944791140282", "120250944791160282", "120250944791150282"],
+      "descripcion_corta": "Sistema modular de alta potencia dermocosmética diseñado para personalizar tu rutina skincare según tus necesidades.",
+      "keywords": ["Ordinary", "serum", "skincare", "set"],
+      "archivo": "theordinary.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD1.jpeg",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD2.jpeg",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/ORD3.jpeg"
+    },
         
     {
       "nombre": "SET DE 3 SÉRUM THE ORDINARY (RENUEVA + EQUILIBRA + DESPIERTA)",
