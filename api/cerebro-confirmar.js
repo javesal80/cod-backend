@@ -8,10 +8,16 @@ module.exports = async (request, response) => {
 
     const {
         EVOLUTION_URL, INSTANCE_DESPACHO, EVOLUTION_TOKEN_DESPACHO,
-        DATOS_TRANSFERENCIA,   // texto con tus datos bancarios (con \n)
         PAYPHONE_LINK          // link de pago de PayPhone
     } = process.env;
 
+    const DATOS_TRANSFERENCIA =
+`👤 *Nombre:* Javier Espín
+
+🏦 *Banco Pichincha:* cuenta # 4082653600
+🏦 *Banco Produbanco:* cuenta # 12001090841
+🏦 *Banco del Pacífico:* cuenta # 1016255178`;
+    
     const orderData = request.body;
 
     try {
@@ -49,7 +55,7 @@ module.exports = async (request, response) => {
         const mensajesAEnviar = [
             `Hola, muy buenas... Un gusto saludarle 😊`,
             `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal}${textoTotal}`,
-            `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`
+            `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}${orderData["Provincia"] ? `\n🗺️ *Provincia:* ${orderData["Provincia"]}` : ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`
         ];
 
         // --- Mensajes según tipo de cobro ---
@@ -57,9 +63,10 @@ module.exports = async (request, response) => {
             mensajesAEnviar.push(`¿Es esto correcto?`);
         } else if (metodo === "transferencia") {
             mensajesAEnviar.push(
-                `Te adjunto los datos para realizar la transferencia por *$${totalGeneral}*:\n\n${DATOS_TRANSFERENCIA || ""}`,
-                `Una vez realizada, por favor adjúntanos el comprobante de pago 📎 y confírmanos si los datos de entrega son correctos.`
-            );
+    `A continuación los datos para la transferencia${totalGeneral ? ` por *$${totalGeneral}*` : ""}.\n\nPor favor realízala *del mismo banco* para que sea inmediata:\n▪️ Pichincha → Pichincha\n▪️ Produbanco → Produbanco\n▪️ Pacífico → Pacífico`,
+    DATOS_TRANSFERENCIA,
+    `Una vez realizada, por favor adjúntanos el comprobante de pago 📎 y confírmanos si los datos de entrega son correctos.`
+);
         } else if (metodo === "tarjeta") {
             mensajesAEnviar.push(
                 `Te adjunto el link de pago seguro de PayPhone para pagar con tu tarjeta:\n\n💳 ${PAYPHONE_LINK || ""}`,
