@@ -78,7 +78,7 @@ module.exports = async (request, response) => {
 
         } else if (metodo === "transferencia") {
             mensajesAEnviar.push(
-                `A continuación los datos para la transferencia${totalGeneral ? ` por *$${totalGeneral}*` : ""}.\n\nPor favor realízala de preferencia *del mismo banco* para que sea inmediata:\n▪️ Pichincha → Pichincha\n▪️ Produbanco → Produbanco\n▪️ Pacífico → Pacífico\n Si la realizas de diferente banco no hay inconveniente apenas se visualize la misma procederemos al despacho`,
+                `A continuación los datos para la transferencia${totalGeneral ? ` por *$${totalGeneral}*` : ""}.\n\nPor favor realízala de preferencia *del mismo banco* para que sea inmediata:\n▪️ Pichincha → Pichincha\n▪️ Produbanco → Produbanco\n▪️ Pacífico → Pacífico\n\nSi la realizas de diferente banco no hay inconveniente, apenas se realize procedemos al despacho.`,
                 DATOS_TRANSFERENCIA,
                 `Una vez realizada, por favor adjúntanos el comprobante de pago 📎 y confírmanos si los datos de entrega son correctos.`
             );
