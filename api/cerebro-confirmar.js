@@ -53,10 +53,9 @@ module.exports = async (request, response) => {
         // --- Productos y total ---
         const productosRaw = String(orderData["Productos"] || "");
 
-        const productosFormateados = productosRaw
-            .replace(/\(\$/g, "por $")
-            .replace(/\)/g, "")
-            .replace(/,/g, ".");
+       const productosFormateados = productosRaw
+        .replace(/\(\$([\d.,]+)\)/g, (m, valor) => `por *$${valor}*`)
+        .replace(/,/g, ".");
 
         const listaProductosFinal = productosFormateados.split(' y ')
             .map(item => `▪️ ${item.trim()}`)
@@ -69,7 +68,7 @@ module.exports = async (request, response) => {
         // --- Mensajes comunes ---
         const mensajesAEnviar = [
             `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal} - ${textoTotal}`,
+            `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal} ${textoTotal}`,
             `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}${orderData["Provincia"] ? `\n🗺️ *Provincia:* ${orderData["Provincia"]}` : ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`
         ];
 
