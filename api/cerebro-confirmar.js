@@ -64,7 +64,7 @@ module.exports = async (request, response) => {
 
         let totalGeneral = orderData["Total"] || "";
         if (totalGeneral) totalGeneral = String(totalGeneral).replace(/,/g, ".");
-        const textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* $${totalGeneral}` : "";
+        const textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* *$${totalGeneral}*` : "";
 
         // --- Mensajes comunes ---
         const mensajesAEnviar = [
