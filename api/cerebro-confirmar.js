@@ -36,7 +36,7 @@ module.exports = async (request, response) => {
     try {
         if (!orderData || !orderData["Teléfono"]) return response.status(200).json({ success: false });
 
-        let cleanPhone = String(orderData["Teléfono"]).replace(/\D/g, '');
+            let cleanPhone = String(orderData["Teléfono"]).replace(/\D/g, '');
         if (cleanPhone.length === 10 && cleanPhone.startsWith('0')) cleanPhone = '593' + cleanPhone.substring(1);
         if (cleanPhone.length === 9 && cleanPhone.startsWith('9')) cleanPhone = '593' + cleanPhone;
 
@@ -69,7 +69,7 @@ module.exports = async (request, response) => {
         // --- Mensajes comunes ---
         const mensajesAEnviar = [
             `Hola, muy buenas... Un gusto saludarle 😊`,
-            `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal} - $*{textoTotal}*`,
+            `Nos comunicamos por confirmar el siguiente pedido:\n\n📦 *Productos:*\n${listaProductosFinal} - ${textoTotal}`,
             `📍 *Para:* ${nombreCompleto}\n🏙️ *Ciudad:* ${orderData["Ciudad"] || ""}${orderData["Provincia"] ? `\n🗺️ *Provincia:* ${orderData["Provincia"]}` : ""}\n🏠 *Dirección:* ${orderData["Dirección"] || ""}`
         ];
 
@@ -79,7 +79,7 @@ module.exports = async (request, response) => {
 
         } else if (metodo === "transferencia") {
             mensajesAEnviar.push(
-                `A continuación los datos para la transferencia${totalGeneral ? ` por *$${totalGeneral}*` : ""}.\n\nPor favor realízala de prefrencia *del mismo banco* para que sea inmediata:\n▪️ Pichincha → Pichincha\n▪️ Produbanco → Produbanco\n▪️ Pacífico → Pacífico\n Si la realizas de diferente banco no hay inconveniente apenas se visualize la misma procederemos al despacho`,
+                `A continuación los datos para la transferencia${totalGeneral ? ` por *$${totalGeneral}*` : ""}.\n\nPor favor realízala de preferencia *del mismo banco* para que sea inmediata:\n▪️ Pichincha → Pichincha\n▪️ Produbanco → Produbanco\n▪️ Pacífico → Pacífico\n Si la realizas de diferente banco no hay inconveniente apenas se visualize la misma procederemos al despacho`,
                 DATOS_TRANSFERENCIA,
                 `Una vez realizada, por favor adjúntanos el comprobante de pago 📎 y confírmanos si los datos de entrega son correctos.`
             );
