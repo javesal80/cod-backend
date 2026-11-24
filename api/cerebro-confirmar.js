@@ -49,18 +49,31 @@ module.exports = async (request, response) => {
         let metodo = "contraentrega";
         if (metodoRaw.includes("transfer")) metodo = "transferencia";
         else if (metodoRaw.includes("tarjeta") || metodoRaw.includes("payphone")) metodo = "tarjeta";
-
-        // --- Productos y total ---
+// --- Productos y total ---
         const productosRaw = String(orderData["Productos"] || "");
 
-       const productosFormateados = productosRaw
-        .replace(/\(\$([\d.,]+)\)/g, (m, valor) => `por *$${valor}*`)
-        .replace(/,/g, ".");
-
-        const listaProductosFinal = productosFormateados.split(' y ')
-            .map(item => `▪️ ${item.trim()}`)
-            .join('\n');
-
+        // 1. Si el Apps Script envía un array detallado en orderData.items (ideal), lo usamos directo
+        let listaProductosFinal = "";
+        if (Array.isArray(orderData.items) && orderData.items.length > 0) {
+            listaProductosFinal = orderData.items.map(it => {
+                const p = it.price ? ` — *$${Number(String(it.price).replace(/,/g, ".")).toFixed(2)}*` : "";
+                return `▪️ ${String(it.title || it.name || "").trim()}${p}`;
+            }).join('\n');
+        } else {
+            // 2. Si viene como texto plano ("Prod 1 ($50) y Prod 2 ($4)" o "Prod 1 + Promo: Prod 2")
+            // Separa por " y ", salto de línea, o " + " que NO esté dentro de paréntesis
+            const partes = productosRaw.split(/\n|\s+y\s+|\s+\+\s+(?![^()]*\))/i);
+            listaProductosFinal = partes
+                .map(item => {
+                    let limpio = item.trim().replace(/^Promo:\s*/i, "");
+                    // Si trae precio entre paréntesis ($50.00), lo formatea a la derecha: — *$50.00*
+                    limpio = limpio.replace(/\(\$([\d.,]+)\)/g, (_, val) => `— *$${val.replace(/,/g, ".")}*`);
+                    return limpio ? `▪️ ${limpio}` : "";
+                })
+                .filter(Boolean)
+                .join('\n');
+        }
+        
         let totalGeneral = orderData["Total"] || "";
         if (totalGeneral) totalGeneral = String(totalGeneral).replace(/,/g, ".");
         const textoTotal = totalGeneral ? `\n\n💰 *Total pedido:* *$${totalGeneral}*` : "";
