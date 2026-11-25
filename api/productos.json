@@ -7,6 +7,14 @@
       "descripcion_corta": "Suplemento proteico de alta pureza (30g de proteína por porción) diseñado para desarrollar masa muscular en quienes entrenan y frenar la sarcopenia, conservar fuerza y regular la glucosa en sangre en adultos que no van al gimnasio. Incluye 1 creatina de 250g GRATIS a elección.",
       "keywords": ["iso whey", "iso whey protein", "proteina", "creatina", "masa muscular", "sarcopenia"],
       "archivo": "protein.txt",
+      "tiene_opciones": true,
+      "lista_opciones": ["Helado de Vainilla", "Chocolate", "Cookies & Cream"],
+      "tiene_regalo": true,
+      "lista_regalos": [
+    "Creatina Monohidratada Athlon 250g",
+    "Creatina Monohidratada Para Mujeres (Women) 250g",
+    "Creatina Monohidratada Blueberry 250g"
+  ],
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P1.png",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P2.jpeg",
       "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.jpeg"
