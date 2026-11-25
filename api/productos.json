@@ -1,6 +1,19 @@
 {
     "PRODUCTOS": [
-{
+
+    {
+      "nombre": "ISO WHEY PROTEIN — MANTEN Y ALIMENTA TU MÚSCULO",
+      "ad_ids": ["", "", "", ""],
+      "descripcion_corta": "Suplemento proteico de alta pureza (30g de proteína por porción) diseñado para desarrollar masa muscular en quienes entrenan y frenar la sarcopenia, conservar fuerza y regular la glucosa en sangre en adultos que no van al gimnasio. Incluye 1 creatina de 250g GRATIS a elección.",
+      "keywords": ["iso whey", "iso whey protein", "proteina", "creatina", "masa muscular", "sarcopenia"],
+      "archivo": "protein.txt",
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P1.png",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P2.jpeg",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.jpeg"
+    },
+
+        
+    {
       "nombre": "7DAYS NAIL TREATMENT — MEJORA VISIBLE Y FORTALECIMIENTO DE TUS UÑAS EN 7 DÍAS",
       "ad_ids": ["120251041087680282", "120251041324040282", "120251041324050282", "120251041324060282"],
       "descripcion_corta": "Tratamiento botánico avanzado en gotas que penetra hasta la raíz y ayuda a frenar y eliminar la acción de hongos, reparar uñas quebradizas y devolverles su aspecto fuerte y saludable con el uso constante.",
