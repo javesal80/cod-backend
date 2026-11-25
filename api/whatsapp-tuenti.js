@@ -263,7 +263,8 @@ module.exports = async (req, res) => {
     console.log("[ALTA INTENCIÓN]", altaIntencion);
 
     // ─── CARGAR TXT PRODUCTO ──────────────────────────────────────────
-    let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
+   let tieneOpciones = false, listaOpciones = [], tieneRegalo = false, listaRegalos = []; 
+   let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
     if (productoActivo) {
         try {
             const tp = path.join(process.cwd(), 'api', productoActivo.archivo);
@@ -271,6 +272,11 @@ module.exports = async (req, res) => {
             imgProducto    = productoActivo.img_producto    || "";
             imgBeneficios  = productoActivo.img_beneficios  || "";
             imgTestimonios = productoActivo.img_testimonios || "";
+             tieneOpciones  = Boolean(productoActivo.tiene_opciones);
+            listaOpciones  = Array.isArray(productoActivo.lista_opciones) ? productoActivo.lista_opciones : [];
+            tieneRegalo    = Boolean(productoActivo.tiene_regalo);
+            listaRegalos   = Array.isArray(productoActivo.lista_regalos)  ? productoActivo.lista_regalos  : [];
+          
         } catch (e) { console.error("Error TXT:", e.message); }
     }
 
@@ -452,6 +458,13 @@ REGLAS DE CONTROL POST-PRECIOS (DECISIÓN)
 - Si duda o dice que necesita tiempo para consultar o esperar ("voy a hablar con el papá", "el lunes le llamo", "necesito el dinero") → NO insistas. Responde con calidez, confirma la opción que mostró interés, dile que se la reservas y que le esperas de forma amable: "Con gusto le espero, le separo la opción que le interesó para que no pierda la promoción. Cuando esté listo/a, aquí estoy 😊".
 - Si el cliente rechaza sin intención clara ("no me interesa", "está caro") → pregunta qué le frena y usa su situación para reconectar UNA vez.
 REGLA: No pases a CIERRE hasta que elija explícitamente una opción o número de plan.
+${(tieneOpciones || tieneRegalo) ? `
+⚠️ PASO OBLIGATORIO ANTES DE CIERRE (ESTE PRODUCTO TIENE VARIANTES/REGALO):
+- Si el cliente acaba de elegir un plan o precio, TODAVÍA NO pases a la etapa CIERRE ni envíes el formulario de dirección.
+- Mantente en la etapa DECISIÓN y pídele en un mensaje corto y amable que elija:
+${tieneOpciones ? `  • Su sabor preferido entre: ${listaOpciones.join(', ')}\n` : ''}${tieneRegalo ? `  • Su regalo gratis a elección entre: ${listaRegalos.join(', ')}\n` : ''}- SOLO cuando el cliente ya haya confirmado en el historial qué sabor y/o regalo desea, avanza a la etapa CIERRE y envía el formulario de datos de envío.
+` : ""}
+
 
 CIERRE — cuando el cliente ya eligió el plan
 ⚠️ REGLA DE TRANSICIÓN CRÍTICA PARA PASAR A LA ETAPA DE CIERRE:
@@ -734,9 +747,21 @@ if (nuevaEtapa === 'DECISIÓN') {
                 }
             }
 
-            // 3. Armamos el resumen limpio
-            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Catálogo General"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+            let detalleVariantes = "";
+            if (tieneOpciones || tieneRegalo) {
+                const posiblesItems = [...listaOpciones, ...listaRegalos, "athlon", "mujeres", "women", "blueberry", "vainilla", "chocolate", "cookies"];
+                const elegidos = mensajesCliente
+                    .slice(-4)
+                    .map(m => m.content)
+                    .filter(txt => posiblesItems.some(item => txt.toLowerCase().includes(item.toLowerCase())));
+                if (elegidos.length > 0) {
+                    detalleVariantes = `\n🎨 *Sabor / Regalo:* ${elegidos.join(' | ')}`;
+                }
+            }
 
+            // 3. Armamos el resumen limpio
+            const resumenVenta = `📦 *NUEVA VENTA FINALIZADA*\n--------------------------------\n📦 *Producto:* ${productoActivo?.nombre || "Catálogo General"}\n📱 *WhatsApp:* https://wa.me/${remoteJid.split('@')[0]}\n🛍️ *Plan Elegido:* *${opcionComprada}*${detalleVariantes}\n\n📋 *DATOS DE DESPACHO:*\n${ultimoMensajeDatos}\n--------------------------------\n_Fiorella cerró esta venta automáticamente._`;
+          
             // 4. Tu fetch nativo original intacto
             await fetch(`${baseUrl}/message/sendText/${instName}`, {
                 method: 'POST',
