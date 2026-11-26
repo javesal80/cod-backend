@@ -740,22 +740,22 @@ if (nuevaEtapa === 'DECISIÓN') {
                 }
             }
 
-            // Buscamos en el historial de la IA la línea exacta
+           // Buscamos en el historial de la IA la línea exacta del plan (ignorando "Le sugiero/recomiendo")
             if (numeroOpcion !== "") {
                 const mensajesIA = historial.filter(h => h.role === 'assistant');
-                let lineaEncontrada = false;
                 for (let i = mensajesIA.length - 1; i >= 0; i--) {
-                    const textoIA = mensajesIA[i].content;
-                    const lineas = textoIA.split('\n');
-                    const lineaOpcion = lineas.find(l => l.toLowerCase().includes(numeroOpcion));
+                    const lineas = mensajesIA[i].content.split('\n');
+                    const lineaOpcion = lineas.find(l =>
+                        l.toLowerCase().includes(numeroOpcion) &&
+                        !/^\s*le\s+(sugiero|recomiendo|indico|aconsejo)/i.test(l.trim())
+                    );
                     if (lineaOpcion) {
-                        opcionComprada = lineaOpcion.trim().replace(/[*✅]/g, '');
-                        lineaEncontrada = true;
+                        opcionComprada = lineaOpcion.trim().replace(/^📦\s*/, '').replace(/[*✅]/g, '').trim();
                         break;
                     }
                 }
             }
-
+          
             let detalleVariantes = "";
             if (tieneOpciones || tieneRegalo) {
                 const posiblesItems = [...listaOpciones, ...listaRegalos, "athlon", "mujeres", "women", "blueberry", "vainilla", "chocolate", "cookies"];
