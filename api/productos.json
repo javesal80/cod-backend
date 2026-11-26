@@ -8,6 +8,7 @@
       "keywords": ["iso whey", "iso whey protein", "proteina", "creatina", "masa muscular", "sarcopenia"],
       "archivo": "protein.txt",
       "tiene_opciones": true,
+        "unidades_por_plan": { "1": 1, "2": 2, "3": 3 },
       "lista_opciones": ["Helado de Vainilla", "Chocolate", "Cookies & Cream"],
       "tiene_regalo": true,
       "lista_regalos": [
