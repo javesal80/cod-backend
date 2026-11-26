@@ -18,7 +18,8 @@
   ],
       "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P1.png",
       "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P2.jpeg",
-      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.jpeg"
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.jpeg",
+        "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/T.webp"
     },
 
         
