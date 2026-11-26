@@ -264,20 +264,21 @@ module.exports = async (req, res) => {
 
     // ─── CARGAR TXT PRODUCTO ──────────────────────────────────────────
    let tieneOpciones = false, unidadesPorPlan = {}, listaOpciones = [], tieneRegalo = false, listaRegalos = [];
-   let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
+   let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "", imgOpcionesSabores = "", imgRegaloCreatina = "";
     if (productoActivo) {
         try {
             const tp = path.join(process.cwd(), 'api', productoActivo.archivo);
             if (fs.existsSync(tp)) infoProducto = fs.readFileSync(tp, 'utf-8');
-            imgProducto    = productoActivo.img_producto    || "";
-            imgBeneficios  = productoActivo.img_beneficios  || "";
-            imgTestimonios = productoActivo.img_testimonios || "";
-             tieneOpciones  = Boolean(productoActivo.tiene_opciones);
-          unidadesPorPlan = productoActivo.unidades_por_plan || { "1": 1, "2": 2, "3": 3 };
-            listaOpciones  = Array.isArray(productoActivo.lista_opciones) ? productoActivo.lista_opciones : [];
-            tieneRegalo    = Boolean(productoActivo.tiene_regalo);
-            listaRegalos   = Array.isArray(productoActivo.lista_regalos)  ? productoActivo.lista_regalos  : [];
-          
+            imgProducto        = productoActivo.img_producto        || "";
+            imgBeneficios      = productoActivo.img_beneficios      || "";
+            imgTestimonios     = productoActivo.img_testimonios     || "";
+            imgOpcionesSabores = productoActivo.img_opciones_sabores || "";
+            imgRegaloCreatina  = productoActivo.img_regalo_creatina  || "";
+            tieneOpciones      = Boolean(productoActivo.tiene_opciones);
+            unidadesPorPlan    = productoActivo.unidades_por_plan || { "1": 1, "2": 2, "3": 3 };
+            listaOpciones      = Array.isArray(productoActivo.lista_opciones) ? productoActivo.lista_opciones : [];
+            tieneRegalo        = Boolean(productoActivo.tiene_regalo);
+            listaRegalos       = Array.isArray(productoActivo.lista_regalos)  ? productoActivo.lista_regalos  : [];
         } catch (e) { console.error("Error TXT:", e.message); }
     }
 
@@ -464,13 +465,14 @@ ${(tieneOpciones || tieneRegalo) ? `
 - Cuando el cliente elija un plan (Opción 1, 2 o 3), TODAVÍA NO pases a CIERRE ni envíes el formulario de dirección. Mantente en la etapa DECISIÓN.
 - Identifica cuántas unidades lleva según la tabla de este producto: ${JSON.stringify(unidadesPorPlan)} (ej. Opción 1 = 1 unidad, Opción 2 = 2 unidades, Opción 3 = 3 unidades).
 - Responde felicitándolo con este formato exacto usando círculos de selección y \n simple entre líneas (adaptando el número N de unidades elegidas):
+
 ¡Excelente opción! Qué gran paso para empezar a ver los resultados que busca. 💪
 
-Escogiste *[N] ${productoActivo?.nombre?.split('—')[0]?.trim()}*.
-${tieneOpciones ? `\n🍨 *Escoge el sabor que deseas para tus [N] productos* (puedes repetir un mismo sabor en todos, por ejemplo 2 de Chocolate o 3 iguales, o combinarlos):\n${listaOpciones.map(op => `- ${op}`).join('\n')}` : ''}
-${tieneRegalo ? `\n🎁 *Escoge tu creatina de 250g gratis* (elige solo una):\n${listaRegalos.map(reg => `- ${reg}`).join('\n')}` : ''}
+Escogiste *[N] ${productoActivo?.nombre?.split('—')[0]?.trim()}*.${tieneOpciones ? `\n\n🍨 *Escoge el sabor que deseas para tus [N] productos* (puedes repetir un mismo sabor en todos, por ejemplo 2 de Chocolate o 3 iguales, o combinarlos):\n${listaOpciones.map(op => `- ${op}`).join('\n')}` : ''}${tieneRegalo ? `\n\n🎁 *Escoge tu creatina gratis* (elige solo una por cualquier compra de proteína):\n${listaRegalos.map(reg => `- ${reg}`).join('\n')}` : ''}
 
 ¿Qué sabor o combinación deseas para tus productos y cuál creatina eliges?
+
+
 
 - SOLO cuando el cliente ya haya indicado su sabor/combinación y su creatina, avanza a la etapa CIERRE, confirma su elección en una línea y envía el formulario de datos de envío.
 ` : ""}
