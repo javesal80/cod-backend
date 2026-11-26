@@ -467,10 +467,11 @@ ${(tieneOpciones || tieneRegalo) ? `
 ¡Excelente opción! Qué gran paso para empezar a ver los resultados que busca. 💪
 
 Escogiste *[N] ${productoActivo?.nombre?.split('—')[0]?.trim()}*.
-${tieneOpciones ? `\n🍨 *Escoge el sabor que deseas para tus [N] productos* (puedes repetir un mismo sabor en todos, por ejemplo 2 de Chocolate o 3 iguales, o combinarlos):\n${listaOpciones.map(op => `⚪ ${op}`).join('\n')}` : ''}
-${tieneRegalo ? `\n🎁 *Escoge tu creatina de 250g gratis* (marca solo una selección por cualquiera):\n${listaRegalos.map(reg => `⚪ ${reg}`).join('\n')}` : ''}
+${tieneOpciones ? `\n🍨 *Escoge el sabor que deseas para tus [N] productos* (puedes repetir un mismo sabor en todos, por ejemplo 2 de Chocolate o 3 iguales, o combinarlos):\n${listaOpciones.map(op => `- ${op}`).join('\n')}` : ''}
+${tieneRegalo ? `\n🎁 *Escoge tu creatina de 250g gratis* (elige solo una):\n${listaRegalos.map(reg => `- ${reg}`).join('\n')}` : ''}
 
 ¿Qué sabor o combinación deseas para tus productos y cuál creatina eliges?
+
 - SOLO cuando el cliente ya haya indicado su sabor/combinación y su creatina, avanza a la etapa CIERRE, confirma su elección en una línea y envía el formulario de datos de envío.
 ` : ""}
 
