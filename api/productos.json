@@ -16,10 +16,12 @@
     "Creatina Monohidratada Para Mujeres (Women) 250g",
     "Creatina Monohidratada Blueberry 250g"
   ],
-      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P1.png",
-      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P2.jpeg",
-      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.jpeg",
-        "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/T.webp"
+      "img_producto": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P1.webp",
+      "img_beneficios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P3.webp",
+      "img_testimonios": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P4.webp",
+        "img_tabla": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/P2.webp",
+        "img_pro": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/TP.webp",
+        "img_cre": "https://raw.githubusercontent.com/javesal80/cod-backend/main/api/fotos/TC.webp",
     },
 
         
