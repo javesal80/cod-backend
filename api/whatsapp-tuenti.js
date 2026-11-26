@@ -808,6 +808,29 @@ if (nuevaEtapa === 'DECISIÓN') {
             }
             
             const preguntaCierre = partes.length > 1 ? partes.pop() : "";
+          const enviarEncuesta = async (name, values, selectableCount = 1) => {
+                const tsReciente = await redisGet(`lastmsg:${cleanJid}`).catch(() => null);
+                if (tsReciente && tsReciente !== tsEnvio) return false;
+                try {
+                    const pollRes = await fetch(`${baseUrl}/message/sendPoll/${instName}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
+                        body: JSON.stringify({
+                            number: remoteJid,
+                            name,
+                            selectableCount,
+                            values
+                        })
+                    });
+                    const pollJson = await pollRes.json();
+                    console.log("[ENCUESTA] Status:", pollRes.status, "| resp:", JSON.stringify(pollJson).substring(0, 200));
+                    return pollRes.ok;
+                } catch (pe) {
+                    console.error("[ENCUESTA ERROR]", pe.message);
+                    return false;
+                }
+            };
+          
 
             const enviar = async (texto) => {
                 // Verificar si el cliente escribió algo nuevo mientras esperábamos
@@ -842,11 +865,48 @@ if (nuevaEtapa === 'DECISIÓN') {
             console.log("[ENVIO] preguntaCierre:", preguntaCierre.substring(0, 50));
             console.log("[ENVIO] baseUrl:", baseUrl, "| instName:", instName);
 
-           for (const parte of partes) {
-                const ok = await enviar(parte);
-                if (ok === false) break;
-            }
+           const esSeleccionVariantes = (nuevaEtapa === "DECISIÓN") && (tieneOpciones || tieneRegalo) &&
+                /escoge|sabor|creatina|combinaci[oó]n/i.test(textoFinal);
 
+            if (esSeleccionVariantes) {
+                const cantUnidades = Number(unidadesPorPlan[String(
+                    (historial.slice().reverse().find(h => h.role === 'user')?.content.match(/[1-3]/) || ["1"])[0]
+                )] || 1);
+
+                for (const parte of partes) {
+                    if (/🍨|🎁|⚪/.test(parte)) continue;
+                    const ok = await enviar(parte);
+                    if (ok === false) break;
+                }
+
+                if (tieneOpciones && listaOpciones.length > 0) {
+                    const okSabores = await enviarEncuesta(
+                        `Elige sabor(es) para tus ${cantUnidades} producto(s) (puedes repetir):`,
+                        listaOpciones,
+                        cantUnidades
+                    );
+                    if (!okSabores) {
+                        await enviar(`Sabores disponibles (puedes repetir): ${listaOpciones.join(', ')}`);
+                    }
+                }
+
+                if (tieneRegalo && listaRegalos.length > 0) {
+                    await new Promise(r => setTimeout(r, 1200));
+                    const okRegalo = await enviarEncuesta(
+                        "Elige 1 creatina de 250g GRATIS:",
+                        listaRegalos,
+                        1
+                    );
+                    if (!okRegalo) {
+                        await enviar(`Creatinas 250g GRATIS (elige 1): ${listaRegalos.join(' | ')}`);
+                    }
+                }
+            } else {
+                for (const parte of partes) {
+                    const ok = await enviar(parte);
+                    if (ok === false) break;
+                }
+            }
             // ─── FOTOS ────────────────────────────────────────────────
             const mapaFotos = {
                 "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
