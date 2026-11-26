@@ -263,7 +263,7 @@ module.exports = async (req, res) => {
     console.log("[ALTA INTENCIÓN]", altaIntencion);
 
     // ─── CARGAR TXT PRODUCTO ──────────────────────────────────────────
-   let tieneOpciones = false, listaOpciones = [], tieneRegalo = false, listaRegalos = []; 
+   let tieneOpciones = false, unidadesPorPlan = {}, listaOpciones = [], tieneRegalo = false, listaRegalos = [];
    let infoProducto = "", imgProducto = "", imgBeneficios = "", imgTestimonios = "";
     if (productoActivo) {
         try {
@@ -273,6 +273,7 @@ module.exports = async (req, res) => {
             imgBeneficios  = productoActivo.img_beneficios  || "";
             imgTestimonios = productoActivo.img_testimonios || "";
              tieneOpciones  = Boolean(productoActivo.tiene_opciones);
+          unidadesPorPlan = productoActivo.unidades_por_plan || { "1": 1, "2": 2, "3": 3 };
             listaOpciones  = Array.isArray(productoActivo.lista_opciones) ? productoActivo.lista_opciones : [];
             tieneRegalo    = Boolean(productoActivo.tiene_regalo);
             listaRegalos   = Array.isArray(productoActivo.lista_regalos)  ? productoActivo.lista_regalos  : [];
@@ -460,11 +461,18 @@ REGLAS DE CONTROL POST-PRECIOS (DECISIÓN)
 REGLA: No pases a CIERRE hasta que elija explícitamente una opción o número de plan.
 ${(tieneOpciones || tieneRegalo) ? `
 ⚠️ PASO OBLIGATORIO ANTES DE CIERRE (ESTE PRODUCTO TIENE VARIANTES/REGALO):
-- Si el cliente acaba de elegir un plan o precio, TODAVÍA NO pases a la etapa CIERRE ni envíes el formulario de dirección.
-- Mantente en la etapa DECISIÓN y pídele en un mensaje corto y amable que elija:
-${tieneOpciones ? `  • Su sabor preferido entre: ${listaOpciones.join(', ')}\n` : ''}${tieneRegalo ? `  • Su regalo gratis a elección entre: ${listaRegalos.join(', ')}\n` : ''}- SOLO cuando el cliente ya haya confirmado en el historial qué sabor y/o regalo desea, avanza a la etapa CIERRE y envía el formulario de datos de envío.
-` : ""}
+- Cuando el cliente elija un plan (Opción 1, 2 o 3), TODAVÍA NO pases a CIERRE ni envíes el formulario de dirección. Mantente en la etapa DECISIÓN.
+- Identifica cuántas unidades lleva según la tabla de este producto: ${JSON.stringify(unidadesPorPlan)} (ej. Opción 1 = 1 unidad, Opción 2 = 2 unidades, Opción 3 = 3 unidades).
+- Responde felicitándolo con este formato exacto usando círculos de selección y \n simple entre líneas (adaptando el número N de unidades elegidas):
+¡Excelente opción! Qué gran paso para empezar a ver los resultados que busca. 💪
 
+Escogiste *[N] ${productoActivo?.nombre?.split('—')[0]?.trim()}*.
+${tieneOpciones ? `\n🍨 *Escoge el sabor que deseas para tus [N] productos* (puedes repetir un mismo sabor en todos, por ejemplo 2 de Chocolate o 3 iguales, o combinarlos):\n${listaOpciones.map(op => `⚪ ${op}`).join('\n')}` : ''}
+${tieneRegalo ? `\n🎁 *Escoge tu creatina de 250g gratis* (marca solo una selección por cualquiera):\n${listaRegalos.map(reg => `⚪ ${reg}`).join('\n')}` : ''}
+
+¿Qué sabor o combinación deseas para tus productos y cuál creatina eliges?
+- SOLO cuando el cliente ya haya indicado su sabor/combinación y su creatina, avanza a la etapa CIERRE, confirma su elección en una línea y envía el formulario de datos de envío.
+` : ""}
 
 CIERRE — cuando el cliente ya eligió el plan
 ⚠️ REGLA DE TRANSICIÓN CRÍTICA PARA PASAR A LA ETAPA DE CIERRE:
