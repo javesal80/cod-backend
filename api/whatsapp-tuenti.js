@@ -442,7 +442,7 @@ BLOQUE 1 — Opciones + Recomendación (un solo bloque compacto, usa \n simple e
 Lista TODAS las opciones que existen en el archivo del PRODUCTO ACTIVO — pueden ser 1, 2, 3, 4 o más. 
 ⚠️ REGLA ESTRICTA DE PRECIOS: Tienes TERMINANTEMENTE PROHIBIDO resumir, cortar, adaptar o parafrasear el texto de las opciones. Debes copiar y pegar EXACTAMENTE palabra por palabra todo el texto descriptivo que acompaña a cada opción en el archivo .txt.
 Usa este formato exacto agregando el emoji:
-📦 *[Nombre de la Opción]*:    *$[Precio]*\n\n\nIncluye:\n\n[Contenido principal del plan]\n[Cada frase o beneficio adicional en su propia línea con \n]
+📦 *[Nombre de la Opción]*:    *$[Precio]*\n\nIncluye:\n[Contenido principal del plan]\n[Cada frase o beneficio adicional en su propia línea con \n]
 Marca con ✅RECOMENDADO la opción que el archivo del producto indique explícitamente como recomendada. Si el archivo no marca ninguna como recomendada, marca la de mayor cantidad/valor.
 Después de listar todas las opciones, en la siguiente línea: Le sugiero la *Opción N* (usa el número real de la opción marcada con ✅) porque [argumento humano corto conectado al caso específico del cliente].
 
@@ -664,7 +664,12 @@ if (parsed) {
             textoFinal = textoRaw;        
             console.log(`[ETAPA] ${etapaActual} → ${nuevaEtapa}`);
 
-  
+  if (nuevaEtapa === 'DECISIÓN') {
+            textoFinal = textoFinal
+                .replace(/Incluye:\s*/gi, '\n\nIncluye:\n')
+                .replace(/\s*\+\s*Envío Gratis en primera compra\.?/gi, '\nEnvío Gratis en primera compra.')
+                .replace(/\.\s+(Duplicas tu proteína|Cada bolsa te queda)/gi, '.\n$1');
+        }  
 if (nuevaEtapa === 'DECISIÓN') {
                 const cierreMarker = '✨';
                 const idxCierre = textoFinal.indexOf(cierreMarker);
