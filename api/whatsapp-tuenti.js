@@ -845,50 +845,76 @@ if (nuevaEtapa === 'DECISIÓN') {
             console.log("[ENVIO] preguntaCierre:", preguntaCierre.substring(0, 50));
             console.log("[ENVIO] baseUrl:", baseUrl, "| instName:", instName);
 
-           for (const parte of partes) {
-                const ok = await enviar(parte);
-                if (ok === false) break;
-            }
-
-            // ─── FOTOS ────────────────────────────────────────────────
-            const mapaFotos = {
-                "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
-                "SOLUCIÓN":   imgBeneficios, "DECISIÓN": imgTestimonios
-            };
-            const fotoEtapa     = mapaFotos[nuevaEtapa] || "";
-            const fotoYaEnviada = fotosEnviadas[nuevaEtapa] === true;
-            const etapaCambio   = nuevaEtapa !== etapaActual;
-            const esNuevoProducto = !fotosEnviadas["ESCUCHA"];
-            // DECISIÓN: foto siempre después de opciones, antes del cierre
-            // ESCUCHA/SOLUCIÓN: foto al cambiar de etapa como antes
-            const debeEnviarFoto = fotoEtapa && !fotoYaEnviada && (
-                (nuevaEtapa === "DECISIÓN") ||
-                (nuevaEtapa !== "DECISIÓN" && (etapaCambio || (nuevaEtapa === "ESCUCHA" && esNuevoProducto)))
-            );
-
-            if (debeEnviarFoto) {
-              await new Promise(r => setTimeout(r, 2000 + Math.floor(Math.random() * 2000)));
-                await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                    body: JSON.stringify({ number: remoteJid, media: fotoEtapa, mediatype: "image", caption: "" })
-                });
-                const esInicial = ["BIENVENIDA","ESCUCHA"].includes(nuevaEtapa);
-                if (esInicial && productoActivo?.img_tabla) {
-                    await new Promise(r => setTimeout(r, 2000));
-                    await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
+           const enviarMediaSeguro = async (mediaUrl) => {
+                if (!mediaUrl) return;
+                const tsReciente = await redisGet(`lastmsg:${cleanJid}`).catch(() => null);
+                if (tsReciente && tsReciente !== tsEnvio) {
+                    console.log("[ABORT MEDIA] Mensaje nuevo del cliente detectado:", mediaUrl);
+                    return;
+                }
+                await new Promise(r => setTimeout(r, 1800 + Math.floor(Math.random() * 1200)));
+                try {
+                    const mediaRes = await fetch(`${baseUrl}/message/sendMedia/${instName}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'apikey': EVOLUTION_TOKEN },
-                        body: JSON.stringify({ number: remoteJid, media: productoActivo.img_tabla, mediatype: "image", caption: "" })
+                        body: JSON.stringify({ number: remoteJid, media: mediaUrl, mediatype: "image", caption: "" })
                     });
+                    const mediaJson = await mediaRes.json();
+                    console.log("[MEDIA] Status:", mediaRes.status, "| url:", mediaUrl, "| resp:", JSON.stringify(mediaJson).substring(0, 150));
+                } catch (me) {
+                    console.error("[MEDIA ERROR]", me.message);
                 }
-                await new Promise(r => setTimeout(r, 1500));
-                fotosEnviadas[nuevaEtapa] = true;
-                await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+            };
+
+            const esSeleccionConFotos = (nuevaEtapa === "DECISIÓN") && (tieneOpciones || tieneRegalo) &&
+                partes.some(p => /🍨|🎁/.test(p));
+
+            if (esSeleccionConFotos) {
+                for (const parte of partes) {
+                    const ok = await enviar(parte);
+                    if (ok === false) break;
+
+                    if (/🍨/.test(parte) && imgOpcionesSabores) {
+                        await enviarMediaSeguro(imgOpcionesSabores);
+                    }
+                    if (/🎁/.test(parte) && imgRegaloCreatina) {
+                        await enviarMediaSeguro(imgRegaloCreatina);
+                    }
+                }
+            } else {
+                for (const parte of partes) {
+                    const ok = await enviar(parte);
+                    if (ok === false) break;
+                }
+
+                // ─── FOTOS ────────────────────────────────────────────────
+                const mapaFotos = {
+                    "BIENVENIDA": imgProducto, "ESCUCHA": imgProducto,
+                    "SOLUCIÓN":   imgBeneficios, "DECISIÓN": imgTestimonios
+                };
+                const fotoEtapa       = mapaFotos[nuevaEtapa] || "";
+                const fotoYaEnviada   = fotosEnviadas[nuevaEtapa] === true;
+                const etapaCambio     = nuevaEtapa !== etapaActual;
+                const esNuevoProducto = !fotosEnviadas["ESCUCHA"];
+                const debeEnviarFoto  = fotoEtapa && !fotoYaEnviada && (
+                    (nuevaEtapa === "DECISIÓN") ||
+                    (nuevaEtapa !== "DECISIÓN" && (etapaCambio || (nuevaEtapa === "ESCUCHA" && esNuevoProducto)))
+                );
+
+                if (debeEnviarFoto) {
+                    await enviarMediaSeguro(fotoEtapa);
+                    const esInicial = ["BIENVENIDA", "ESCUCHA"].includes(nuevaEtapa);
+                    if (esInicial && productoActivo?.img_tabla) {
+                        await enviarMediaSeguro(productoActivo.img_tabla);
+                    }
+                    await new Promise(r => setTimeout(r, 1500));
+                    fotosEnviadas[nuevaEtapa] = true;
+                    await redisSetex(fotosKey, 86400 * 7, JSON.stringify(fotosEnviadas));
+                }
             }
 
             if (preguntaCierre) {
-                const ok = await enviar(preguntaCierre);
+                await enviar(preguntaCierre);
             }
         }
 
